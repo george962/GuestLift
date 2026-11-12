@@ -1,3 +1,15 @@
+# GuestLift v0.5 implementation checkpoint — 2026-11-12
+
+The latest version is **v0.5**. It includes a unified fictional restaurant workspace, a controlled evidence-backed analyst, optional Supabase verified account auth and synthetic tenant data, and Stripe **test-only** subscription scaffolding. Billing and a real merchant-data API are **not** production-ready.
+
+**Validation:** 23 Python tests and 23 JavaScript tests passed; 17 TypeScript/TSX files pass source syntax transpilation. The complete Next.js production build still needs to be verified using Docker/npm on the user's Mac.
+
+**Read the current plan:** [ROADMAP.md](../ROADMAP.md) · [Account/billing setup](ACCOUNT_BILLING_SETUP.md) · [SaaS architecture](SAAS_ARCHITECTURE.md) · [AI methodology](AI_ANALYST.md).
+
+---
+
+## Archived v0.4 and earlier notes
+
 # GuestLift — Current implementation status
 
 **Version:** v0.4 · **Date:** November 12, 2026  

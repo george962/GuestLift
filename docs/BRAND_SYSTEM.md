@@ -1,3 +1,19 @@
+# Brand system — GuestLift v0.5
+
+**Meaning of the symbol:** a restaurant ontology. Four connected circles represent business entities (locations, customers, orders, promotions), linked to one validated transaction at the center. This is an illustrative product mark, not a claim of official vendor integrations.
+
+**Visual hierarchy:** deep ink #17313B for trust/navigation; teal #087F73 for validated analytical metrics and actions; warm amber #AA713C for offer economics and assumptions; soft lavender #6C68A9 for analyst / customer intelligence; off-white #F6F8F6 for the working canvas. Never rely on color alone to communicate status.
+
+**Information hierarchy:** 1) operator decision, 2) verified calculated evidence, 3) limitation and next action, 4) optional traceability and raw records.
+
+**Navigation:** Public: Why GuestLift / Product / Pricing. Product workspace: Overview, Customers, Campaigns, Ask GuestLift, Data Sources, Account & Billing. Legacy technical pages remain accessible but are not promoted in the main navigation.
+
+**Claims policy:** Always label synthetic data, modeled contribution vs measured discounts, deterministic rules vs actual LLM responses, and test billing vs live subscriptions.
+
+---
+
+## Archived v0.2 brand notes
+
 # GuestLift Brand and Product Design System (v0.2)
 
 ## Audience and positioning

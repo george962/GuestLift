@@ -6,15 +6,17 @@ from fastapi import FastAPI, HTTPException, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from .adapters import parse, source_payload, parse_toast, parse_square
 from .database import init_db, reset_db, persist, metrics, recent_runs
+from .saas import router as saas_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
     yield
 
-app=FastAPI(title='GuestLift Demo API',version='0.1.0',lifespan=lifespan,
-    description='Local demo using fabricated Toast and Square-shaped sample inputs; not a live POS integration.')
+app=FastAPI(title='GuestLift Demo API',version='0.5.0',lifespan=lifespan,
+    description='Local fictional restaurant analytics, account foundation and Stripe test-mode subscription tools. Never expose demo endpoints publicly.')
 app.add_middleware(CORSMiddleware, allow_origins=['http://localhost:3000','http://127.0.0.1:3000'], allow_methods=['GET','POST'], allow_headers=['*'])
+app.include_router(saas_router)
 
 def validate_provider(provider: str):
     if provider not in ('toast','square'):raise HTTPException(status_code=404,detail='Provider not supported')

@@ -1,3 +1,5 @@
+> **ARCHIVED: v0.2 planning notes.** See [current v0.5 roadmap](../ROADMAP.md) for active product scope.
+
 # Product direction: GuestLift Restaurant Promotion Intelligence
 
 ## What we want to sell eventually

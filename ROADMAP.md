@@ -1,229 +1,96 @@
-# GuestLift — Demo-First Development Roadmap
+# GuestLift — Product Roadmap (v0.5)
 
-> **Version:** 4.0 (November 12, 2026)  
-> **Status:** v0.4 synthetic Campaign Analytics MVP. Local Python/JS tests pass; Next.js production build and public hosting still need independent verification. No live POS integrations or real merchant data. See [implementation status](docs/IMPLEMENTATION_STATUS.md).  
-> **Goal:** Build a credible, interactive product demo before expanding the research scope.  
-> **First sources:** **Toast POS** and **Square POS** (not Squarespace Commerce).  
-> **Approach:** Work on **one milestone at a time**. The dates are targets, not deadlines.
+> Updated 2026-11-12 · **Product objective:** Restaurant operators should understand their business and decide what to investigate next. **Technical objective:** verified, provider-neutral data foundations. **Commercial objective:** paid, secure per-location workspaces after an operator pilot.
 
+## The product in one sentence
 
-## Current product milestone — v0.4 Campaign Analytics MVP
+**A restaurant intelligence workspace connecting transactions, customers, locations and promotions, with an evidence-backed AI analyst.**
 
-**Business objective:** Move beyond hypothetical coupons. Match *recorded* synthetic coupon/redemption events to standardized Toast/Square orders and produce an auditable, **descriptive** campaign report with customer repeat-visit coverage.
+## v0.5 — Unified operator workspace and SaaS foundation
 
-**Try the result:** `/campaigns` → download `campaigns-demo.zip` → upload `Campaigns.csv` + `Redemptions.csv` → inspect **21 matched synthetic redemptions across 2 campaigns** → change margin assumption → inspect matched orders and customer coverage. The public site parses the fictional files in-browser; the local Docker installation can save them to PostgreSQL.
+### Shipped in the codebase
 
-### Verified v0.4 delivery checklist
+- [x] Collapse the old six public top-level tabs to **Why GuestLift / Product / Pricing**.
+- [x] Build one unified product workspace with Overview, Customers, Campaigns, Ask GuestLift, Data Sources and Account/Billing sections.
+- [x] Make business metrics computed from the existing fictional orders, not static screenshot figures.
+- [x] Show recorded campaign activity separately from hypothetical new offer costs.
+- [x] Add deterministic pattern detection with metric evidence and caveats.
+- [x] Build a controlled read-only question engine with evidence keys, no arbitrary generated SQL.
+- [x] Add optional Supabase email/password signup and backend authentication verification, default OFF until configured.
+- [x] Add per-account tenant-scoped **synthetic** sample order storage and isolated workspace profile.
+- [x] Add Stripe TEST Checkout, billing portal and signed webhook handling as an **optional integration foundation**.
+- [x] Gate account-based AI analyst access on server-stored active/trialing Growth entitlement.
+- [x] Add an optional LLM response path over **aggregated non-identifying synthetic metrics** only.
+- [x] Add tests for workspace isolation, plan checks, import/coupon rules and customer summaries.
 
-- [x] Add local SQL `campaigns`, `campaign_redemptions`, and `campaign_import_runs` tables and an additive optional `customer_id` order column.
-- [x] Add a documented, versioned two-CSV contract for campaigns and coupon redemptions.
-- [x] Add two bundled fictional coupon campaigns and matching sample redemptions, including a broken-file test pack.
-- [x] Match coupon events to canonical orders using `(provider, source_order_id)`, rejecting or explaining unmatched events and excessive discounts.
-- [x] Make replayed imports idempotent; reject contradictory existing records rather than silently overwrite.
-- [x] Calculate **sales on redeemed orders**, recorded coupon discounts, refunds, and explicitly **assumed** campaign costs.
-- [x] Avoid deducting recorded POS discounts twice when estimating hypothetical contribution.
-- [x] Report provider-scoped repeat customer activity only for synthetic, present customer IDs; count anonymous orders separately.
-- [x] Add public-safe browser campaign upload, an interactive report with drill-down, margin slider and CSV export.
-- [x] Add FastAPI report, customer coverage, campaign upload and sample data endpoints for localhost Docker.
-- [x] Connect homepage and navigation to the operator-facing Campaign Lab.
-- [x] Run 19 Python tests and 19 JavaScript tests; compare backend and frontend example results.
-- [ ] Verify both Next.js normal production and static export builds using npm/Docker with registry access.
-- [ ] Verify the public hosted `/campaigns` page, sample CSV links, mobile layout and no remote API calls.
-- [ ] Ask an actual restaurant owner whether this reporting solves a problem they cannot easily solve today.
+### Verify locally before publishing
 
-**Not in v0.4:** Real merchant accounts, customer identity resolution across vendors, complete data provider certifications, corrected-order upserts, automated coupon delivery, real POS coupon identifiers, incrementality, experimental holdouts, and measured profit uplift. Keep a public static site, **never** the unauthenticated FastAPI demo.
+- [ ] Run a complete Next.js TypeScript typecheck and production Docker build on macOS.
+- [ ] Run Python tests in Docker and the JavaScript tests in the frontend container.
+- [ ] Open the six workspace sections on desktop and mobile. Validate menu, charts, scenarios and insights.
+- [ ] Check the last synthetic Import Lab upload is carried into Overview/Customers/Campaigns.
+- [ ] Verify static Next.js export and links with no configured backend or credentials.
+- [ ] If account testing is desired, configure Supabase Auth and verify email sign-up/login/logout.
+- [ ] If payment testing is desired, configure Stripe test product/price and simulate subscriptions/webhooks (never live cards).
+- [ ] Confirm user A and user B receive distinct workspace IDs and isolation in PostgreSQL.
+- [ ] Have 2–3 restaurant operators complete a 5-minute synthetic demo without technical guidance; record exact objections.
 
-**Technical specification:** [Campaign import contract](docs/CAMPAIGN_IMPORT.md) · [Release notes](docs/RELEASE_NOTES_v0_4.md).
+## What a restaurant owner does
 
----
-## What we're building
+1. **Try a sample workspace.** No account required; all records explicitly fictional.
+2. **See sales and customer patterns.** Each observation cites which metrics were calculated.
+3. **Evaluate a campaign.** Identify recorded redemptions, discounts and modeled cost assumptions.
+4. **Ask a question.** Controlled analyst tools explain the evidence and recommend next experiments.
+5. **Consider an account.** Supabase account foundation exists; subscription is TEST mode only.
 
-**GuestLift** is a vendor-neutral restaurant analytics application. Its first demo will show a restaurant operator how data from two different POS providers moves through provider-specific adapters into one canonical GuestLift Restaurant Data Contract (**GRDC**), then into a database and a shared analytics interface.
+## Monetization hypothesis
 
-**The first promise to demonstrate:** *Different POS inputs. One verified data model. Consistent restaurant reporting.*
-
-Longer-term, GuestLift may support loyalty attribution, experimentation, and incremental contribution profit. The demo **will not** present fabricated marketing lift as real evidence.
-
-**First demo flow:**
-1. Choose **Toast Demo** or **Square Demo** on the website.
-2. See which test records enter the provider adapter.
-3. View the before/after transformation into GRDC orders, items, and payments.
-4. See validation results: imported, rejected, and duplicate records.
-5. View the same sales and order metrics regardless of the original provider.
-6. Click a metric to see the records and rules behind it.
-
-See [Architecture & Demo Storyboard](docs/architecture.md) for the visual system diagram.
-
-## Current product direction (v0.2 — November 12, 2026)
-
-**Restaurant operator journey:** Understand the product on the homepage → choose sample POS data in the pipeline demo → define a coupon/free-item in the Offer Studio (`/offers`) → explore scenario costs and assumptions. Data standardization is the technical foundation; **restaurant promotion intelligence** is the business application we want to validate.
-
-**Implemented in the new package:** revised brand palette with explicit data meanings, professional home/offer flows, fictional-data coupon scenario calculator, line-item audit drilldown, offer math unit tests, public-safe static export option for Cloudflare Pages, and [deployment instructions](docs/DEPLOYMENT.md). The campaign name/code is an editable scenario label **not joined to actual redemptions**. The financial math does **not** estimate additional customer visits or causal profit.
-
-### Immediate public-launch checklist (before starting additional integrations)
-
-- [x] Design a homepage with a concrete operator value proposition and demo CTA.
-- [x] Add `frontend/app/offers/page.tsx` with a working browser-only coupon/free-item simulator and assumptions.
-- [x] Document colors and visual meanings in `docs/BRAND_SYSTEM.md`.
-- [x] Add a static export option and a GitHub-to-Cloudflare deployment walkthrough.
-- [x] Add tests for modeled discount/cost calculations.
-- [ ] Verify both normal Next.js build and static export build in a network-enabled environment (GitHub CI will check).
-- [ ] Deploy the **frontend only** via GitHub-connected Cloudflare Pages and check routes on the public URL.
-- [ ] Conduct at least one nontechnical operator walkthrough; record where the product is unclear.
-- [ ] Decide on a real custom domain and functioning contact channel before offering a pilot sign-up.
-
-**Do not publish the existing FastAPI API as a public merchant service.** It lacks authentication and has a destructive reset endpoint. The live site must stay fictional-data-only until a security review and proper merchant onboarding exist.
-
-## Current build checkpoint (v0.1)
-
-The downloadable build package adds the website source code, two synthetic-fixture adapters, local SQL persistence, an API, and tests. **Passing Python tests is not equivalent to a hosted, production-ready product.** The frontend still requires install/build/browser verification in a network-enabled environment, and no Square Sandbox credentials have been configured.
-
-- **Implemented and tested:** Toast-style CSV parsing, Square-shaped JSON parsing, common order model, 56 sample orders, SQL idempotent import/replay, aggregate metric API, seven backend tests.
-- **Implemented but not verified in browser:** Next.js homepage, How It Works, Demo; offline browser-mode preview, API-connected import interactions.
-- **Outstanding:** Real Square Sandbox API client, real Toast integration, arbitrary uploads, customer data security, financial semantics beyond simplified demo, production hosting, pilot feedback.
-
-See [IMPLEMENTATION_STATUS.md](docs/IMPLEMENTATION_STATUS.md) for detailed completion evidence.
-
-## Milestone overview
-
-| Milestone | Target | Deliverable | Ready when... |
+| Tier | Proposed model | Product entitlement | Status |
 |---|---|---|---|
-| **M0 — Story & architecture** | Week 1 | README, short proposal, architecture diagram | Someone understands the product in two minutes |
-| **M1 — Clickable website demo** | Week 2 | Home, How It Works, Demo pages | A visitor can explore a clearly labeled *mock* pipeline |
-| **M2 — Toast adapter** | Week 3 | Working sample Toast CSV import | CSV test orders normalize correctly and failures are visible |
-| **M3 — Square adapter** | Week 4 | Square Sandbox order importer | Square test orders normalize into the **same** GRDC model |
-| **M4 — Database & shared reporting** | Week 5 | PostgreSQL + source-independent SQL metrics | Sample financial totals reconcile for both providers |
-| **M5 — Connected end-to-end demo** | Weeks 6–7 | Website connected to real pipeline/API | No demo dashboard number is merely hardcoded |
-| **M6 — Quality & operator pitch** | Week 8 | Automated tests, demo script, pilot outline | A new reviewer can run and understand the entire demo |
+| Sandbox | Free | Fictional browser workspace and read-only rules analyst | Working |
+| Growth | Illustrative **$149/location/month** | Private synthetic workspace + optional model-backed analyst + future merchant data | Supabase configurable; Stripe TEST only |
+| Enterprise | Custom | Integration, governance, multi-location roles, pilot services | Concept only |
 
----
+The monetary figure is a **pricing hypothesis**, not validated willingness to pay. Do not start charging for a service that cannot securely ingest merchant data.
 
-## M0 — Story & architecture (do this now)
+## Next milestones (must pass gates)
 
-**Purpose:** Make it easy to explain and show what GuestLift will do. Do not spend this milestone downloading research datasets or building a complete financial model.
+### M7 — Production account and data security
 
-- [x] Create the GitHub repository with a README and roadmap. (Recheck file versions after updating.)
-- [x] Update `README.md` with **Toast POS + Square POS** and the new demo-first direction.
-- [x] Keep a short `docs/proposal.md`: problem, user, goal, sources, approach, deliverables, and constraints.
-- [x] Add `docs/architecture.md` with a Mermaid diagram (GitHub rendering to confirm after upload).
-- [x] Decide the first **five-minute demonstration**: source choice → ingestion → GRDC → reporting. See `docs/DEMO_SCRIPT.md`.
-- [x] Choose the first **three metrics**: order count, net sales, and discounts/refunds (only where sample fields support them). See `docs/METRICS.md`.
-- [x] Identify which demo steps are mock screens and which have working code. See `docs/IMPLEMENTATION_STATUS.md`.
+- [ ] Replace the legacy unauthenticated API with a separately deployed protected service. Eliminate `/api/reset` and open upload routes from production builds.
+- [ ] Add organization memberships/roles, all-tenant authorization enforcement and dedicated database access checks.
+- [ ] Implement migration tooling, transaction boundaries, secrets management, security headers, CORS/CSRF protections, rate limits and monitoring.
+- [ ] Add secure file lifecycle, malware/content validation, encrypted storage, deletion/retention controls and backups.
+- [ ] Complete privacy review, data-sharing agreement and external security assessment before handling real data.
+- [ ] Add subscription-event reconciliation, cancellation/downgrade behavior, dunning/failed-payment state and billing test coverage.
+- **Gate:** No cross-tenant access in integration tests; security review completed; private API independently deployable.
 
-**Definition of done:** Another person can open `README.md`, follow the architecture link, and explain what problem we're solving, how Toast/Square reach GuestLift, and what the first product demonstration will show.
+### M8 — Authorized merchant connectors + data correctness
 
-**You do not need in M0:** a fictional 10-store brand, a named promotion, 10 failure scenarios, complete vendor field audits, Cafe Rewards/Hillstrom downloads, or formal causal-lift definitions. Those can be added when the relevant feature requires them.
+- [ ] Verify real Toast and Square export/API formats with merchant permission and test accounts.
+- [ ] Add connection state, OAuth scope/credential storage and revocation where provider permits it.
+- [ ] Implement updated orders, late refunds, historical backfills, timezone/business-day logic, reconciliation and data-quality reports.
+- [ ] Design customer identity linking only with documented provenance and lawful data use.
+- **Gate:** A permissioned pilot dataset reconciles to source reports, including adjustments, with audited source lineage.
 
-## M1 — Clickable website demo
+### M9 — Restaurant customer intelligence and campaign economics
 
-**Purpose:** Have something visual to show a prospective user *early*, even before the backend exists.
+- [ ] Add proper time windows, cohort segmentation and retention/lapse definitions with identity coverage and data sufficiency.
+- [ ] Include campaign issuance, eligible audiences, redemptions, costs and refund corrections.
+- [ ] Build incremental-lift analysis using pre-treatment randomized assignments or another defensible identification strategy.
+- [ ] Ask operators what decisions and evidence they would actually pay for; evaluate pricing/ROI on real pilot processes, not simulated profit.
+- **Gate:** Pilot operator uses GuestLift to make a documented decision and can reproduce the underlying calculations.
 
-- [ ] Create a Next.js + TypeScript + Tailwind application.
-- [ ] Build a simple, professional home page explaining the problem.
-- [ ] Build a **How It Works** page with the same architecture diagram and clear stage descriptions.
-- [ ] Build a **Demo** page with a Toast/Square source switcher.
-- [ ] Show one small, **clearly fictional** record moving through each pipeline stage.
-- [ ] Design a small analytics overview with labels for any mock numbers.
-- [ ] Make the interface usable on desktop and mobile.
+### M10 — AI product and commercialization
 
-**Definition of done:** A visitor can click through the story without needing to install anything. Mock values are explicitly labeled. Nothing is described as a live merchant connection.
+- [ ] Add a constrained tool catalog with validated SQL/analytics endpoints (no free-form database actions).
+- [ ] Evaluate AI answers against an expert-designed question set: factual accuracy, correct refusals, evidence, no unsupported causality, privacy.
+- [ ] Add account usage quotas, cost limits, audit logging, user feedback and opt-in privacy controls.
+- [ ] Deploy paid pilot to a properly secured hosting environment with verified billing and support channels.
+- **Gate:** External technical/security review and a genuinely interested, permissioned merchant pilot.
 
-## M2 — Toast adapter
+## Work order
 
-**Purpose:** Replace the Toast side of the mock with working code.
+**Do not build everything at once.** First verify v0.5 on your Mac; then conduct a restaurant-operator walkthrough. Security and authorized data ingestion must come before inviting merchants to upload their real files. New features must improve one of three decisions: customer retention, promotion economics or location operations.
 
-- [ ] Use [Toast's official export field reference](https://doc.toasttab.com/doc/platformguide/adminDataExportFieldReference.html) to create **small synthetic CSV fixtures** for orders, items, and payments.
-- [ ] Write a Python adapter to read those files, check expected headers, and normalize the records.
-- [ ] Implement the minimum GRDC entities needed: `location`, `order`, `order_item`, `payment`.
-- [ ] Output readable validation errors for missing required columns or invalid amounts.
-- [ ] Add automated tests for correct counts and repeated imports.
-- [ ] Display the adapter's before/after records in the demo.
-
-**Definition of done:** One Toast sample order with multiple items/payments becomes exactly one GRDC order with the expected associated records. The importer doesn't invent missing values.
-
-## M3 — Square adapter
-
-**Purpose:** Prove the common standard works with a genuinely different vendor.
-
-- [ ] Set up a **free Square developer Sandbox** for test orders (do not use live seller data).
-- [ ] Use the [Square Orders API](https://developer.squareup.com/reference/square/orders) to create/fetch Sandbox sample orders, or use saved Sandbox JSON fixtures while developing.
-- [ ] Write a Python Square adapter that produces the **same GRDC entities** as Toast.
-- [ ] Reuse the same canonical validation and metric rules—no Square-specific SQL reporting.
-- [ ] Test a multi-item order, payment status, and absent optional fields.
-- [ ] Add a Square-specific before/after transformation view.
-
-**Definition of done:** Sample Square and Toast orders both pass the same GRDC validations, and unsupported fields are shown as *unknown* rather than silently guessed.
-
-## M4 — Database & shared reporting
-
-**Purpose:** Demonstrate that our standard supports trusted, provider-independent analytics.
-
-- [ ] Create PostgreSQL tables and migrations for the minimal canonical entities plus `import_runs`.
-- [ ] Persist Toast and Square normalized records with source lineage.
-- [ ] Make repeated imports idempotent so the same records are not double-counted.
-- [ ] Implement **order count**, **net sales**, and **discount/refund totals** with explicit metric definitions.
-- [ ] Reconcile test fixture totals to the cent; separate unavailable financial fields from zero.
-- [ ] Build FastAPI endpoints returning import status and computed metrics.
-
-**Definition of done:** Both sources use the same SQL metric logic, and every displayed number can be traced to test records. Financial totals are checked rather than assumed.
-
-## M5 — Connected end-to-end demo
-
-**Purpose:** Turn the website into a functioning product demonstration.
-
-- [ ] Connect Next.js to the FastAPI backend.
-- [ ] Replace mock pipeline stage results with actual adapter and database output.
-- [ ] Let a user select a provided sample, run an import, and inspect transformations.
-- [ ] Show import validation results, order-level drill-down, and consistent metrics.
-- [ ] Add understandable loading, empty, failed, and duplicate-import states.
-- [ ] Create a short narrated walk-through (script or screen recording).
-
-**Definition of done:** A new reviewer can run the prescribed demo and verify that numbers update from actual imported test data, not a hardcoded dashboard.
-
-## M6 — Quality & operator pitch
-
-**Purpose:** Make the system dependable enough to demonstrate professionally.
-
-- [ ] Run unit and integration tests through pytest and GitHub Actions.
-- [ ] Test missing columns, duplicate orders, one-to-many joins, missing payments, and refunds.
-- [ ] Package local services using Docker Compose and document the quickstart.
-- [ ] Show clear demo-only/data-origin disclaimers; never request real payment card numbers.
-- [ ] Create a one-page operator pitch: what problem this solves, what it shows today, and what a real pilot would require.
-- [ ] Ask at least one operator/technical reviewer for feedback and record what to improve.
-
-**Definition of done:** A reviewer can reproduce the demo, understand limitations, and identify what merchant permission/data is needed for a future real pilot.
-
----
-
-## Later, only when needed
-
-- **Loyalty/incrementality:** Add campaign assignments, loyalty events, experiments, and real contribution-margin calculations once there is an actual campaign-evaluation feature. [Cafe Rewards Offers](https://mavenanalytics.io/data-playground/cafe-rewards-offers) can support synthetic event processing; [Hillstrom](https://blog.minethatdata.com/2008/03/minethatdata-e-mail-analytics-and-data.html) can test statistical methods, but neither proves restaurant ROI.
-- **More sources:** Add another POS or ordering provider only after Toast and Square work against GRDC.
-- **Production integrations:** Merchant authorization, vendor permissions, security, identity mapping, operations, and data governance require a separate pilot-readiness phase.
-- **Advanced scale:** Performance benchmarks and cloud deployment matter once the minimal pipeline works reliably; don't add infrastructure for appearance alone.
-
-## Working agreement for this project
-
-1. Complete **one milestone** at a time.
-2. Ask ChatGPT for **complete files**, not tiny disconnected patches.
-3. Verify each deliverable against its **Definition of Done**.
-4. Commit meaningful checkpoints to GitHub and update the checkboxes.
-5. Keep **public mock data**, **Square Sandbox data**, and **real merchant data** clearly distinguished.
-
----
-
-## v0.3 engineering checkpoint — Import Lab (prototype)
-
-- [x] Add guided `/import` upload flow supporting fabricated Toast CSV and Square JSON file sets.
-- [x] Parse and validate uploaded file contents in-browser (public-safe, no remote API).
-- [x] Normalize both formats into a canonical GRDC order and calculate metrics from uploaded records.
-- [x] Show financial totals, location comparisons, warnings and record lineage.
-- [x] Add synthetic sample ZIPs and an intentionally malformed Toast ZIP for reproducible demonstrations.
-- [x] Implement localhost-only FastAPI multipart sample import, retaining SQL duplicate replay protection.
-- [x] Allow the Offer Studio to model a hypothetical coupon using a synthetic imported browser session.
-- [x] Replace the generic chart logomark with meaningful two-to-one data streams, and replace the homepage screenshot with a selectable record demonstration.
-- [ ] Verify Next.js production and static builds on a machine with npm access and inspect responsive design in the browser.
-- [ ] Test compatibility with authorized real Toast/Square exports and revise source mappings (pilot phase; NOT suitable for today's unauthenticated demo).
-- [ ] Implement robust corrected-order upsert history, per-row quarantine and production security before accepting merchant data.
-
-See [Import Lab demonstration and limitations](docs/IMPORT_LAB.md).
+Prior engineering milestones and v0.4 release notes remain documented in `docs/IMPLEMENTATION_STATUS.md` and `docs/RELEASE_NOTES_v0_4.md`.

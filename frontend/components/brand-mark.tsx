@@ -1,17 +1,8 @@
 import type {SVGProps} from 'react';
-
-/**
- * Two source data paths converge on one validated record.
- * The icon encodes GuestLift's product promise, rather than generic growth bars.
- */
-export function BrandMark(props:SVGProps<SVGSVGElement>){
-  return <svg aria-hidden="true" viewBox="0 0 42 42" fill="none" {...props}>
-    <path d="M7 10h10c5 0 8 3 8 8v3" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round"/>
-    <path d="M7 31h10c5 0 8-3 8-8v-2" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round"/>
-    <path d="M25 21h10" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round"/>
-    <circle cx="7" cy="10" r="3.5" fill="#A5B9EF"/>
-    <circle cx="7" cy="31" r="3.5" fill="#A5B9EF"/>
-    <rect x="22" y="18" width="6" height="6" rx="1.8" fill="#71D9CB"/>
-    <circle cx="35" cy="21" r="3.5" fill="#71D9CB"/>
-  </svg>;
-}
+/** Restaurant ontology: location, guest, and promotion connected to one validated transaction. */
+export function BrandMark(props:SVGProps<SVGSVGElement>){return <svg aria-hidden="true" viewBox="0 0 48 48" fill="none" {...props}>
+  <rect x="4" y="4" width="40" height="40" rx="12" fill="#17313B"/>
+  <path d="M14 17L24 24L35 16M14 31L24 24L35 33" stroke="#83C8BA" strokeWidth="2.6" strokeLinecap="round"/>
+  <circle cx="14" cy="17" r="4" fill="#BDDCC2"/><circle cx="14" cy="31" r="4" fill="#BDCAE3"/><circle cx="35" cy="16" r="4" fill="#E7BD91"/><circle cx="35" cy="33" r="4" fill="#BDDCC2"/>
+  <rect x="19" y="19" width="10" height="10" rx="3" fill="#FFFDF6"/><path d="M22 24h4" stroke="#17313B" strokeWidth="1.6" strokeLinecap="round"/>
+ </svg>}
