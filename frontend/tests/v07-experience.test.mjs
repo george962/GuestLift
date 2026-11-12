@@ -10,9 +10,9 @@ test('expanded landing reuses canonical computed metrics rather than hard-coded 
  assert.match(s,/fictional data/i);assert.match(s,/No account required/i);
  assert.doesNotMatch(s,/guaranteed ROI|guaranteed profit/i);
 });
-test('website exposes real Supabase auth and server-mediated Stripe subscription journey',()=>{
+test('website exposes local sign-in and server-mediated Stripe TEST subscription journey',()=>{
  const auth=read('components/auth-panel.tsx'),billing=read('app/billing/page.tsx'),navbar=read('components/site.tsx');
- for(const snippet of ['signUp','signInWithPassword','resetPasswordForEmail','updateUser','safeNext'])assert.ok(auth.includes(snippet));
+ for(const snippet of ['signUp','signInWithPassword','updateUser','safeNext','currentPassword'])assert.ok(auth.includes(snippet));
  for(const snippet of ['/api/saas/billing/','/api/saas/config','checkout','portal','subscription_status'])assert.ok(billing.includes(snippet));
  assert.match(navbar,/onAuthStateChange/);
  assert.match(read('app/pricing/page.tsx'),/sign-up\?next=%2Fbilling/);

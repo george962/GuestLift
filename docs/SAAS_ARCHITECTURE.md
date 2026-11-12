@@ -1,37 +1,22 @@
-# GuestLift — SaaS Foundation Architecture (v0.5)
-
-> **State:** Synthetic-data prototype and *test-mode* account/billing foundation. Not production certified.
-
-## Customer journey
+# TableSignal v0.8 — Local account and SaaS storage architecture
 
 ```mermaid
-flowchart TD
-  A[Public guest] --> B[Free sandbox]
-  B --> C[Unified restaurant workspace]
-  C --> D[Sales / Customers / Campaigns]
-  D --> E[Verified metric analyst + next-action suggestions]
-  A --> F[Optional Supabase signup]
-  F --> G[Verified user subject]
-  G --> H[Owner-scoped workspace + fictional seed]
-  H --> I[Stripe TEST checkout]
-  I --> J[Signed subscription webhook]
-  J --> K{Verified Growth status?}
-  K -->|Active or trialing| L[Private read-only analyst]
-  K -->|Otherwise| M[Free sandbox only]
+flowchart TB
+  Browser[Local browser on localhost:3000] -->|credentialed requests| API[FastAPI on 127.0.0.1:8000]
+  Browser --> Next[Next.js animated website]
+  API -->|Argon2id password verification| User[(PostgreSQL local_users)]
+  API -->|Hashed cookie lookup + CSRF check| Session[(PostgreSQL local_sessions)]
+  API -->|Session-derived user identity| Space[(saas_workspaces)]
+  Space --> Seed[(synthetic workspace orders)]
+  API -. optional TEST checkout .-> Stripe[Stripe test mode]
+  Stripe -. signed webhook .-> API
 ```
 
-## Operator ontology — first iteration
+- New `local_users` and `local_sessions` tables coexist with existing synthetic `saas_workspaces` and `saas_workspace_demo_orders` in the same persistent Docker database volume.
+- The browser receives an unpredictable 48-byte session secret in an HttpOnly, SameSite-Strict cookie. The database stores only a SHA-256 digest. API reads derive ownership from the session and never accept a caller-supplied workspace owner ID.
+- Browser scripts receive a harmless `cookie-session` **presence indicator** for compatibility with existing UI code; it is not a bearer token and cannot grant access. The backend ignores it. The real session secret cannot be read by JavaScript.
+- Browser POST requests to authenticated endpoints require an `X-CSRF-Token` obtained from the authenticated `/api/local-auth/session` response; the backend checks it against the database and validates local Origin.
+- Password changes require the current password and revoke other sessions. Manual developer recovery is available only from an interactive Docker console.
+- Optional Stripe test subscription events must be signed and verified; the user is never considered paid solely because a browser visited a success URL.
 
-Relationships are explicit: `workspace → location → order → optional customer alias` and `order → campaign redemption → campaign`. Provider-specific customer IDs are scoped to their source; GuestLift does not merge identities without evidence or authorization. Campaign discounts are already reflected in recorded net sales and never subtracted twice.
-
-## Security boundary and data lifecycle
-
-- **Public browser:** fictitious sample records only, no real account needed, browser-only question tools.
-- **Private REST endpoints:** `Authorization: Bearer` access token is verified with Supabase Auth before accessing a workspace, profile, entitlement or paid analyst. Each workspace's sample orders are queried by a **server-owned workspace key**; a client cannot choose another workspace ID.
-- **Stripe:** test secret required, checkout server-created, entitlements updated only from verified subscription status webhook events. No raw card data touches GuestLift.
-- **Optional OpenAI:** only computed, non-identifying synthetic aggregate results, sent server-side. No customer/order records or credentials. The model may explain evidence, but SQL and financial computations are performed outside the model.
-- **Storage:** SQLAlchemy creates additional additive `saas_...` tables in local Postgres; full Alembic migrations, secure hosting and production multi-user permissions are missing.
-
-## Production blockers
-
-The historic v0.1–v0.4 demo endpoints are unauthenticated and remain localhost only. Do not expose the combined API. Implement separately secured routes or split a new service, key management, formal migrations, tenant policies, audit logs, quotas/rate limits, monitoring, retention/deletion, encryption, RLS/authorization testing, security review, and vendor permissions before accepting real data or live Stripe charges.
+**Production blockers:** No email ownership verification or automated email recovery, no multi-device session-management UI, in-memory rather than distributed login rate limiting, TLS-only cookie mode not configured, no SSO/2FA, no organization membership roles, incomplete hosted tenant audits, public demo endpoints, no formal migrations/backup service, no merchant data authorization, no live payment validation. This architecture is for developer-only localhost use.

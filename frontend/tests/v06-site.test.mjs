@@ -6,7 +6,7 @@ const root=resolve(import.meta.dirname,'..');
 const read=p=>readFileSync(resolve(root,p),'utf8');
 test('v0.6 has dedicated account and billing management screens',()=>{
  for(const p of ['app/sign-in/page.tsx','app/sign-up/page.tsx','app/forgot-password/page.tsx','app/reset-password/page.tsx','app/onboarding/page.tsx','app/settings/page.tsx','app/billing/page.tsx','app/pricing/page.tsx','app/help/page.tsx','app/connect/page.tsx'])assert.ok(existsSync(resolve(root,p)),p);
- assert.match(read('components/auth-panel.tsx'),/resetPasswordForEmail/);
+ assert.match(read('components/auth-panel.tsx'),/currentPassword/);
  assert.match(read('components/auth-panel.tsx'),/signInWithPassword/);
  assert.match(read('components/auth-panel.tsx'),/signUp/);
  assert.match(read('app/billing/page.tsx'),/\/api\/saas\/billing\//);

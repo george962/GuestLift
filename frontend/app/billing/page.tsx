@@ -2,11 +2,11 @@
 import {useEffect,useState} from 'react';
 import Link from 'next/link';
 import {ArrowRight,CheckCircle2,CreditCard,RefreshCcw,ShieldCheck,LockKeyhole,ExternalLink} from 'lucide-react';
-import {accountApi,apiOrigin,supabaseClient} from '@/lib/supabase-client';
+import {accountApi,apiOrigin,localAuthClient} from '@/lib/local-auth';
 type State={plan:string;subscription_status:string;name:string;ai_enabled:boolean};
 type Configuration={auth_configured:boolean;test_checkout_configured:boolean;test_webhook_configured:boolean;live_payments_enabled:boolean;real_merchant_data_allowed:boolean};
 export default function Billing(){
- const sb=supabaseClient();const [token,setToken]=useState(''),[state,setState]=useState<State|null>(null),[config,setConfig]=useState<Configuration|null>(null);
+ const sb=localAuthClient();const [token,setToken]=useState(''),[state,setState]=useState<State|null>(null),[config,setConfig]=useState<Configuration|null>(null);
  const [busy,setBusy]=useState(false),[loading,setLoading]=useState(true),[message,setMessage]=useState('');
  async function refresh(t=token){if(!t){setLoading(false);return}try{const r=await accountApi('/api/saas/me',t);setState(r.workspace);setMessage('')}catch(e){setMessage(e instanceof Error?e.message:'Could not load subscription')}finally{setLoading(false)}}
  useEffect(()=>{let active=true;
@@ -36,8 +36,8 @@ export default function Billing(){
      </>}
     {message&&<div className="ts-alert" role="status">{message}</div>}
    </section>
-   <aside className="v7-billing-aside"><div className="v7-billing-feature"><LockKeyhole size={21}/><strong>Account security</strong><p>Supabase handles passwords and sessions. Verified tokens identify your workspace.</p></div><div className="v7-billing-feature"><ShieldCheck size={21}/><strong>Checkout security</strong><p>Stripe hosts the payment form. The server listens for signed subscription events.</p></div><div className="v7-billing-feature"><CheckCircle2 size={21}/><strong>Subscription management</strong><p>Update or cancel a test plan through the customer portal when configured.</p></div><div className="v7-billing-feature caution"><CreditCard size={21}/><strong>No live billing</strong><p>Actual charges and real restaurant onboarding remain disabled pending production readiness.</p></div></aside>
+   <aside className="v7-billing-aside"><div className="v7-billing-feature"><LockKeyhole size={21}/><strong>Account security</strong><p>Passwords are hashed locally and server-side sessions identify your workspace.</p></div><div className="v7-billing-feature"><ShieldCheck size={21}/><strong>Checkout security</strong><p>Stripe hosts the payment form. The server listens for signed subscription events.</p></div><div className="v7-billing-feature"><CheckCircle2 size={21}/><strong>Subscription management</strong><p>Update or cancel a test plan through the customer portal when configured.</p></div><div className="v7-billing-feature caution"><CreditCard size={21}/><strong>No live billing</strong><p>Actual charges and real restaurant onboarding remain disabled pending production readiness.</p></div></aside>
   </div>
-  <div className="ts-caution"><ShieldCheck size={21}/><p>A successful checkout return does not activate a plan by itself. Subscription access follows a verified Stripe webhook and a refreshed server-side plan status. Never expose test secrets or Supabase service-role keys in the frontend.</p></div>
+  <div className="ts-caution"><ShieldCheck size={21}/><p>A successful checkout return does not activate a plan by itself. Subscription access follows a verified Stripe webhook and a refreshed server-side plan status. Never expose Stripe test secrets, database passwords, or authentication cookies in frontend code.</p></div>
  </main>
 }

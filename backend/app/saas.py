@@ -1,7 +1,7 @@
 """Account, workspace, billing TEST mode and evidence-backed analyst.
 
 Not a production merchant service. All workspace orders are synthetic and seeded from packaged fixtures.
-Authentication requires Supabase credentials; no local bypass or magic demo token exists.
+Authentication is via local PostgreSQL sessions. No developer bypass or magic token exists.
 """
 from __future__ import annotations
 import csv
@@ -9,11 +9,8 @@ import os
 import uuid
 from pathlib import Path
 from datetime import datetime, timezone
-from typing import Annotated
 
-import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel, Field
 from sqlalchemy import String, Integer, Text, ForeignKey, UniqueConstraint, select, delete
 from sqlalchemy.orm import Mapped, mapped_column, Session
@@ -21,9 +18,9 @@ from sqlalchemy.orm import Mapped, mapped_column, Session
 from .database import Base, engine
 from .adapters import parse
 from .insights import analyze_orders, answer_question
+from .local_auth import authenticated_subject
 
 router=APIRouter(prefix='/api/saas',tags=['SaaS foundation (test mode)'])
-security=HTTPBearer(auto_error=False)
 
 class Workspace(Base):
     __tablename__='saas_workspaces'
@@ -70,25 +67,6 @@ class AnalystRequest(BaseModel):
 
 def _now()->str:return datetime.now(timezone.utc).isoformat()
 
-async def authenticated_subject(credentials:Annotated[HTTPAuthorizationCredentials|None,Depends(security)]) -> str:
-    """Validate bearer token remotely against Supabase Auth; never trust decoded JWT without verification."""
-    url=os.getenv('SUPABASE_URL','').rstrip('/')
-    key=os.getenv('SUPABASE_PUBLISHABLE_KEY','')
-    if not url or not key:
-        raise HTTPException(status_code=503,detail='Account services not configured. Public sandbox still works.')
-    if credentials is None or credentials.scheme.lower()!='bearer':
-        raise HTTPException(status_code=401,detail='Sign in required')
-    try:
-        async with httpx.AsyncClient(timeout=8.0,follow_redirects=False) as client:
-            res=await client.get(url+'/auth/v1/user',headers={'apikey':key,'Authorization':'Bearer '+credentials.credentials})
-    except httpx.RequestError:
-        raise HTTPException(status_code=503,detail='Authentication provider unavailable')
-    if res.status_code!=200:
-        raise HTTPException(status_code=401,detail='Invalid or expired access token')
-    sub=res.json().get('id')
-    if not isinstance(sub,str) or not sub:
-        raise HTTPException(status_code=401,detail='No verified account subject')
-    return sub
 
 
 def _get_workspace(db:Session,owner_sub:str) -> Workspace:
@@ -143,12 +121,12 @@ def public_configuration():
     stripe_key=os.getenv('STRIPE_SECRET_KEY','')
     price_id=os.getenv('STRIPE_GROWTH_PRICE_ID','')
     return {
-        'auth_configured':bool(os.getenv('SUPABASE_URL') and os.getenv('SUPABASE_PUBLISHABLE_KEY')),
+        'auth_configured':True,
         'test_checkout_configured':stripe_key.startswith('sk_test_') and price_id.startswith('price_'),
         'test_webhook_configured':bool(os.getenv('STRIPE_WEBHOOK_SECRET')) and stripe_key.startswith('sk_test_'),
         'live_payments_enabled':False,
         'real_merchant_data_allowed':False,
-        'mode':'developer_test_only'
+        'mode':'local_postgres_auth_developer_only'
     }
 
 @router.get('/me')

@@ -1,47 +1,53 @@
-# TableSignal / GuestLift — Current roadmap
+# TableSignal — Build and launch roadmap
 
-**Status as of November 12, 2026:** v0.7 animated SaaS experience prototype, built on the original GuestLift data and campaign engines. This replaces the older demo milestones as the current plan; their implementation and limitations remain documented in `docs/IMPLEMENTATION_STATUS.md`.
+**As of November 12, 2026: v0.8 local-account development release.**
 
 ## Product promise
 
-A restaurant operator should be able to understand customer repeat behavior, measured promotion costs, and significant differences between locations in a single workspace, then ask evidence-backed questions. **We do not claim sales attribution equals incremental profit.**
+Help restaurant operators understand recorded sales, identifiable returning customers, promotion spending, and questions worth investigating. Don't claim a profit lift based on observational promotion redemptions.
 
-## Completed in the source release
+## Completed synthetic demo foundation
 
-- [x] M0–M5: synthetic source adapters, normalized orders, PostgreSQL demonstration, browser import, campaign CSV/redemption matching, finance and customer analytics.
-- [x] v0.5: optional Supabase identity foundation, owner-scoped synthetic account workspace, proposed pricing, Stripe **test-only** subscription workflow and read-only analyst.
-- [x] v0.6: simpler four-task workspace, account/billing pages, early homepage motion tour.
-- [x] **v0.7:** longer animated homepage with meaningful interactions, interactive analyst, four-step product story, customer/account journey, more polished sign-in / sign-up experience, account-aware navigation, direct pricing-to-billing route, biller configuration status and tests.
-- [x] v0.7: 25 backend / 29 frontend source tests pass.
+- [x] v0.1–v0.3: Toast-shaped CSV and Square-shaped JSON adapters; canonical orders; source validation, local Postgres/FastAPI, browser demo.
+- [x] v0.4: Campaign and redemption modeling, traceable recorded coupon reports, synthetic customer aliases, descriptive finance metrics.
+- [x] v0.5: Operator workspace, customer patterns and evidence-backed analyst; Stripe **test-mode** subscription API foundation.
+- [x] v0.6–v0.7: Clearer animated marketing website, public product/pricing, account pages, guided restaurant onboarding.
+- [x] v0.8: Local PostgreSQL authentication without Supabase; Argon2id password hashing, DB-backed revocable sessions, HttpOnly cookie, CSRF and origin checks, independent seeded workspaces, settings and password change, integration and isolation tests.
+- [ ] Verify full Docker/Next.js build and manual browser sign-in/checkout on the developer's Mac.
 
-## Acceptance still outstanding
+## Immediate acceptance milestone — v0.8 local SaaS workflow
 
-- [ ] Run full Next.js production build and static export on Mac with npm registry access.
-- [ ] Manually verify responsive navigation, scroll reveal, reduced motion and account forms in an actual browser.
-- [ ] Configure a Supabase test project and complete email confirmation / reset flows end-to-end.
-- [ ] Configure Stripe test product/price and webhook; perform successful checkout and cancellation, ensure entitlement follows verified event only.
-- [ ] Publish the synthetic-only frontend and verify all public routes. Do **not** publish legacy API.
-- [ ] Test product value proposition with at least one independent restaurant operator.
-- [ ] Verify working name availability before committing to a domain or trademark.
+1. Install updated files into the local project and run all tests.
+2. Open `/sign-up`, create developer account A, finish `/onboarding`, and change restaurant profile.
+3. Restart containers and confirm A remains signed in and data persists.
+4. Sign out and sign back in; change password and confirm old password fails.
+5. Register account B; verify B's workspace is independent from A.
+6. Optionally configure Stripe **test mode** and validate signed webhook status before granting a Growth entitlement.
 
-## Next milestone: v0.8 — Secure merchant pilot architecture
+**Done only after** a human verifies the live local frontend experience, not simply passing source tests.
 
-**Do this before charging live or receiving real merchant data.**
+## Next steps, in priority order
 
-1. Isolate all unauthenticated demo routes from production API deployment, and secure each authenticated endpoint by tenant/role.
-2. Add per-merchant authorized data import, protected storage, deletion and backup policies; strengthen transactional schema, migrations and reconciliation.
-3. Test real Square Sandbox authorization; investigate Toast partner requirements; do not claim a live connection based on fixtures.
-4. Implement robust subscription lifecycle: invoice failure/dunning, subscription reconciliation, location-based quantity, cancellation, tax and plan limits.
-5. Add organization membership/invites, service roles, audit logs, rate limits, monitoring and recovery procedures.
-6. Publish and review legal/privacy/support policies before a limited approved pilot.
-7. Validate at least one problem a restaurant operator will actually pay to solve and update pricing hypothesis.
+### v0.9 — Pilot-value validation
 
-## After a pilot: evidence-based AI and retention
+- Talk to 3–5 restaurant owners or multi-location operators. Ask whether customer retention, promotion performance, or labor/menu questions are highest priority.
+- Build a concise recurring operator dashboard, not more disconnected pages.
+- Improve insight accuracy, explainable trend comparisons, customer coverage warnings, and transparent campaign economics.
+- Document onboarding friction and willingness to pay before setting final pricing.
 
-- Customer cohorts and repeat/at-risk segments with stable identifiers and known coverage limitations.
-- Restaurant-specific business context (hours, locations, menu, promotion eligibility, verified costs).
-- Read-only AI research using approved analytics APIs and citations, never fabricated metrics.
-- Controlled campaign experimentation and margin-aware incremental outcomes.
-- More POS/loyalty integrations only when demonstrated customer value justifies them.
+### Production readiness (separate, substantial milestone)
 
-**Working rule:** One customer journey first; technical tools available in secondary flows. No live billing or sensitive uploads into the prototype. Update this file after independently completing the unfinished checks.
+- Build a separately secured hosted API, remove or isolate unauthenticated demo routes, migrate from local Docker PostgreSQL to a managed server with backups and formal schema migrations.
+- Add verified email ownership, production account recovery, credential/session rotation, device and team management, persistent rate limiting, event auditing, TLS-only cookies and deployment monitoring.
+- Implement permissions and tenant-isolation tests under real hostile traffic, data retention/deletion, incident procedures, and vendor approvals before accepting real merchant transactions.
+- Validate live Toast/Square export semantics and correct-order/refund updates; add legitimate merchant OAuth/integration process.
+- Configure Stripe live billing only after tax, legal, pricing, refund, customer-support and security reviews; webhooks should reconcile missed/out-of-order events.
+- Evaluate AI privacy/usage quotas and enforce read-only metric grounding.
+
+## Working rules
+
+- Build and test **one clear operator workflow at a time**.
+- Keep synthetic demo and real merchant records strictly separate.
+- Never call a test-mode checkout a live subscription or an observed promotion association incremental ROI.
+- Keep features usable on local Docker before paying for hosting.
+- Update acceptance tests and documentation with every release.

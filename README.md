@@ -1,67 +1,81 @@
-# TableSignal v0.7 — Restaurant intelligence SaaS prototype
+# TableSignal v0.8 — Local accounts and restaurant workspaces
 
-**Know your guests. Grow with clarity.**
+**Know your guests. Grow with clarity.** TableSignal remains a prototype restaurant intelligence platform with an animated product website, a sample sales and customer dashboard, promotion analysis, and a rules-based analyst grounded in synthetic transaction metrics.
 
-This release builds directly on **GuestLift v0.1–v0.5 / TableSignal v0.6**. It preserves the Toast-shaped and Square-shaped synthetic data adapters, shared GRDC order model, campaign/redemption matching, workspace analytics, and account-backed read-only analyst.
+## What changed in v0.8
 
-**This is a developer prototype.** All example data are fictional. Real customer files, merchant credentials and live charges must not be used. `TableSignal` is a provisional working name; trademark/domain availability has not been verified.
+**Supabase was removed.** You do not need an external identity service, hosted database, account credentials, or a company registration to test the local app.
 
-## What changed in v0.7
+- Create an email/password **developer account** at `/sign-up`; passwords are hashed using Argon2id.
+- Sign in at `/sign-in` using a revocable, 7-day, **HttpOnly cookie**; session tokens are hashed in PostgreSQL rather than kept in localStorage.
+- Set up a fictional restaurant profile in `/onboarding` and edit it later in `/settings`.
+- Each local user receives a separate synthetic restaurant workspace and can revisit it after a Docker restart.
+- Sign out on `/account`; change a password on `/reset-password` after supplying the current password. Password changes revoke other sessions.
+- Browser-to-API requests use credentialed CORS restricted to local site origins, plus origin checks and anti-forgery tokens for state-changing authenticated endpoints.
+- Existing operator dashboard, campaign models, import demo, animated homepage, and **optional Stripe test mode** are preserved.
+- No live payments, real merchant data, or production hosting are enabled.
 
-1. **Expanded animated homepage**: richer product hero, looping capability marquee, hover motion, 4-step interactive import-to-decision story, moving data visuals, interactive analyst questions, evidence-based insight cards, account-journey section, FAQs, and closing CTA. Accessible controls and reduced-motion preference supported.
-2. **Actual customer-facing account pages**: `/sign-in`, `/sign-up`, `/forgot-password`, `/reset-password`, `/onboarding`, `/account`, `/settings`; all based on Supabase Auth when the developer supplies credentials. Sign-up and sign-in preserve a safe onward destination, e.g., a pricing visitor can reach Billing.
-3. **Test subscription flow**: `/pricing` → `/sign-up?next=%2Fbilling` → `/onboarding` → `/billing`; the server creates a Stripe **test-mode** Checkout session and provides access to a test customer portal. Signed subscription webhooks, not a browser redirect, determine Growth access.
-4. **Visible account state in navigation** when a Supabase session exists, plus a consolidated account hub.
-5. **Safe readiness endpoint** at `/api/saas/config` returns only feature booleans, not keys or emails, and advertises that real payments/uploads are disabled.
-6. No new third-party animation dependencies: the moving website is built with React interactions, CSS and native browser APIs.
+## Start the app locally
 
-## Quickstart — existing folder on Mac
+The ZIP contains the **complete replacement project** (not a patch). Copy its contents into the existing `~/GuestLift` folder, keeping that folder's `.git` and any private `.env` file. If you've already copied v0.8 into `~/GuestLift`, skip copying and **do not unzip or reinstall again**.
 
-If the entire v0.7 source is already copied over your existing `~/GuestLift` repository (preserve `.git` and existing `.env`), run:
+From the project root:
 
 ```bash
 cd "$HOME/GuestLift" || exit 1
+grep '"version"' frontend/package.json
 docker compose up --build -d
 docker compose exec -T backend python -m pytest -q
 docker compose exec -T frontend npm test
 docker compose ps
 ```
 
+The frontend should report `0.8.0` and the services should be available at:
+
 - Homepage: http://localhost:3000
-- Free demo: http://localhost:3000/workspace
+- Sign up: http://localhost:3000/sign-up
 - Sign in: http://localhost:3000/sign-in
-- Create account: http://localhost:3000/sign-up
-- Pricing: http://localhost:3000/pricing
-- Billing: http://localhost:3000/billing
-- Safe integration state: http://localhost:8000/api/saas/config
+- Saved restaurant profile: http://localhost:3000/settings
+- Account and password change: http://localhost:3000/account
+- Test billing: http://localhost:3000/billing
+- Backend API docs: http://localhost:8000/docs (development only)
 
-**Important:** pages are present immediately, but a real sign-up requires a Supabase project and the root `.env` values. Stripe test Checkout requires Stripe test keys and its webhook signing secret. Follow [Account and billing setup](docs/ACCOUNT_BILLING_SETUP.md). Without configuration, buttons will explain why access is unavailable rather than pretending an account or charge exists.
+**No Supabase, Stripe, or OpenAI keys are required to register and use local sample accounts.** Stripe test Checkout remains disabled until its own **test-only** keys are configured.
 
-## Route map
+## End-to-end local account walkthrough
 
-| Route | Purpose | Needs credentials? |
-|---|---|---|
-| `/` | Animated, scrollable public product website | No |
-| `/start`, `/workspace` | Guided fictional demo and analytics | No |
-| `/product`, `/help`, `/pricing` | Product tour, help and plans | No |
-| `/sign-up`, `/sign-in`, `/forgot-password`, `/reset-password` | Email/password identity and recovery | Yes, Supabase |
-| `/onboarding`, `/account`, `/settings` | Saved restaurant profile and account | Yes, Supabase + local API |
-| `/billing` | Subscription status, Stripe test Checkout, customer portal | Yes, Supabase + Stripe test settings |
-| `/connect`, `/import`, `/campaigns`, `/offers`, `/demo` | Synthetic-data technical workflows retained for testing | No; no real merchant files |
+1. Open `/sign-up`, enter a developer email and a password with at least 12 characters.
+2. Registration creates a local user record and session automatically; complete `/onboarding` with a fictional restaurant name and goal.
+3. Visit `/settings`, save a change, then `/account` and sign out.
+4. Sign in again with the same email/password. Your restaurant profile and synthetic workspace should persist.
+5. Create a second test account. Its restaurant profile remains separate. Each account starts with the same **fictional** seed dataset, not shared writable records.
+6. Optionally open `/billing` to see the Sandbox tier. Stripe test checkout requires separate configuration; no real charges are enabled.
+7. To change your password, sign in and visit `/reset-password`. Email reset is intentionally unavailable without a mail delivery service. A local developer recovery CLI is documented below.
 
-## Verifications
+## Where data is stored
 
-- **25 Python tests pass** using the container-side version of pytest.
-- **29 JavaScript tests pass** using Node's test runner.
-- Updated TypeScript/TSX files pass TypeScript *syntax parsing*; a full production Next.js build was **not run** because the package registry was unreachable in this environment.
-- Browser review of the standalone HTML preview is not a substitute for a built Next.js browser acceptance test.
+| Record | Local storage |
+|---|---|
+| User email + Argon2id password hash | `local_users` table in the existing PostgreSQL Docker volume |
+| Hashed session token + expiry + CSRF secret | `local_sessions` table in the same database |
+| Restaurant name, goals, synthetic orders | `saas_workspaces`, `saas_workspace_demo_orders` |
+| Optional test subscription status + Stripe references | `saas_workspaces` and `saas_billing_events` |
+| Full payment card details | Never stored by TableSignal; Stripe test Checkout handles payment methods |
 
-## Architecture and boundaries
+The local Docker database uses the existing `guestlift_pg` persistent volume. Ordinary rebuilds and `docker compose down` **do not delete** that volume. `docker compose down -v` **does delete** the database, including accounts. Do not run that command unless you intend to lose the data. Back up before migrating your development database.
 
-- Frontend: Next.js 15 / React 19 / TypeScript; new animation UI uses CSS, not a video or stock footage.
-- Local API: FastAPI backed by PostgreSQL, identity verification against Supabase Auth, owner-scoped *synthetic* workspace data.
-- Billing: Stripe server-created **test-only** subscriptions and signed webhooks; no live keys accepted.
-- AI: Rules-based evidence-linked analyst in public sandbox; optional LLM explanations over synthetic **aggregates** only if configured, with subscription gate.
-- Security: Legacy demo fixture APIs remain unauthenticated and bound to localhost. The backend is **not safe to deploy publicly** as it stands. No real merchant or cardholder data should enter this prototype.
+## Account and billing limitations
 
-For the next steps, see the [roadmap](ROADMAP.md), [billing setup](docs/ACCOUNT_BILLING_SETUP.md), and [implementation status](docs/IMPLEMENTATION_STATUS.md).
+These accounts are suitable for local developer testing only. There is no confirmed-email signup, automatic email recovery, user invitation/team role system, production rate limiting, security monitoring, hosted backups, or completed tenant security audit. The existing legacy fixture API also includes unauthenticated routes; **never expose port 8000 to the public internet**.
+
+The demonstration contains fictional Toast/Square-shaped order records. It does not establish real marketing incrementality or profit lift. The AI analyst is read-only and model-based explanations are disabled unless explicitly configured on the backend for fictional aggregate data.
+
+## Documentation
+
+- [Local account setup, testing and recovery](docs/LOCAL_ACCOUNT_SETUP.md)
+- [Stripe test billing (optional)](docs/ACCOUNT_BILLING_SETUP.md)
+- [Security and storage architecture](docs/SAAS_ARCHITECTURE.md)
+- [Roadmap and production blockers](ROADMAP.md)
+- [Upgrade guide](UPGRADE_GUIDE.md)
+
+The repository remains `george962/GuestLift`; TableSignal is a working product name, not a verified domain or trademark. This ZIP does **not** automatically commit or deploy the code.

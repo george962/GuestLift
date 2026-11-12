@@ -1,4 +1,4 @@
-# Developer-only deployment: database + unauthenticated legacy fixture API remain LOCALHOST-BOUND.
+# Developer-only deployment: local accounts and demo API remain LOCALHOST-BOUND.
 # Do not expose these containers to the internet. Account/billing endpoints are foundations, not a security certification.
 services:
   database:
@@ -17,12 +17,11 @@ services:
     build: ./backend
     environment:
       DATABASE_URL: postgresql+psycopg://guestlift:guestlift@database:5432/guestlift
-      SUPABASE_URL: ${SUPABASE_URL:-}
-      SUPABASE_PUBLISHABLE_KEY: ${SUPABASE_PUBLISHABLE_KEY:-}
       STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
       STRIPE_GROWTH_PRICE_ID: ${STRIPE_GROWTH_PRICE_ID:-}
       STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
       GUESTLIFT_APP_URL: ${GUESTLIFT_APP_URL:-http://localhost:3000}
+      GUESTLIFT_COOKIE_SECURE: "0"
       GUESTLIFT_ENABLE_LLM: ${GUESTLIFT_ENABLE_LLM:-0}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       OPENAI_MODEL: ${OPENAI_MODEL:-}
@@ -36,8 +35,6 @@ services:
       context: ./frontend
       args:
         NEXT_PUBLIC_GUESTLIFT_API_URL: http://localhost:8000
-        NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL:-}
-        NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:-}
     depends_on:
       - backend
     ports:

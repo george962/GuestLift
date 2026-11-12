@@ -43,16 +43,10 @@ def test_workspace_isolation_and_synthetic_seeding(tmp_path,monkeypatch):
     engine.dispose()
 
 
-def test_private_endpoints_require_verification(monkeypatch):
-    monkeypatch.delenv('SUPABASE_URL',raising=False)
-    monkeypatch.delenv('SUPABASE_PUBLISHABLE_KEY',raising=False)
+def test_private_endpoints_require_verification():
     with TestClient(app) as c:
-        r=c.get('/api/saas/me')
-        assert r.status_code==503  # No account provider configured; NO demo auth bypass
-    monkeypatch.setenv('SUPABASE_URL','https://example.supabase.co')
-    monkeypatch.setenv('SUPABASE_PUBLISHABLE_KEY','sb_publishable_test')
-    with TestClient(app) as c:
-        assert c.get('/api/saas/me').status_code==401
+        assert c.get('/api/saas/me').status_code == 401
+        assert c.post('/api/saas/profile', json={}).status_code == 401
 
 
 def test_plan_gates_analyst_and_checkout_is_test_only(tmp_path,monkeypatch):

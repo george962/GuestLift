@@ -6,8 +6,6 @@ def test_public_configuration_says_live_charges_are_disabled(monkeypatch):
     monkeypatch.setenv('STRIPE_SECRET_KEY','sk_test_fake')
     monkeypatch.setenv('STRIPE_GROWTH_PRICE_ID','price_fake')
     monkeypatch.setenv('STRIPE_WEBHOOK_SECRET','whsec_fake')
-    monkeypatch.setenv('SUPABASE_URL','https://example.supabase.co')
-    monkeypatch.setenv('SUPABASE_PUBLISHABLE_KEY','sb_publishable_fake')
     with TestClient(app) as client:
         r=client.get('/api/saas/config')
     assert r.status_code==200
