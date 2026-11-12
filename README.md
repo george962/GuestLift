@@ -1,43 +1,108 @@
 # GuestLift
 
-**One data standard. Multiple restaurant POS systems. Consistent analytics.**
+**Different POS systems. One trusted restaurant data model.**
 
-GuestLift is an independent, demo-first data engineering project exploring how restaurants can bring transaction information from different POS platforms into a reliable, vendor-neutral analytics system.
+GuestLift is a demo-first restaurant data engineering project. It shows how fabricated **Toast POS-style CSVs** and **Square POS API-shaped JSON** become standardized orders through source-specific Python adapters, one **GuestLift Restaurant Data Contract (GRDC)**, and shared SQL analytics.
 
-## The problem
+**[Start here](RUN_ME_FIRST.md)** · **[Project roadmap](ROADMAP.md)** · **[System architecture](docs/architecture.md)** · **[Implementation status](docs/IMPLEMENTATION_STATUS.md)** · **[Demo script](docs/DEMO_SCRIPT.md)**
 
-Toast POS and Square POS represent restaurant orders and payments differently. Restaurants operating across systems need a dependable way to validate, standardize, and compare their data before using it for business decisions.
+## See the site
 
-**The first product demonstration:** Select a Toast or Square test source, watch an order move through a data pipeline, inspect its canonical GuestLift representation, and view the same sales metrics computed by one analytics layer.
+GuestLift includes a responsive three-page website: a restaurant-operator landing page, an interactive architecture explanation, and a pipeline demo with source selection, record inspection, and dashboards.
 
-## How it works
-
-**Toast CSVs / Square Sandbox orders → Provider adapters → GuestLift Restaurant Data Contract (GRDC) → PostgreSQL → Shared SQL analytics → FastAPI → Next.js website.**
-
-See the **[visual architecture and five-minute demo storyboard](docs/architecture.md)**.
-
-## Roadmap
-
-Follow the **[demo-first development checklist](ROADMAP.md)**. We are starting with a clear website/architecture demonstration, then implementing the two adapters and replacing mocked screens with verified pipeline outputs.
-
-Read the short [BU-style project proposal](docs/proposal.md).
-
-## Planned technology
-
-| Component | Stack |
+| Page | Purpose |
 |---|---|
-| Source ingestion | Python, Pandas, Pydantic |
-| Canonical records and reporting | GRDC, PostgreSQL, SQL, SQLAlchemy |
-| API | FastAPI |
-| Website | Next.js, TypeScript, Tailwind CSS |
-| Tests and local development | pytest, GitHub Actions, Docker Compose |
+| `/` | Explain the product and why consistent restaurant data matters |
+| `/how-it-works` | Interactive explanation of the five pipeline stages |
+| `/demo` | Switch Toast/Square sources, run imports, inspect canonical records and SQL-derived metrics |
 
-## Data and current status
+The demo has two modes: **browser preview** (no backend: bundled pre-normalized examples) and **API-connected** (Python adapters + SQL persistence). The UI labels the difference.
 
-The initial Toast files will be **fabricated fixtures based on vendor documentation**; Square test data will come from **Square Sandbox**. We are not connected to live restaurant accounts. Early website views may be labeled mockups until connected to actual local pipelines.
+## Local quickstart — two terminals
 
-This project does **not** claim verified restaurant ROI, production-ready integrations, or payment-card access. GRDC is a **proposed project data contract**, not a broadly adopted industry standard.
+**Prerequisites:** Node.js 20+ / npm and Python 3.11+.
 
-## Longer-term goal
+**Terminal 1: Backend**
 
-Once the underlying data pipeline is dependable, GuestLift can expand toward multi-location loyalty and campaign analytics, and eventually test incremental-profit measurement with authorized merchant data and appropriate experiment designs.
+```bash
+cd backend
+python -m venv .venv
+source .venv/bin/activate                # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+uvicorn app.main:app --reload --port 8000
+```
+
+The backend starts with a local SQLite database (`backend/guestlift_demo.db`). Visit http://localhost:8000/docs to inspect its endpoints. It has no merchant credentials or integrations.
+
+**Terminal 2: Website**
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Visit **http://localhost:3000**. Open **Interactive demo**, select Toast or Square, and click **Run sample pipeline**. The browser will connect to the backend if it is running; if not, the standalone browser preview still works using bundled pre-normalized examples.
+
+**Optional: PostgreSQL using Docker Compose**
+
+```bash
+docker compose up --build
+```
+
+This serves the frontend on **localhost:3000**, FastAPI on **localhost:8000**, and PostgreSQL as an internal Docker service. The configured database password is **demo-only**, not for production use.
+
+## Test the backend
+
+```bash
+cd backend
+python -m pytest -q
+```
+
+The tests cover fixture parsing, missing/duplicate headers, financial calculations, repeated imports, SQL metrics, and API responses. A GitHub Actions workflow tests Python and attempts a frontend build when changes are pushed.
+
+## How the pipeline works
+
+```mermaid
+flowchart LR
+    A[Toast sample CSVs] --> C[Toast adapter]
+    B[Square sample JSON] --> D[Square adapter]
+    C --> E[GRDC canonical orders]
+    D --> E
+    E --> F[(SQLite or PostgreSQL)]
+    F --> G[Shared SQL metrics]
+    G --> H[FastAPI + Next.js demo]
+```
+
+**Initial metrics:** order count, pretax net sales, discounts and sales refunds. See [definitions](docs/METRICS.md). These are **not** causal marketing or loyalty ROI measurements.
+
+## Repository structure
+
+```text
+frontend/             Next.js / TypeScript / CSS website
+backend/app/          FastAPI, source adapters, GRDC models, SQL persistence
+backend/fixtures/     Synthetic Toast CSVs and Square-shaped JSON
+backend/tests/        pytest suite
+docs/                 Architecture, metric definitions, demo script, status
+.github/workflows/    CI checks
+compose.yaml          Docker services (PostgreSQL + API + site)
+ROADMAP.md             Product development checklist
+```
+
+## Current limitations
+
+- **No production integrations.** Toast files are synthetic examples based on documented export fields. Square fixtures are *API-shaped*, not fetched from a Square Sandbox account yet.
+- **No merchant data.** No credentials, card numbers, real customers, or real restaurant profit claims are present.
+- **Not a production service.** The local API has no authentication, tenant permissions, rate limits or production security controls. Do not expose it publicly or upload sensitive data.
+- **No real experiment engine.** Future work may add loyalty attribution and incremental contribution analysis, but the current prototype makes no causal claims.
+- **No certified accounting model.** Current financial definitions are for the small demo; real POS financial treatment and order updates remain to be validated.
+
+Read **[implementation status](docs/IMPLEMENTATION_STATUS.md)** for the distinction between finished code and pending roadmap items.
+
+## Source documentation
+
+- [Toast data export fields](https://doc.toasttab.com/doc/platformguide/adminDataExportFieldReference.html)
+- [Toast data exports overview](https://doc.toasttab.com/doc/platformguide/adminDataExportOverview.html)
+- [Square Orders API](https://developer.squareup.com/reference/square/objects/order)
+
+GuestLift is an independent prototype and is not affiliated with or endorsed by Toast or Block/Square. GRDC is a proposed project contract, not an adopted external standard.

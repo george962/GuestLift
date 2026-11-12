@@ -1,126 +1,71 @@
-# GuestLift — Project Proposal
+# GuestLift — BU-Style Project Proposal
 
-**Project:** Independent Data Engineering Capstone  
-**Milestone:** M0 — Proposal and Source Feasibility  
-**Version:** 0.1 (Draft)  
-**Date:** November 12, 2026  
-**Repository:** [GuestLift](https://github.com/george962/GuestLift) · [Roadmap](../ROADMAP.md)
+**Project:** GuestLift — Vendor-Neutral Restaurant Analytics  
+**Version:** 0.2, revised for a demo-first capstone (November 12, 2026)  
+**Roadmap:** [ROADMAP.md](../ROADMAP.md) · **Architecture:** [architecture.md](architecture.md)
 
 ## 1. Problem Statement
 
-Fast-casual restaurant chains regularly use discounts, loyalty points, free menu items, and other promotional offers to encourage repeat visits. However, revenue attributed to a promotion is not necessarily *incremental*: some customers would have purchased even without the offer. Promotions can also increase sales while reducing profit once discounts, food costs, refunds, and fulfillment expenses are considered.
+Restaurants that use different point-of-sale systems often receive sales, order, and payment information in different formats. Even when the information represents similar business activity, combining it can require custom transformations and reconciliation. This makes it harder for a multi-location restaurant operator to develop consistent reports or extend its analysis to customer behavior and loyalty programs.
 
-For multi-location restaurant groups, this problem is complicated by fragmented data. Restaurant POS, online commerce, and marketing systems record orders, payments, line items, customers, and campaigns in different formats. Inconsistent definitions and data quality can produce misleading comparisons between locations and campaigns.
+GuestLift asks: **Can we build a reusable, vendor-neutral ingestion and analytics platform that converts Toast POS and Square POS data into one reliable model and makes the results understandable to restaurant operators?**
 
-**Primary business question:** *Which loyalty and promotional campaigns generate incremental contribution profit, and how should a multi-location restaurant group use that information to improve future marketing decisions?*
-
-GuestLift will explore this question by designing a vendor-neutral data standard and an analytics application that transforms provider-specific records into consistent, traceable metrics. The initial target users are marketing, loyalty, operations, and finance teams at fast-casual groups with approximately **5–50 locations**.
+The longer-term business goal is better promotion and loyalty profitability analysis, but the initial capstone focuses on demonstrating trustworthy data interoperability.
 
 ## 2. Objectives
 
-1. **Define a common data standard.** Design a versioned *GuestLift Restaurant Data Contract* (GRDC) describing locations, orders, order items, payments, refunds, customers, campaigns, and experiment assignments.
-2. **Build interoperable data adapters.** Convert test exports based on published **Toast POS** and **Squarespace Commerce** formats into the same canonical records.
-3. **Deliver reliable business analytics.** Calculate sales, customer frequency, promotion activity, and contribution metrics in PostgreSQL while reconciling financial totals and flagging incomplete data.
-4. **Measure promotional impact responsibly.** Distinguish campaign-attributed sales from causal incremental effects using valid treatment/control comparisons, uncertainty estimates, and transparent cost assumptions.
-5. **Create a working demonstration.** Build a web application that lets a reviewer inspect imports, evaluate a fictional campaign, compare locations, and trace reported metrics to source data.
+1. **Show the product clearly.** Build a professional website explaining the problem and illustrating the end-to-end data pipeline.
+2. **Standardize vendor data.** Propose a GuestLift Restaurant Data Contract (GRDC) for orders, items, payments, and locations.
+3. **Support two distinct sources.** Convert Toast-style CSV files and Square API-shaped synthetic fixtures into the same GRDC entities.
+4. **Verify the results.** Detect malformed and duplicate records, preserve data lineage, and reconcile financial metrics.
+5. **Provide actionable reporting foundations.** Display consistent restaurant-level order and sales metrics using one SQL analytics layer.
 
-The initial product will **not** process payments, issue actual rewards, integrate with banks, or claim that GRDC is an adopted industry standard.
+## 3. Data Sources
 
-## 3. Initial Business Scenario
+**Toast POS:** Publicly documented [data export formats](https://doc.toasttab.com/doc/platformguide/adminDataExportFieldReference.html). First-version imports will use synthetic files shaped after the published order, item, and payment exports. No private merchant data is assumed.
 
-The demonstration will feature a **fictional fast-casual chain with 10 locations**. Its director of loyalty marketing wants to evaluate whether a weekday lunch offer—**a free side item with a qualifying purchase**—should be repeated or expanded.
+**Square POS:** [Square Orders API](https://developer.squareup.com/reference/square/orders) and [free Sandbox](https://developer.squareup.com/docs/devtools/sandbox/overview) to generate and retrieve test orders. Square POS is a distinct product from Squarespace Commerce.
 
-A seeded, synthetic experiment will assign eligible customers to either an offer-invitation group or a control group *before* measuring subsequent purchases. The system will report outcomes over a specified observation window and show how economic assumptions affect the result.
+**Additional data:** Small, generated test cases used to exercise duplicate imports, missing fields, refunds, and multi-item orders. Real restaurant campaign assignments and costs are a future pilot requirement, not something this demonstration invents.
 
-Three core outcomes will be defined in advance:
+## 4. Methodology
 
-- **Incremental visits:** The estimated difference in visits caused by the offer compared with what would have occurred without it.
-- **Incremental revenue:** The estimated difference in net purchase revenue between the assigned groups.
-- **Incremental contribution profit:** The estimated difference in net sales less relevant variable operating, fulfillment, and campaign costs, avoiding double-counted discounts.
+**Phase A — Product story and visual design.** Create an architectural diagram and an interactive website prototype. A visitor will select Toast or Square and follow a sample order from the source format through ingestion and standardization to shared reporting.
 
-Customer reward redemptions alone do **not** establish incrementality. If randomized assignments, sufficient sample sizes, or cost inputs are unavailable, GuestLift must show descriptive results, missing-data warnings, or an inconclusive assessment rather than an unsupported profit-lift claim.
+**Phase B — Source adapters.** Implement Python parsers for Toast sample CSVs and Square API-shaped synthetic JSON. Each adapter maps provider data into GRDC and explains missing or unsupported fields.
 
-## 4. Data Sources
+**Phase C — Canonical data and analysis.** Validate records using Pydantic or JSON Schema, store them in PostgreSQL, and calculate order counts, sales, and discount/refund metrics using shared SQL queries. Include audit records and tests to prevent double counting.
 
-| Source | Acquisition | Intended use | Important limitations |
-|---|---|---|---|
-| **Toast export documentation** | [Official field reference](https://doc.toasttab.com/doc/platformguide/adminDataExportFieldReference.html) | Define sample order, item-selection, and payment CSV formats; develop Toast adapter | Documentation is **not** actual merchant transaction data; exported fields may vary |
-| **Squarespace Commerce documentation** | [Official order export guide](https://support.squarespace.com/hc/en-us/articles/206540677-Export-Commerce-orders) | Define multiline commerce-order CSV test inputs; develop Squarespace adapter | Commerce orders are not equivalent to complete restaurant POS records; exports may not capture subsequent changes automatically |
-| **Cafe Rewards Offers** | [Maven Analytics Data Playground](https://mavenanalytics.io/data-playground/cafe-rewards-offers) | Explore offer-received, offer-viewed, offer-completed, and purchase event ingestion | Simulated marketing data, not a real restaurant causal experiment |
-| **Hillstrom email experiment** | [MineThatData](https://blog.minethatdata.com/2008/03/minethatdata-e-mail-analytics-and-data.html) | Validate the randomized treatment/control analysis methodology | Historic **apparel retail**, not restaurant data; lacks restaurant contribution costs |
-| **Seeded multi-location simulator** | Developed as part of GuestLift | Generate fictional transactions, campaign assignments, costs, refunds, and error cases for testing | Synthetic data proves software behavior, not actual commercial impact |
-| **Potential merchant-authorized exports** | Future voluntary restaurant pilot | Assess performance with real transactions and marketing records | Not available at launch; requires permission, privacy safeguards, and sufficient data |
+**Phase D — Connected application.** Serve imports and analytics through FastAPI and connect a Next.js frontend. Replace initial mock outputs with actual computed values; document how every demo number is derived.
 
-**Data verification remains part of Milestone M0.** Dataset download terms, actual file columns, row counts, and relevant field gaps will be recorded after inspecting the files. The initial Toast and Squarespace imports will use fabricated fixtures shaped according to published vendor formats.
+**Phase E — Reliability and presentation.** Run automated tests, package local services with Docker Compose, and prepare a five-minute demonstration for potential restaurant operators or technical reviewers.
 
-## 5. Methodology
+## 5. Technology Stack
 
-### 5.1 Data ingestion and normalization
+Python, Pandas, Pydantic, PostgreSQL, SQL, SQLAlchemy/Alembic, FastAPI, Next.js, TypeScript, Tailwind CSS, pytest, GitHub Actions, and Docker Compose. Development begins locally; no paid cloud infrastructure is required for the capstone.
 
-Document each source file's grain, identifiers, and available fields. Design GRDC schemas with explicit definitions for order, item, payment, refund, and campaign records. Implement Python adapters that parse the two vendor formats, map fields, retain provenance, and validate canonical output before loading it into PostgreSQL.
+## 6. Expected Outcomes
 
-### 5.2 Data quality and financial reconciliation
+- A publicly understandable product explanation and architecture diagram.
+- An interactive website demo with Toast and Square source examples.
+- Two working provider adapters that produce the same canonical records.
+- Reproducible reporting with explicit validation and source traceability.
+- A documented technical foundation for future loyalty and promotional-profitability analysis.
 
-Create repeatable tests for missing identifiers, duplicate imports, repeated line items, partial refunds, status updates, and mismatched totals. Keep order-, line-item-, and payment-level relationships separate so one-to-many joins cannot accidentally multiply revenue. Monetary calculations will use integer minor currency units; missing values will not be treated as zero.
+The main evaluation criterion is whether another person can understand, run, and verify the end-to-end demonstration—not the number of dashboards or models added.
 
-### 5.3 Restaurant analytics
+## 7. Constraints and Risks
 
-Use SQL to calculate net sales, order and customer frequency, campaign participation, location-level performance, and estimated contribution margin. Report data coverage and missing cost information. Comparisons among locations will be descriptive unless a valid experiment or another defensible causal design supports stronger claims.
+- Public documentation does **not** grant access to a restaurant's actual Toast or Square transaction history. Production integrations require authorization and permissions.
+- Square Sandbox test orders and fabricated Toast CSVs are **not evidence** of real merchant outcomes.
+- The platforms have different fields and business semantics. Some information will remain unknown rather than being invented.
+- The first demo does not establish causal incremental sales or actual contribution profit; such claims require suitable experiment and cost data.
+- The prototype is not yet designed to handle live customer-sensitive data; a pilot would need security, privacy, and operational controls.
 
-### 5.4 Incrementality analysis
+## 8. Work Plan
 
-Use the randomized Hillstrom dataset to validate the statistical estimation procedure independently of the fictional restaurant data. Build a separate reproducible synthetic restaurant experiment with known assignment rules. Estimate intention-to-treat effects, report uncertainty intervals, and distinguish observed, estimated, and assumed quantities. Analyze the sensitivity of profit estimates to unit economics and campaign costs.
+Follow the milestone gates in [ROADMAP.md](../ROADMAP.md): architecture → clickable demo → Toast adapter → Square adapter → database/reporting → connected demo → reliability and pilot-readiness.
 
-### 5.5 Web application and reproducibility
+## Implementation checkpoint (November 12, 2026)
 
-Expose validated metrics via **FastAPI** and create a **Next.js** interface showing source imports, data quality, campaign outcomes, and location comparisons. Use Docker Compose for local reproducibility, pytest for automated checks, and GitHub Actions for continuous integration. Every displayed demo result should be traceable to an input, transformation, and documented metric definition.
-
-## 6. Tools and Environment
-
-| Layer | Planned technologies |
-|---|---|
-| Development and version control | VS Code, Git, GitHub |
-| Data ingestion and validation | Python, Pandas, Pydantic, JSON Schema |
-| Database and data models | PostgreSQL, SQL, SQLAlchemy, Alembic |
-| Statistical analysis | NumPy, SciPy, statsmodels |
-| Backend | FastAPI |
-| Frontend | Next.js, React, TypeScript, Tailwind CSS |
-| Testing and local execution | pytest, GitHub Actions, Docker Compose |
-
-Development will begin locally with a target of **$0 in required cloud infrastructure**. Cloud hosting, automated vendor API access, streaming, and advanced ML are out of the initial scope unless a later milestone demonstrates a concrete need.
-
-## 7. Expected Outcomes
-
-At completion, the capstone should provide:
-
-1. A documented, versioned GRDC specification and two working CSV provider adapters.
-2. A PostgreSQL analytical model that produces reconciled, provider-neutral metrics.
-3. A reproducible fictional 10-location campaign scenario with explicit financial assumptions.
-4. An experiment module that reports uncertainty and refuses unsupported causal conclusions.
-5. A functional web demonstration showing campaign and location results, import checks, and calculation methodology.
-6. Automated reliability tests, a local setup guide, and a narrowly scoped proposal for a possible restaurant pilot.
-
-**Success criteria:** Correct financial totals, idempotent imports, visible data limitations, reproducible results, and a demonstration understandable to a nontechnical restaurant operator. Specific milestone gates are maintained in [ROADMAP.md](../ROADMAP.md).
-
-## 8. Constraints and Risks
-
-- **No initial production data:** Published vendor schemas do not grant access to real restaurant transactions. Pilot data must be authorized by an operator.
-- **Incomplete economic data:** Variable food costs, fees, campaign expenses, and marketing assignment logs may be absent from standard exports and require additional sources.
-- **Limited causal evidence:** Simulated rewards events cannot establish real restaurant incrementality; the Hillstrom experiment validates methodology only in another industry.
-- **Differences between platforms:** Toast POS and Squarespace Commerce support different workflows. Some fields may be unmappable and must remain explicitly unknown.
-- **Customer privacy and security:** The prototype will use public/synthetic inputs only. Real customer analysis would require appropriate agreements, consent or other lawful basis, access controls, security review, and data retention policies.
-- **Commercial uncertainty:** A reliable prototype does not establish that restaurants need or will pay for another analytics provider. Operator discovery and an actual pilot are separate validation steps.
-
-## 9. Proposed Timeline
-
-| Target week | Milestone | Main deliverable |
-|---|---|---|
-| 1 | **M0** — Proposal and source feasibility | Business case and verified source inventory |
-| 2 | **M1** — GRDC data standard | Schemas, documentation, contract tests |
-| 3–4 | **M2** — Toast and Squarespace adapters | Repeatable importers and reconciliation tests |
-| 5 | **M3** — Multi-location analytics | SQL metrics and fictional chain data |
-| 6 | **M4** — Campaign incrementality | Experiment engine and economics |
-| 7 | **M5** — Website and workflow | Functional operator-facing demo |
-| 8 | **M6** — Reliability and pilot readiness | Tests, benchmarks, documentation, pilot proposal |
-
-**Current status:** Proposal drafted; data-source inspection and the rest of Milestone M0 have not yet been completed.
+The first downloadable prototype now includes a Next.js website and a FastAPI backend that normalizes fabricated Toast-style CSV records and Square API-shaped JSON records into a common order model. SQL persistence, sample metric endpoints and seven pytest checks are included. **There is no actual Square Sandbox connection yet**; formal frontend build/browser testing and external merchant integrations remain open items. See [Implementation Status](IMPLEMENTATION_STATUS.md).

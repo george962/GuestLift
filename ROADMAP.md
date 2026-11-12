@@ -1,7 +1,7 @@
 # GuestLift — Demo-First Development Roadmap
 
 > **Version:** 3.0 (November 12, 2026)  
-> **Status:** Planning / no production integrations yet  
+> **Status:** v0.1 local prototype coded; no production integrations, no real merchant data. See [implementation status](docs/IMPLEMENTATION_STATUS.md).  
 > **Goal:** Build a credible, interactive product demo before expanding the research scope.  
 > **First sources:** **Toast POS** and **Square POS** (not Squarespace Commerce).  
 > **Approach:** Work on **one milestone at a time**. The dates are targets, not deadlines.
@@ -24,6 +24,16 @@ Longer-term, GuestLift may support loyalty attribution, experimentation, and inc
 
 See [Architecture & Demo Storyboard](docs/architecture.md) for the visual system diagram.
 
+## Current build checkpoint (v0.1)
+
+The downloadable build package adds the website source code, two synthetic-fixture adapters, local SQL persistence, an API, and tests. **Passing Python tests is not equivalent to a hosted, production-ready product.** The frontend still requires install/build/browser verification in a network-enabled environment, and no Square Sandbox credentials have been configured.
+
+- **Implemented and tested:** Toast-style CSV parsing, Square-shaped JSON parsing, common order model, 56 sample orders, SQL idempotent import/replay, aggregate metric API, seven backend tests.
+- **Implemented but not verified in browser:** Next.js homepage, How It Works, Demo; offline browser-mode preview, API-connected import interactions.
+- **Outstanding:** Real Square Sandbox API client, real Toast integration, arbitrary uploads, customer data security, financial semantics beyond simplified demo, production hosting, pilot feedback.
+
+See [IMPLEMENTATION_STATUS.md](docs/IMPLEMENTATION_STATUS.md) for detailed completion evidence.
+
 ## Milestone overview
 
 | Milestone | Target | Deliverable | Ready when... |
@@ -43,12 +53,12 @@ See [Architecture & Demo Storyboard](docs/architecture.md) for the visual system
 **Purpose:** Make it easy to explain and show what GuestLift will do. Do not spend this milestone downloading research datasets or building a complete financial model.
 
 - [x] Create the GitHub repository with a README and roadmap. (Recheck file versions after updating.)
-- [ ] Update `README.md` with **Toast POS + Square POS** and the new demo-first direction.
-- [ ] Keep a short `docs/proposal.md`: problem, user, goal, sources, approach, deliverables, and constraints.
-- [ ] Add `docs/architecture.md` with a Mermaid diagram that GitHub renders.
-- [ ] Decide the first **five-minute demonstration**: source choice → ingestion → GRDC → reporting.
-- [ ] Choose the first **three metrics**: order count, net sales, and discounts/refunds (only where sample fields support them).
-- [ ] Identify which demo steps are mock screens and which have working code.
+- [x] Update `README.md` with **Toast POS + Square POS** and the new demo-first direction.
+- [x] Keep a short `docs/proposal.md`: problem, user, goal, sources, approach, deliverables, and constraints.
+- [x] Add `docs/architecture.md` with a Mermaid diagram (GitHub rendering to confirm after upload).
+- [x] Decide the first **five-minute demonstration**: source choice → ingestion → GRDC → reporting. See `docs/DEMO_SCRIPT.md`.
+- [x] Choose the first **three metrics**: order count, net sales, and discounts/refunds (only where sample fields support them). See `docs/METRICS.md`.
+- [x] Identify which demo steps are mock screens and which have working code. See `docs/IMPLEMENTATION_STATUS.md`.
 
 **Definition of done:** Another person can open `README.md`, follow the architecture link, and explain what problem we're solving, how Toast/Square reach GuestLift, and what the first product demonstration will show.
 

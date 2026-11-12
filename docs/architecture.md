@@ -1,7 +1,7 @@
 # GuestLift — Architecture & Demo Storyboard
 
 > **Version:** 0.2 (demo-first)  
-> **Current state:** Proposed architecture. The diagram shows the **target** system, not an already-live integration.  
+> **Current state:** Prototype backend and frontend code included; Toast/Square sample adapters and local SQL metrics run with fictional records. No real merchant integrations or hosted service. SQLite is the default local database; PostgreSQL is configured through Docker Compose but has not been verified in this build environment.  
 > **Sources:** Toast POS and Square POS; **Square POS is not Squarespace Commerce**.
 
 ## The product in one sentence
@@ -24,7 +24,7 @@ flowchart TD
   end
 
   subgraph PLATFORM[GuestLift platform]
-    DB[("PostgreSQL<br/>Canonical orders, items, payments, locations")]
+    DB[("SQLite / PostgreSQL<br/>Canonical orders and audit records")]
     METRICS["Shared SQL analytics<br/>Orders, sales, discounts, refunds"]
     API["FastAPI<br/>Import runs & metric endpoints"]
   end
@@ -47,7 +47,7 @@ flowchart TD
 | Step | What the visitor sees | What it proves |
 |---|---|---|
 | **1. Choose a provider** | Two sample buttons: *Toast Demo* and *Square Demo* | The product is designed for more than one vendor |
-| **2. Inspect the source** | A small sample order in Toast-style CSV or Square Sandbox JSON | The raw formats are different |
+| **2. Inspect the source** | A small sample order in Toast-style CSV or Square-shaped fixture JSON | The raw formats are different |
 | **3. Run the pipeline** | A stage diagram: source → adapter → validation → GRDC → database | GuestLift standardizes data rather than maintaining separate dashboards |
 | **4. Compare before/after** | The source order beside a canonical GRDC order | Shared concepts are preserved and unknown fields are surfaced |
 | **5. View analytics** | Order count, net sales, and discounts/refunds where available | The same reporting rules can work across both providers |
@@ -70,7 +70,7 @@ A full customer identity system, loyalty rewards, inventory, cost of goods, and 
 ## Initial implementation choices
 
 - **Toast:** Use fabricated small CSVs based on [Toast's published export fields](https://doc.toasttab.com/doc/platformguide/adminDataExportFieldReference.html). Live exports require a merchant's permissions and configuration.
-- **Square:** Use [Square Sandbox](https://developer.squareup.com/docs/devtools/sandbox/overview) and [Orders API](https://developer.squareup.com/reference/square/orders) to create/query synthetic orders. Production OAuth and real merchant connections are not part of v1.
+- **Square:** Use [Square-shaped fixture](https://developer.squareup.com/docs/devtools/sandbox/overview) and [Orders API](https://developer.squareup.com/reference/square/orders) to create/query synthetic orders. Production OAuth and real merchant connections are not part of v1.
 - **Normalization:** Python adapters produce a canonical GRDC record validated with Pydantic/JSON Schema.
 - **Storage:** PostgreSQL, with provider/source IDs so imports are traceable and duplicates can be prevented.
 - **Backend:** FastAPI serves import runs, canonical records, and shared metrics.
@@ -101,3 +101,14 @@ A parser must use the actual selected fields and determine whether amounts inclu
 ## What this does *not* claim
 
 This first demo does not prove that a restaurant promotion increases incremental profit or that we already integrate with live Toast/Square accounts. Those require additional data, permissions, measurement design, and product development.
+
+## Implemented endpoints in v0.1
+
+- `GET /api/health`: demo connection check.
+- `GET /api/preview/{toast|square}`: show test source records and the normalized output.
+- `POST /api/import/{toast|square}`: run the actual local Python adapter and persist canonical orders; repeated imports report duplicates.
+- `GET /api/metrics`: order, discount, net sale, refund and location summaries from the SQL database.
+- `GET /api/imports`: import history.
+- `POST /api/reset`: clear the disposable local demonstration database.
+
+**Security note:** These are unauthenticated local demo endpoints; do not deploy them publicly without access control and other safeguards.
