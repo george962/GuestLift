@@ -4,20 +4,21 @@
 
 GuestLift is an independent restaurant data and promotion-intelligence prototype. It shows how fabricated **Toast POS-style CSVs** and **Square POS API-shaped JSON** become standardized orders through source-specific Python adapters, one **GuestLift Restaurant Data Contract (GRDC)**, and shared SQL analytics.
 
-**[Start here](RUN_ME_FIRST.md)** · **[Publish on Cloudflare Pages](docs/DEPLOYMENT.md)** · **[Brand system](docs/BRAND_SYSTEM.md)** · **[Project roadmap](ROADMAP.md)** · **[System architecture](docs/architecture.md)** · **[Implementation status](docs/IMPLEMENTATION_STATUS.md)** · **[Demo script](docs/DEMO_SCRIPT.md)**
+**[Try the Import Lab](docs/IMPORT_LAB.md)** · **[Start here](RUN_ME_FIRST.md)** · **[Publish on Cloudflare Pages](docs/DEPLOYMENT.md)** · **[Brand system](docs/BRAND_SYSTEM.md)** · **[Project roadmap](ROADMAP.md)** · **[System architecture](docs/architecture.md)** · **[Implementation status](docs/IMPLEMENTATION_STATUS.md)** · **[Demo script](docs/DEMO_SCRIPT.md)**
 
 ## See the site
 
-GuestLift includes a responsive four-page website: a restaurant-operator landing page, an interactive architecture explanation, and a pipeline demo with source selection, record inspection, and dashboards.
+GuestLift includes a responsive application with interactive product pages: a restaurant-operator landing page, an interactive architecture explanation, and a pipeline demo with source selection, record inspection, and dashboards.
 
 | Page | Purpose |
 |---|---|
 | `/` | Explain the product and why consistent restaurant data matters |
 | `/how-it-works` | Interactive explanation of the five pipeline stages |
-| `/demo` | Switch Toast/Square sources, run sample imports, inspect canonical records and SQL-derived metrics |
-| `/offers` | Define a fictional coupon/free-item offer and inspect modeled financial tradeoffs |
+| `/demo` | Run pre-bundled sample imports and inspect SQL metrics on localhost |
+| `/import` | Upload fabricated Toast CSV or Square JSON files; the file bytes are parsed and validated in-browser, with optional localhost Python + SQL processing |
+| `/offers` | Model a hypothetical coupon or free-item offer against bundled samples or your freshly imported synthetic orders |
 
-The pipeline demo has two modes: **browser preview** (no backend: bundled pre-normalized examples) and **API-connected** (Python adapters + SQL persistence). The UI labels the difference.
+The new `/import` Import Lab actually parses the uploaded file bytes. On a public static site it does so inside the browser only; locally it can also send small synthetic files to Python and SQL. The older `/demo` page has two modes: **browser preview** (no backend: bundled pre-normalized examples) and **API-connected** (Python adapters + SQL persistence). The UI labels the difference.
 
 ## Local quickstart — two terminals
 
@@ -43,7 +44,7 @@ npm install
 npm run dev
 ```
 
-Visit **http://localhost:3000**. Open **Interactive demo**, select Toast or Square, and click **Run sample pipeline**. The browser will connect to the backend if it is running; if not, the standalone browser preview still works using bundled pre-normalized examples.
+Visit **http://localhost:3000/import** to upload synthetic files, or **http://localhost:3000/demo** to use the existing preloaded example. The browser will connect to the backend if it is running; if not, the standalone browser preview still works using bundled pre-normalized examples.
 
 **Optional: PostgreSQL using Docker Compose**
 
@@ -55,7 +56,7 @@ This serves the frontend on **localhost:3000**, FastAPI on **localhost:8000**, a
 
 ## Publish the public website
 
-A public, static Next.js build can be deployed from this GitHub repo to **Cloudflare Pages** using `frontend/` as the root, `GUESTLIFT_STATIC_EXPORT=1 npm run build` as the command, and `out` as the output. See [step-by-step instructions](docs/DEPLOYMENT.md). The public website includes the operator-facing offer scenario, but does **not** expose the local unauthenticated Python API.
+A public, static Next.js build can be deployed from this GitHub repo to **Cloudflare Pages** using `frontend/` as the root, `GUESTLIFT_STATIC_EXPORT=1 npm run build` as the command, and `out` as the output. See [step-by-step instructions](docs/DEPLOYMENT.md). The public website includes the browser-based Import Lab and Offer Studio, but does **not** expose the local unauthenticated Python API.
 
 ## Test the backend
 
@@ -64,7 +65,17 @@ cd backend
 python -m pytest -q
 ```
 
-Run the scenario math tests with `cd frontend && npm run test:offers`. The backend tests cover fixture parsing, missing/duplicate headers, financial calculations, repeated imports, SQL metrics, and API responses. A GitHub Actions workflow tests Python and attempts a frontend build when changes are pushed.
+Run all JavaScript parsing and scenario tests with `cd frontend && npm test`. The backend tests cover fixture parsing, missing/duplicate headers, financial calculations, repeated imports, SQL metrics, and API responses. A GitHub Actions workflow tests Python and attempts a frontend build when changes are pushed.
+
+## Try actual synthetic file uploads
+
+1. Start the application and open `http://localhost:3000/import`.
+2. Choose Toast; **Download sample pack**, extract it, choose all three CSV files, and click **Run import pipeline**.
+3. Inspect accepted orders, $594.70 net sales, the lineage drill-down, and (locally) the SQL import count.
+4. Do the same for Square's three JSON fixtures: 28 orders and $650.80 pretax net sales.
+5. Try the deliberately broken Toast sample at `/samples/toast-broken-example.zip` and see validation reject it. Then click **Model an offer on these orders**.
+
+**Privacy:** The public static site processes local text in the browser only; the Docker mode can send *synthetic test files* to a **localhost-only, unauthenticated** API. Do not upload real merchant or customer information. See [Import Lab instructions](docs/IMPORT_LAB.md).
 
 ## How the pipeline works
 

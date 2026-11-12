@@ -54,3 +54,15 @@
 **Next engineering priority:** Install dependencies, run the Next.js website, then verify the local frontend-to-FastAPI interaction and fix any issues found before presenting the app to real operators.
 
 **V0.2 verification:** `python -m pytest -q` from `backend/` passed 7 tests, and `node --test frontend/tests/offer-model.test.mjs` passed 4 tests. The Next.js compilation and browser appearance still need confirmation on the user machine / CI.
+
+---
+
+## v0.3 — Import Lab release
+
+- Added a public-safe, **real browser parser** for fabricated Toast CSV and Square JSON fixtures. This processes selected files locally (not just pre-normalized display state), validates headers, types, IDs, relations and cents, and computes unified metrics.
+- Added a guided `/import` page with ZIP downloads for valid fixtures and a deliberately broken Toast fixture, file selection, clear errors, audit table, per-location bars, and a link to model a coupon against imported synthetic orders.
+- Added a local-only `POST /api/upload/{provider}` FastAPI route: validates three files, enforces small size limits, calls Python adapters and persists canonical records through the existing SQL repository. SQL duplicate detection is unchanged (replays not edits).
+- Replaced the generic chart icon with the two-source-to-one-data-model original vector mark. Updated the homepage to show an interactive record-flow demonstration.
+- Browser import tests: 6 passing; existing offer tests: 4 passing; backend tests: 10 passing. `next build` must be verified on a machine with npm access (the execution environment could not resolve npmjs.org).
+
+**Still not delivered:** Real seller authentication or authorized vendor integrations, general real-world POS export support, production-grade secure file handling, upserts of corrected orders, customer-level loyalty attribution, and causal experiment analysis. No merchant data should be uploaded to the current application.

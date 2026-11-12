@@ -127,3 +127,22 @@ This first demo does not prove that a restaurant promotion increases incremental
 - `POST /api/reset`: clear the disposable local demonstration database.
 
 **Security note:** These are unauthenticated local demo endpoints; do not deploy them publicly without access control and other safeguards.
+
+
+## v0.3 working Import Lab paths
+
+```mermaid
+flowchart LR
+    T["Fabricated Toast CSV ZIP"] --> B["Browser file parser"]
+    S["Square-shaped JSON ZIP"] --> B
+    B --> V["GRDC normalized orders + validation"]
+    V --> R["Browser-computed sales reports"]
+    R --> O["Offer scenario in session"]
+    T -->|localhost only| P["FastAPI multipart upload"]
+    S -->|localhost only| P
+    P --> A["Python provider adapter"]
+    A --> D[("Local PostgreSQL")]
+    D --> M["Shared SQL analytics"]
+```
+
+**Public static deployment:** browser-only path; no files are sent to the GuestLift server. **Docker local deployment:** all uploaded synthetic files are first normalized in-browser, then sent to the localhost-only API and persisted. Both modes use the same GRDC order shape; the JavaScript and Python parsers are distinct implementations and need contract tests. For precise file requirements and test expectations see [Import Lab](IMPORT_LAB.md).

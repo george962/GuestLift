@@ -48,3 +48,11 @@ Colors **never convey meaning alone**. Status messages also have text labels, nu
 ## Visual implementation
 
 The design tokens are defined in `frontend/app/globals.css`. Components in the new public homepage and offer studio use `gl-` classes. This reduces conflict with the initial pipeline demo CSS during the transition. A future cleanup can migrate legacy demo classes to shared tokens without changing the underlying calculations.
+
+## v0.3 identity improvement — the two-to-one mark
+
+The new GuestLift logomark is an **original SVG** defined in `frontend/components/brand-mark.tsx`. Two indigo paths enter from the left and converge on a teal, validated record before one output travels to the right. This is meaningful: **different POS formats → one verified business model**. It avoids a generic growth chart icon that could represent any analytics product.
+
+Use the palette operationally: indigo means provider data, teal means data passed through the GRDC parser, amber means hypothetical coupons/assumptions, rose means failures/financial risks, and navy means application structure. The brand mark uses only the source/validated colors, because neither campaign estimates nor warnings are the brand's core identity.
+
+The homepage hero now contains a **working selectable order walkthrough** in place of a simulated screenshot. The Import Lab uses visible validation, file selection, live totals and order lineage, rather than decorative panels. See `docs/IMPORT_LAB.md` for the visitor path.

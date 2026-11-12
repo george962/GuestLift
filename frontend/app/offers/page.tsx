@@ -8,7 +8,7 @@ import type {Order,Provider} from '@/lib/types';
 import {usd} from '@/lib/types';
 import {evaluateOffer} from '@/lib/offer-model.mjs';
 
-type SourceChoice='both'|Provider;
+type SourceChoice='both'|'imported'|Provider;
 type OfferType='percent'|'fixed'|'free_item';
 const allOrders=[...(data.toast.records as Order[]),...(data.square.records as Order[])];
 const numeric=(v:string,min:number,max:number)=>{
@@ -18,6 +18,7 @@ const numeric=(v:string,min:number,max:number)=>{
 
 export default function Offers(){
   const [source,setSource]=useState<SourceChoice>('both');
+  const [importedOrders,setImportedOrders]=useState<Order[]>([]);
   const [offerType,setOfferType]=useState<OfferType>('percent');
   const [name,setName]=useState('LUNCH10');
   const [amount,setAmount]=useState('10');
@@ -27,8 +28,16 @@ export default function Offers(){
   useEffect(()=>{
     const requested=new URLSearchParams(window.location.search).get('source');
     if(requested==='toast'||requested==='square'||requested==='both')setSource(requested);
+    try{
+      const stored=sessionStorage.getItem('guestlift-synthetic-orders');
+      if(stored){const value=JSON.parse(stored);if(Array.isArray(value)){
+        const valid=value.filter(o=>o && ['toast','square'].includes(o.provider) && typeof o.source_order_id==='string' && Number.isInteger(o.net_sales_minor) && Array.isArray(o.items));
+        setImportedOrders(valid);
+        if(new URLSearchParams(window.location.search).get('dataset')==='imported'&&valid.length)setSource('imported');
+      }}
+    }catch{/* no browser session storage */}
   },[]);
-  const orders=useMemo(()=>source==='both'?allOrders:allOrders.filter(o=>o.provider===source),[source]);
+  const orders=useMemo(()=>source==='imported'?importedOrders:(source==='both'?allOrders:allOrders.filter(o=>o.provider===source)),[source,importedOrders]);
   const config=useMemo(()=>({
     type:offerType,
     value:numeric(amount,0,100),
@@ -37,7 +46,7 @@ export default function Offers(){
     marginPercent:numeric(margin,0,95)
   }),[offerType,amount,minimum,margin]);
   const result=useMemo(()=>evaluateOffer(orders,config),[orders,config]);
-  const sourceText=source==='both'?'Toast + Square samples':source==='toast'?'Toast sample orders':'Square sample orders';
+  const sourceText=source==='imported'?'Your imported synthetic orders':source==='both'?'Toast + Square samples':source==='toast'?'Toast sample orders':'Square sample orders';
   const formattedDescription=offerType==='percent'?`${numeric(amount,0,100)}% off` : offerType==='fixed'?`${usd(config.amountMinor)} off`:`Free item (estimated cost ${usd(config.amountMinor)})`;
   return <main className="gl-offer-page">
     <section className="gl-offer-head site-width">
@@ -53,11 +62,11 @@ export default function Offers(){
       <div className="gl-studio-grid">
         <div className="gl-controls-col">
           <section className="gl-surface gl-control-panel"><div className="gl-panel-title"><div className="gl-mini-icon gl-indigo"><FileSpreadsheet size={19}/></div><div><span className="gl-eyebrow">STEP 01 / YOUR DATA</span><h2>Choose an order source</h2></div></div>
-            <p className="gl-panel-copy">A real operator would authorize an import. For this public demo, choose preloaded, synthetic Toast- or Square-shaped records.</p>
+            <p className="gl-panel-copy">A real operator would authorize an import. Choose bundled synthetic orders, or use the files you processed in the Import Lab in this browser session.</p>
             <div className="gl-select-grid" role="group" aria-label="Sample POS data">
-              {([{id:'both',label:'Both sources',desc:'Combined view',glyph:'↔'},{id:'toast',label:'Toast POS',desc:'CSV-shaped',glyph:'t'},{id:'square',label:'Square POS',desc:'API-shaped',glyph:'■'}] as const).map(x=><button key={x.id} type="button" aria-pressed={source===x.id} className={'gl-choice '+(source===x.id?'active':'')} onClick={()=>setSource(x.id)}><span className="gl-choice-icon">{x.glyph}</span><strong>{x.label}</strong><small>{x.desc}</small>{source===x.id&&<CheckCircle2 className="gl-choice-check" size={16}/>}</button>)}
+              {([{id:'both',label:'Both sources',desc:'Bundled samples',glyph:'↔'},{id:'toast',label:'Toast POS',desc:'Bundled CSV demo',glyph:'t'},{id:'square',label:'Square POS',desc:'Bundled JSON demo',glyph:'■'},...(importedOrders.length?[{id:'imported' as const,label:'Your import',desc:`${importedOrders.length} parsed orders`,glyph:'✓'}]:[])] as const).map(x=><button key={x.id} type="button" aria-pressed={source===x.id} className={'gl-choice '+(source===x.id?'active':'')} onClick={()=>setSource(x.id)}><span className="gl-choice-icon">{x.glyph}</span><strong>{x.label}</strong><small>{x.desc}</small>{source===x.id&&<CheckCircle2 className="gl-choice-check" size={16}/>}</button>)}
             </div>
-            <div className="gl-mini-success"><CheckCircle2 size={17}/><span>{orders.length} standardized example orders selected</span><Link href="/demo">Inspect pipeline <ArrowUpRight size={13}/></Link></div>
+            <div className="gl-mini-success"><CheckCircle2 size={17}/><span>{orders.length} standardized example orders selected</span><Link href="/import">Open Import Lab <ArrowUpRight size={13}/></Link></div>
           </section>
           <section className="gl-surface gl-control-panel"><div className="gl-panel-title"><div className="gl-mini-icon gl-amber"><TicketPercent size={19}/></div><div><span className="gl-eyebrow">STEP 02 / YOUR OFFER</span><h2>Configure the promotion</h2></div></div>
             <div className="gl-fields">
@@ -83,7 +92,7 @@ export default function Offers(){
           <section className="gl-next-panel"><div className="gl-mini-icon gl-teal"><CheckCircle2 size={19}/></div><div><h3>What would happen with a real restaurant?</h3><p>After authorized POS data and campaign identifiers are connected, GuestLift could identify documented redemptions, trace discounts to orders, and eventually run genuine holdout-based lift analysis.</p><Link href="/how-it-works">See the ingestion architecture <ArrowUpRight size={16}/></Link></div></section>
         </div>
       </div>
-      <div className="gl-notes"><LockKeyhole size={18}/><p><strong>Privacy-first demonstration.</strong> This public experience runs entirely on fabricated records bundled with the website. It never uploads restaurant data or stores your coupon settings on a server. The installed local developer API is separate.</p></div>
+      <div className="gl-notes"><LockKeyhole size={18}/><p><strong>Privacy-first demonstration.</strong> This public experience uses fabricated sample records or locally parsed synthetic inputs from the current browser tab. The public version does not send these records or your offer settings to a server. The installed local developer API is separate.</p></div>
     </section>
   </main>;
 }

@@ -179,3 +179,21 @@ See [IMPLEMENTATION_STATUS.md](docs/IMPLEMENTATION_STATUS.md) for detailed compl
 3. Verify each deliverable against its **Definition of Done**.
 4. Commit meaningful checkpoints to GitHub and update the checkboxes.
 5. Keep **public mock data**, **Square Sandbox data**, and **real merchant data** clearly distinguished.
+
+---
+
+## v0.3 engineering checkpoint — Import Lab (prototype)
+
+- [x] Add guided `/import` upload flow supporting fabricated Toast CSV and Square JSON file sets.
+- [x] Parse and validate uploaded file contents in-browser (public-safe, no remote API).
+- [x] Normalize both formats into a canonical GRDC order and calculate metrics from uploaded records.
+- [x] Show financial totals, location comparisons, warnings and record lineage.
+- [x] Add synthetic sample ZIPs and an intentionally malformed Toast ZIP for reproducible demonstrations.
+- [x] Implement localhost-only FastAPI multipart sample import, retaining SQL duplicate replay protection.
+- [x] Allow the Offer Studio to model a hypothetical coupon using a synthetic imported browser session.
+- [x] Replace the generic chart logomark with meaningful two-to-one data streams, and replace the homepage screenshot with a selectable record demonstration.
+- [ ] Verify Next.js production and static builds on a machine with npm access and inspect responsive design in the browser.
+- [ ] Test compatibility with authorized real Toast/Square exports and revise source mappings (pilot phase; NOT suitable for today's unauthenticated demo).
+- [ ] Implement robust corrected-order upsert history, per-row quarantine and production security before accepting merchant data.
+
+See [Import Lab demonstration and limitations](docs/IMPORT_LAB.md).

@@ -1,38 +1,17 @@
-# GuestLift — Start here
+# GuestLift v0.3 — Start here
 
-This ZIP contains the **complete source code** for GuestLift v0.1, not just sample pages. Upload the project into the root of your [GuestLift repository](https://github.com/george962/GuestLift).
+This package contains the **complete Next.js + FastAPI + PostgreSQL application**, including the new hands-on Data Import Lab. It replaces the v0.2 files in your existing `george962/GuestLift` repository, but it is **not deployed automatically**.
 
-## What's already built
+## The shortest path
 
-- Updated business-facing landing page, interactive architecture and pipeline demo, plus an operator-facing **Offer studio** to model hypothetical coupons and free-item costs.
-- Fabricated Toast-style CSVs, Square API-shaped JSON fixtures, Python adapters, and a proposed GRDC order model.
-- SQL persistence + common metrics via FastAPI, an offline browser preview, and seven passing backend tests.
-- Docker Compose, CI workflow, docs, source code and task-tracking roadmap.
+1. Open [UPGRADE_GUIDE.md](UPGRADE_GUIDE.md). Its Terminal commands unzip and copy this package into your `~/GuestLift` checkout, build Docker, and run tests without manually installing FastAPI.
+2. Visit `http://localhost:3000/import`.
+3. Click **Download Toast CSV sample pack**, extract it, upload all three CSVs and run the import. You should see **28 accepted orders, $594.70 in pretax net sales**, and an optional local SQL import ID.
+4. Repeat with the Square JSON sample ZIP: **28 accepted orders, $650.80 in pretax net sales**.
+5. Try the deliberately invalid Toast ZIP and inspect the validation error; click through a split-payment or refunded order to compare the actual source fields with the normalized GRDC record.
+6. Click **Model an offer on these orders** to evaluate a hypothetical coupon using the canonical synthetic orders from your browser session.
+7. When ready, publish the **static browser-only frontend** via Cloudflare Pages using [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
-## How to see something immediately
+**Never upload real restaurant or customer data to this prototype.** Local FastAPI is unauthenticated and intended for 127.0.0.1 only. The public static version does not send uploaded synthetic files to a server.
 
-1. Unzip the package into a temporary folder.
-2. Copy its files into your existing local `GuestLift/` repository, preserving the `frontend/`, `backend/`, and `docs/` directories.
-3. Run `docker compose up --build` from the repository root. Visit `http://localhost:3000`, then `/offers` and `/demo`.
-4. For a real public URL, follow [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) to connect the frontend to Cloudflare Pages via GitHub.
-
-## How to upload to GitHub
-
-For a multi-folder application, the easiest method is to clone your GitHub repository locally, copy the unzipped files into that repository directory (keeping the `frontend/`, `backend/`, and `docs/` folders intact), and commit/push everything. The new README and ROADMAP should **replace** the previous versions.
-
-Alternatively, upload files to GitHub via **Add file → Upload files**. Preserve all folder paths. Do **not** commit `node_modules/`, `.env`, database files, or Python virtual environments.
-
-## How to publish
-
-Follow `docs/DEPLOYMENT.md` for Cloudflare Pages setup using your GitHub repository. The **public** website uses only browser-side synthetic examples; the local FastAPI app should **not** be exposed on the internet.
-
-## What to verify next
-
-- Run backend tests: `cd backend && python -m pytest -q`.
-- Run backend server: `cd backend && uvicorn app.main:app --reload --port 8000`.
-- Run frontend: `cd frontend && npm install && npm run dev` (requires an internet connection to download packages).
-- Open http://localhost:3000/offers and change the coupon assumptions.
-- Open http://localhost:3000/demo. It should display **Local API connected** and persist fixtures when you run an import.
-- Repeat the same provider import: it should report duplicates without inflating sales.
-
-**Current limitations:** No live Toast or Square integration, Square Sandbox client, arbitrary file uploads, merchant data, authenticated multi-tenant system, loyalty incrementality or commercial-grade security. See [docs/IMPLEMENTATION_STATUS.md](docs/IMPLEMENTATION_STATUS.md).
+For technical details and limitations, see [docs/IMPORT_LAB.md](docs/IMPORT_LAB.md) and [docs/IMPLEMENTATION_STATUS.md](docs/IMPLEMENTATION_STATUS.md).

@@ -4,7 +4,7 @@
 
 ## Recommended first launch: Cloudflare Pages + GitHub
 
-This approach publishes the **frontend only**, safely keeping the unauthenticated local Python/SQL API off the public internet. The operator can explore the website, follow a mock Toast/Square ingestion, and test a coupon scenario in their browser. No real restaurant files are sent to a server.
+This approach publishes the **frontend only**, safely keeping the unauthenticated local Python/SQL API off the public internet. The operator can explore the website, upload and process fabricated Toast/Square file sets inside their browser, and test a hypothetical coupon scenario without a server. No restaurant files are sent to a server.
 
 ### Step A — verify the site on your Mac
 
@@ -15,7 +15,7 @@ From the repository root:
 docker compose up --build
 
 # Visit http://localhost:3000
-# Try /demo and /offers
+# Try /import, /offers and /demo
 ```
 
 Or use the separate frontend dev server for design work:
@@ -30,7 +30,7 @@ Run the offer calculation tests:
 
 ```bash
 cd frontend
-npm run test:offers
+npm test
 ```
 
 Verify the **static export** that will be published:
@@ -54,7 +54,7 @@ git commit -m "feat: add operator offer studio and public site design"
 git push origin main
 ```
 
-Check that your GitHub repository contains `frontend/`, `backend/`, `docs/`, and the new `/offers` page. Do not commit `.env`, `node_modules`, local database files, or credentials.
+Check that your GitHub repository contains `frontend/`, `backend/`, `docs/`, and the `/offers` and `/import` pages. Do not commit `.env`, `node_modules`, local database files, or credentials.
 
 ### Step C — connect Cloudflare Pages
 
@@ -73,7 +73,7 @@ Check that your GitHub repository contains `frontend/`, `backend/`, `docs/`, and
 | Node version (if configurable) | `22` |
 
 5. Deploy. Cloudflare assigns a `*.pages.dev` URL once a deployment succeeds. **We cannot provide your URL until you complete this step.**
-6. Test `/`, `/offers`, `/demo`, and `/how-it-works` on the public URL, including a phone-sized browser window.
+6. Test `/`, `/import`, `/offers`, `/demo`, and `/how-it-works` on the public URL, including a phone-sized browser window.
 7. Push future commits to `main` to trigger automatic deployment.
 
 The root-directory and output settings match Cloudflare's official static Next.js instructions: https://developers.cloudflare.com/pages/framework-guides/nextjs/deploy-a-static-nextjs-site/.
@@ -81,9 +81,9 @@ The root-directory and output settings match Cloudflare's official static Next.j
 ### What works on the public site?
 
 - Homepage and architecture story.
-- Browser-only Toast/Square *sample* pipeline and source record inspection.
+- Browser-only Toast/Square synthetic file uploads with actual parsing, validation, normalized records and metrics; no server or SQL persistence.
 - Browser-only coupon/offer scenario with editable code, threshold, discount and margin assumptions.
-- No FastAPI, PostgreSQL, real merchant uploads, private data, or persistent customer accounts.
+- No FastAPI, PostgreSQL, authenticated real merchant uploads, private data, or persistent customer accounts.
 
 **Important:** The browser demo can be useful even though it does not connect to a publicly hosted Python API; the page explicitly labels the mode. The public site never tries to call `localhost:8000`.
 
@@ -108,11 +108,12 @@ For a future hosted Python API, Render is one option but its **free services spi
 
 ## Launch checklist
 
-- [ ] `npm run test:offers` passes.
+- [ ] `npm test` passes.
 - [ ] `GUESTLIFT_STATIC_EXPORT=1 npm run build` succeeds.
 - [ ] Homepage describes the product in restaurant terms.
 - [ ] Offer studio calculations respond to input changes.
+- [ ] Import Lab accepts the three synthetic files per provider, shows changing totals and rejects broken files.
 - [ ] Demo shows source format, GRDC, quality and metrics; clearly says it is sample data.
-- [ ] No live uploads or unauthenticated API is publicly exposed.
-- [ ] All four public URLs work after deployment.
+- [ ] Public file processing stays entirely in the browser; no unauthenticated backend API is exposed.
+- [ ] All five public URLs work after deployment.
 - [ ] Domain and contact channels are configured only when genuinely operational.
