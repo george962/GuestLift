@@ -1,33 +1,22 @@
-# RUN ME FIRST — GuestLift v0.5
+# TableSignal v0.6 — run the current project
 
-## You already extracted GuestLift into `~/GuestLift`?
-
-**Do not unzip or copy anything again.** From the existing project root:
+If you already placed the v0.6 files inside `~/GuestLift`, **do not unzip anything**. Just copy this entire block into Terminal:
 
 ```bash
-cd "$HOME/GuestLift"
-grep '"version"' frontend/package.json
+cd "$HOME/GuestLift" || exit 1
+ls -l frontend/components/motion-tour.tsx frontend/app/billing/page.tsx
+
 docker compose up --build -d
+
 docker compose exec -T backend python -m pytest -q
+
 docker compose exec -T frontend npm test
+
 docker compose ps
+
+git status
 ```
 
-The frontend version should be `0.5.0`. Visit **http://localhost:3000/workspace** and use all sections. You don't need Supabase, Stripe, or an OpenAI API key to explore the public synthetic sandbox.
+Open http://localhost:3000. The primary product is at `/workspace`. Pricing is `/pricing`, account sign-in is `/sign-in`, and test subscription management is `/billing`. Auth requires explicit Supabase setup; billing requires Stripe test mode. Nothing uploads real merchant data or charges a card.
 
-## You haven't installed v0.5 yet?
-
-Download the complete ZIP, extract it in Finder, and **copy the extracted contents** (folders `frontend/`, `backend/`, `docs/`, and top-level files) into `~/GuestLift/`, choosing to replace older application source files. Keep your `.git/` folder and private `.env` unchanged. You can also `rsync` from your **actual** extracted folder path; do not assume it's inside Downloads or has a particular name. Then use the command block above.
-
-## Working test checklist
-
-- [ ] Homepage shows the new operator-focused hero and interactive example.
-- [ ] Workspace Overview computes metrics from fictional Toast/Square orders.
-- [ ] Customers shows repeat purchasing and identity coverage.
-- [ ] Campaigns switches recorded coupon outcomes and modeled future offer.
-- [ ] Ask GuestLift produces evidence-tagged answers.
-- [ ] Data Sources links to existing Import Lab; last synthetic import can be loaded into workspace.
-- [ ] Pricing explains the proposed subscription without requesting a real card.
-- [ ] Account page explains optional Supabase sign-in; no fake account login.
-
-**Safety:** Do not upload real restaurant/customer files and do not publish the backend.
+If `ls` reports missing files, you have not yet copied the contents of the new extracted release folder into your existing `~/GuestLift` project. The `README.md` explains the complete file tree. Do not replace your `.git` directory or `.env` secrets.

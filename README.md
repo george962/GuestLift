@@ -1,96 +1,75 @@
-# GuestLift — Restaurant Intelligence Workspace
+# TableSignal — Restaurant intelligence for owners (working name)
 
-**Version 0.5.0 · SaaS foundation + evidence-based AI analysis · November 2026**
+**v0.6 — UX, interactive motion, and self-service account flow**
 
-GuestLift helps restaurant operators explore sales, returning customers and promotion economics in a **single workspace**. Beneath the interface, fabricated Toast-style CSV and Square-shaped JSON orders flow through a provider-neutral data model. The new workspace exposes *what the data shows*, *what it cannot show*, and *what to investigate next*.
+> This remains the `george962/GuestLift` GitHub repository internally. **TableSignal is a provisional customer-facing name, not trademark/domain-cleared.** No real restaurant customers, real payments, live integrations, or verified incremental marketing impact are represented.
 
-> **IMPORTANT:** This is a synthetic-data prototype, **not** a production merchant service. Do not upload real customer data, payment card data, POS credentials, or live restaurant records. The old FastAPI demo endpoints are not authenticated. Do not expose the API or Docker services publicly. Stripe is **TEST MODE ONLY** and pricing is exploratory.
+## The actual product promise
 
-## Try GuestLift immediately
+For restaurant operators: **see who comes back, understand which discounts are costing money, and know what to investigate next**. This demonstration uses fabricated records only. The analytical engine computes orders, sales, guest-ID coverage, repeat purchasing among identified guests, and recorded promotion activity. The rules-based sample analyst grounds answers in evidence fields. Optional account-gated OpenAI explanations remain server-configured and off by default.
 
-From the repository root on a Mac with Docker Desktop running:
+## What changed in v0.6
+
+- **Clear public landing page:** explicit audience, promise, capabilities and next action.
+- **Motion-powered product tour:** three automatic, pauseable, clickable dashboard scenes; calculated *fictional* totals; accessible reduced-motion behavior; no stock video and no external media dependency.
+- **Four core product tasks:** Overview → Guests → Promotions → Ask the analyst. Data and account controls are moved into dedicated pages.
+- **Getting started** at `/start`, `/onboarding` and `/connect`; the product shows what can happen with or without account setup.
+- **Dedicated pages:** `/sign-in`, `/sign-up`, `/forgot-password`, `/reset-password`, `/account`, `/settings`, `/billing`, `/pricing`, `/help`, `/product`.
+- **Auth:** Supabase email/password with session-based sign-in, password reset and email confirmation. Requires configuration, not a fake local account.
+- **Billing:** Stripe **test-mode only**, using existing authenticated backend endpoints and server-side webhook subscription state. No real charges.
+- **Renamed public UI:** TableSignal (provisional). Internal code, sample field names, service environment keys, and existing repo remain GuestLift for backward compatibility.
+- **All v0.5 analytics, imports, tests and SQL schema retained.**
+
+## Quickstart (no extracting if files are already in project)
+
+From your **existing** `~/GuestLift` folder after putting the v0.6 source files there:
 
 ```bash
+cd "$HOME/GuestLift" || exit 1
+ls -l frontend/app/page.tsx frontend/app/billing/page.tsx frontend/components/motion-tour.tsx
 docker compose up --build -d
+docker compose exec -T backend python -m pytest -q
+docker compose exec -T frontend npm test
 docker compose ps
 ```
 
-- Homepage: http://localhost:3000
-- Unified workspace: http://localhost:3000/workspace
-- Pricing concept: http://localhost:3000/pricing
-- Sign-in (requires optional Supabase configuration): http://localhost:3000/account
-- FastAPI test documentation: http://localhost:8000/docs
+- Home: http://localhost:3000
+- Getting started: http://localhost:3000/start
+- Product explanation: http://localhost:3000/product
+- Workspace: http://localhost:3000/workspace
+- Pricing: http://localhost:3000/pricing
+- Sign-in: http://localhost:3000/sign-in
+- Billing: http://localhost:3000/billing
+- Help: http://localhost:3000/help
 
-**No account or API key is required** for the public-safe sandbox. Choose **Overview → Customers → Campaigns → Ask GuestLift**. The workspace uses **56 fictional sample orders** and two coupon campaigns. Import your own **synthetic** fixture files from the Data Sources tab; the browser-only workspace can then use your last synthetic import.
+The public **fictional demo** is accessible without Supabase, Stripe or an API key. Account signup/login will display a configuration notice until Supabase is connected.
 
-## What's new in v0.5
+## Optional real account infrastructure (still for synthetic workspace)
 
-| Area | Implementation |
-|---|---|
-| Product design | New coherent workspace with 6 in-app sections; public top nav reduced to Why GuestLift / Product / Pricing |
-| Operator overview | Data-calculated sales, order count, customer coverage, discounts, location bars, and detected descriptive patterns |
-| Customers | Provider-scoped synthetic identity, repeat customers, anonymous-order coverage and methodological limits |
-| Campaigns | Recorded fictional redemptions **and** a separate future-offer cost scenario |
-| Ask GuestLift | Verified metric tools and evidence fields; optional actual LLM wording over aggregated data (server key required) |
-| Accounts | Optional **real Supabase email/password sign-up**; bearer token checked with Supabase Auth on every private API request |
-| Workspace data | Per-account synthetic data stored in tenant-scoped PostgreSQL rows; business profile settings |
-| Subscription | Stripe **test** Checkout + portal + signature-verified webhook skeleton; account-based AI plan checked server-side |
-| Monetization | Proposed free sandbox / per-location Growth subscription / enterprise onboarding model |
-| Branding | Restaurant ontology mark: guests, locations and campaigns linked to one validated record |
+Read [`docs/ACCOUNT_BILLING_SETUP.md`](docs/ACCOUNT_BILLING_SETUP.md) and [`docs/V06_SITE_OPERATIONS.md`](docs/V06_SITE_OPERATIONS.md).
 
-**Terminology:** This is an *ontology-inspired*, entity-centric architecture, **not** an implementation of Palantir Foundry or a Palantir integration.
+1. Set up Supabase Auth with email verification, redirects `/sign-in` and `/reset-password`, and public project URL + **publishable** key in `frontend/.env.local` or frontend build environment.
+2. Set backend `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` for **remote token validation**.
+3. Stripe test mode: configure a test product/recurring Price ID, test secret key and signed test webhook at `/api/saas/billing/webhook` on a **secured test environment**. The backend intentionally rejects non-test keys.
+4. Optional OpenAI model-backed aggregate explanations: set server-only credentials after reviewing the data policy. No raw customer IDs are sent to the optional model.
+5. Never deploy the current unauthenticated FastAPI demo publicly. It includes demo reset/import endpoints and lacks merchant-grade security.
 
-## Optional account + subscription setup
+### Data and billing honesty
 
-Supabase, Stripe, and OpenAI are **independent, optional integrations**. They require your own credentials and are intentionally off by default. See **[docs/ACCOUNT_BILLING_SETUP.md](docs/ACCOUNT_BILLING_SETUP.md)** for exact steps, configuration and Stripe CLI webhook testing.
+- Public website is a **synthetic sandbox**, even when visitors upload local fictional files in the browser.
+- Signed-in workspace is seeded from **synthetic fixtures**; it is not a secure merchant account.
+- **$149/location/month is a pricing hypothesis, not a live offer.** No live billing or actual per-location usage metering exists.
+- Actual billing needs a live checkout integration, metering, entitlement logic, legal pages, refund/cancellation policy and security review.
+- We do not infer missing guest identities or claim observed coupon activity proves incremental ROI.
 
-1. Create a Supabase project; configure email/password Auth, and obtain the public project URL and publishable key.
-2. Create `./.env` from `.env.example`; fill in both the frontend and backend Supabase settings. **Never commit `.env`.**
-3. For payment testing, create a recurring Growth price **in Stripe TEST mode**, configure `STRIPE_SECRET_KEY=sk_test_...`, `STRIPE_GROWTH_PRICE_ID=price_...`, and a webhook secret from Stripe CLI.
-4. Run Docker and visit `/account` to sign up. Once signed in, your account gets an individual fictional workspace. No real merchant uploads are allowed.
-5. The account-based analyst is gated: only a verified Growth subscription in `active` / `trialing` status can access `/api/saas/analyst`. Checkout success alone never unlocks features; verified subscription webhook status does.
-6. **Optional LLM:** configure `GUESTLIFT_ENABLE_LLM=1`, `OPENAI_API_KEY` and `OPENAI_MODEL` for read-only model summaries over **aggregated synthetic metrics only**. Otherwise the evidence-first rules analyst continues to work.
+## Validation
 
-### Pricing model (proposal, not a live offer)
+- Python backend: 23 tests passing in this environment.
+- JavaScript analytics and UI source smoke checks: 26 tests passing in this environment.
+- New v0.6 source/navigation smoke test: included.
+- TSX syntax: parsed with globally installed TypeScript; no syntax diagnostics.
+- **Next.js build and real browser interactions not yet independently verified** because npm package registry access was unavailable in this environment. Run Docker build and check the new routes on your Mac before deployment.
 
-- **Sandbox — $0**: frictionless public synthetic demonstration with deterministic insights.
-- **Growth — illustrative $149 per location per month**: private workspace, reporting, planned account-based AI analyst. Actual Stripe Price ID controls checkout pricing and must be checked for consistency.
-- **Enterprise — custom**: multi-location integrations, governance, implementation and pilot support.
+## Legacy and source continuity
 
-Do not use live Stripe keys or advertise working real billing with this version. The code explicitly rejects non-`sk_test_` keys.
-
-## Run tests
-
-```bash
-docker compose exec -T backend python -m pytest -q
-docker compose exec -T frontend npm test
-```
-
-Local validation for this release: **23 Python tests and 23 JavaScript tests passed**. TypeScript/TSX syntax transpilation was also checked. A complete Next.js typecheck and production build still require Docker/npm on your Mac; do not describe the app as production-ready based on tests alone.
-
-## Source map
-
-```text
-frontend/app/                   Marketing site, unified workspace, pricing, account pages
-frontend/lib/workspace-analytics.mjs
-                                Evidence-backed rules and pattern discovery
-frontend/lib/supabase-client.ts Optional hosted Auth browser client + API helper
-backend/app/saas.py             Workspace ownership, synthetic tenant rows, test billing, protected analyst
-backend/app/insights.py         Server-side aggregate metrics and controlled read-only questions
-backend/app/database.py        Original canonical POS and coupon tables
-backend/app/adapters.py        Synthetic Toast/Square parsers
-backend/tests/                  Reconciliation, auth gates, workspace isolation, campaign tests
-frontend/tests/                 JS metrics, imports, campaign and patterns tests
-docs/                           Architecture, billing, pilot, AI and roadmap evidence
-ROADMAP.md                      Current scope, what shipped, what remains
-```
-
-## Deployment boundary
-
-- **Public today:** publish the static frontend sandbox with **no real data and no backend**, using the instructions in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
-- **Locally:** accounts, Supabase user verification and Stripe test checkout can be exercised through Docker after configuration.
-- **NOT ready for production:** merchant uploads, live payments, multi-user organizations, SOC 2 posture, production authentication/security review, authorized vendor synchronization, measured uplift or live AI over customer PII.
-
-The API includes legacy public demo routes such as `/api/reset`; those must be removed or isolated in a separate hardened private service before any public backend deployment.
-
-All providers, customers, coupons and sales figures used in GuestLift's demonstration are fictional. GuestLift is not affiliated with Toast, Square, Supabase, Stripe, OpenAI or Palantir.
+This is a **complete replacement source tree** based on v0.5, not patches. It retains `/import`, `/campaigns`, `/offers`, `/demo`, `/how-it-works` as legacy deep links for technical review. They are deliberately absent from main navigation. The underlying database, tests and API continue to use existing filenames, endpoint prefixes and environment names to avoid breaking existing local installations.

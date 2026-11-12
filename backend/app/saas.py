@@ -203,7 +203,7 @@ def checkout(sub:str=Depends(authenticated_subject)):
         if w.subscription_plan=='growth' and w.subscription_status in ('active','trialing'):
             raise HTTPException(status_code=409,detail='Already subscribed; use billing portal')
         kwargs={'mode':'subscription','line_items':[{'price':price,'quantity':1}],
-                'success_url':base+'/workspace?billing=return',
+                'success_url':base+'/billing?checkout=return',
                 'cancel_url':base+'/pricing?billing=cancel',
                 'client_reference_id':w.id,
                 'subscription_data':{'metadata':{'workspace_id':w.id}}}
@@ -223,7 +223,7 @@ def portal(sub:str=Depends(authenticated_subject)):
         if not w.stripe_customer_id:
             raise HTTPException(status_code=404,detail='No Stripe customer on this workspace')
         s=stripe.billing_portal.Session.create(customer=w.stripe_customer_id,
-            return_url=os.getenv('GUESTLIFT_APP_URL','http://localhost:3000').rstrip('/')+'/workspace')
+            return_url=os.getenv('GUESTLIFT_APP_URL','http://localhost:3000').rstrip('/')+'/billing')
     return {'url':s.url}
 
 @router.post('/billing/webhook')

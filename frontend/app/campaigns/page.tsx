@@ -171,7 +171,7 @@ export default function CampaignLab(){
      </section>}
     </div>
    </div>
-   <div className="gc-principle"><div><MinusCircle size={22}/><strong>Not an incrementality report</strong></div><p>A coupon redeemed on an order doesn't prove that the order would not have happened otherwise. To calculate causal incremental profit, a restaurant would need a valid comparison group, costs, and a careful experiment. GuestLift v0.4 reports observed redemptions and clearly labeled hypothetical contribution only.</p><Link href="/how-it-works">Explore the underlying pipeline <ArrowRight size={17}/></Link></div>
+   <div className="gc-principle"><div><MinusCircle size={22}/><strong>Not an incrementality report</strong></div><p>A coupon redeemed on an order doesn't prove that the order would not have happened otherwise. To calculate causal incremental profit, a restaurant would need a valid comparison group, costs, and a careful experiment. TableSignal v0.4 reports observed redemptions and clearly labeled hypothetical contribution only.</p><Link href="/how-it-works">Explore the underlying pipeline <ArrowRight size={17}/></Link></div>
   </section>
  </main>;
 }

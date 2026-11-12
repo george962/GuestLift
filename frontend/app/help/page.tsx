@@ -1,0 +1,11 @@
+import Link from 'next/link';
+import {ArrowRight,BookOpen,HelpCircle,Mail,ShieldCheck} from 'lucide-react';
+const faqs=[
+ ['Is TableSignal a POS system?','No. It is a separate analytics workspace designed to interpret restaurant sales, guest behavior, and recorded promotions.'],
+ ['Do I need an account for the demo?','No. The public sample is free and requires no sign-in. An account is needed only for the optional account workspace and test billing flow.'],
+ ['Can I connect my actual Toast or Square account?','Not yet. Current inputs are synthetic examples shaped after documented formats. Real merchant connections need secure onboarding and permissions.'],
+ ['Can AI tell me which promotion made money?','Not automatically. We can show recorded discounts and campaign-related orders, but incremental profit requires valid comparisons, cost data and uncertainty reporting.'],
+ ['Will creating an account charge me?','No. Any billing flow currently enabled is Stripe test mode only. Proposed subscription prices are not live charges.'],
+ ['Can I upload real customer files?','No. This is a prototype without a production-grade data security review. Use only the fictional provided files.']
+];
+export default function Help(){return <main className="ts-public-page"><div className="ts-page-hero"><span className="ts-kicker">HELP & GETTING STARTED</span><h1>Answers before you need to ask.</h1><p>A short guide to what works in the demo, how accounts are managed, and which features remain planned.</p></div><div className="ts-action-cards"><Link href="/start"><BookOpen/>Getting started <ArrowRight/></Link><Link href="/connect"><ShieldCheck/>Sample imports <ArrowRight/></Link><Link href="/account"><HelpCircle/>Account & billing <ArrowRight/></Link></div><section className="ts-faq"><h2>Frequently asked questions</h2>{faqs.map(([q,a])=><details key={q}><summary>{q}</summary><p>{a}</p></details>)}</section><div className="ts-caution"><Mail size={21}/><div><b>Report a demo issue</b><p>For now, use the project's public GitHub issue tracker rather than submitting customer data through a support form.</p><a href="https://github.com/george962/TableSignal/issues" target="_blank" rel="noreferrer">Open GitHub issues <ArrowRight size={14}/></a></div></div></main>}
