@@ -4,16 +4,17 @@ This ZIP contains the **complete source code** for GuestLift v0.1, not just samp
 
 ## What's already built
 
-- Responsive restaurant-software landing page, interactive How It Works page, and Demo dashboard.
+- Updated business-facing landing page, interactive architecture and pipeline demo, plus an operator-facing **Offer studio** to model hypothetical coupons and free-item costs.
 - Fabricated Toast-style CSVs, Square API-shaped JSON fixtures, Python adapters, and a proposed GRDC order model.
 - SQL persistence + common metrics via FastAPI, an offline browser preview, and seven passing backend tests.
 - Docker Compose, CI workflow, docs, source code and task-tracking roadmap.
 
 ## How to see something immediately
 
-1. Unzip the package.
-2. Double-click **`PREVIEW.html`** for a standalone, offline *design preview*. It has a small interactive Toast/Square browser-only demonstration, but does not run Python or SQL.
-3. For the **full site**, follow the local quickstart in [README.md](README.md).
+1. Unzip the package into a temporary folder.
+2. Copy its files into your existing local `GuestLift/` repository, preserving the `frontend/`, `backend/`, and `docs/` directories.
+3. Run `docker compose up --build` from the repository root. Visit `http://localhost:3000`, then `/offers` and `/demo`.
+4. For a real public URL, follow [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) to connect the frontend to Cloudflare Pages via GitHub.
 
 ## How to upload to GitHub
 
@@ -21,11 +22,16 @@ For a multi-folder application, the easiest method is to clone your GitHub repos
 
 Alternatively, upload files to GitHub via **Add file → Upload files**. Preserve all folder paths. Do **not** commit `node_modules/`, `.env`, database files, or Python virtual environments.
 
+## How to publish
+
+Follow `docs/DEPLOYMENT.md` for Cloudflare Pages setup using your GitHub repository. The **public** website uses only browser-side synthetic examples; the local FastAPI app should **not** be exposed on the internet.
+
 ## What to verify next
 
 - Run backend tests: `cd backend && python -m pytest -q`.
 - Run backend server: `cd backend && uvicorn app.main:app --reload --port 8000`.
 - Run frontend: `cd frontend && npm install && npm run dev` (requires an internet connection to download packages).
+- Open http://localhost:3000/offers and change the coupon assumptions.
 - Open http://localhost:3000/demo. It should display **Local API connected** and persist fixtures when you run an import.
 - Repeat the same provider import: it should report duplicates without inflating sales.
 

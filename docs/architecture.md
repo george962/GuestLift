@@ -42,6 +42,21 @@ flowchart TD
 
 **Principle:** Source adapters may differ, but **all downstream analytics use the same GuestLift Restaurant Data Contract (GRDC)**. No vendor-specific metric calculations in the dashboard.
 
+## Added v0.2 marketing workflow (public browser-only demo)
+
+The live **public** application will show an additional decision-making route without needing a publicly hosted data API:
+
+```mermaid
+flowchart LR
+    S["Bundled synthetic Toast + Square orders"] --> A["Choose sample records"]
+    A --> B["Define hypothetical coupon / free item"]
+    B --> C["Offer scenario math"]
+    C --> D["Review modeled cost, net sales, assumptions"]
+    D --> E["Need randomized assignments + actual costs for true incremental ROI"]
+```
+
+The coupon name is a scenario label, not a link to verified coupon redemptions. The engine assumes every qualifying sample order redeems once, and holds actual purchase volume unchanged. It is not a promotion attribution or lift-analysis tool yet. The **local** Python API and SQL pipeline remain available via Docker for source engineering demonstrations, but are not exposed by the recommended public static deployment. See `docs/PRODUCT_SCOPE.md`.
+
 ## Five-minute demo storyboard
 
 | Step | What the visitor sees | What it proves |

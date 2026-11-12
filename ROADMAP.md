@@ -1,7 +1,7 @@
 # GuestLift — Demo-First Development Roadmap
 
 > **Version:** 3.0 (November 12, 2026)  
-> **Status:** v0.1 local prototype coded; no production integrations, no real merchant data. See [implementation status](docs/IMPLEMENTATION_STATUS.md).  
+> **Status:** v0.2 operator-facing prototype; local code and public static-site deployment configuration. No production integrations or real merchant data. See [implementation status](docs/IMPLEMENTATION_STATUS.md).  
 > **Goal:** Build a credible, interactive product demo before expanding the research scope.  
 > **First sources:** **Toast POS** and **Square POS** (not Squarespace Commerce).  
 > **Approach:** Work on **one milestone at a time**. The dates are targets, not deadlines.
@@ -23,6 +23,26 @@ Longer-term, GuestLift may support loyalty attribution, experimentation, and inc
 6. Click a metric to see the records and rules behind it.
 
 See [Architecture & Demo Storyboard](docs/architecture.md) for the visual system diagram.
+
+## Current product direction (v0.2 — November 12, 2026)
+
+**Restaurant operator journey:** Understand the product on the homepage → choose sample POS data in the pipeline demo → define a coupon/free-item in the Offer Studio (`/offers`) → explore scenario costs and assumptions. Data standardization is the technical foundation; **restaurant promotion intelligence** is the business application we want to validate.
+
+**Implemented in the new package:** revised brand palette with explicit data meanings, professional home/offer flows, fictional-data coupon scenario calculator, line-item audit drilldown, offer math unit tests, public-safe static export option for Cloudflare Pages, and [deployment instructions](docs/DEPLOYMENT.md). The campaign name/code is an editable scenario label **not joined to actual redemptions**. The financial math does **not** estimate additional customer visits or causal profit.
+
+### Immediate public-launch checklist (before starting additional integrations)
+
+- [x] Design a homepage with a concrete operator value proposition and demo CTA.
+- [x] Add `frontend/app/offers/page.tsx` with a working browser-only coupon/free-item simulator and assumptions.
+- [x] Document colors and visual meanings in `docs/BRAND_SYSTEM.md`.
+- [x] Add a static export option and a GitHub-to-Cloudflare deployment walkthrough.
+- [x] Add tests for modeled discount/cost calculations.
+- [ ] Verify both normal Next.js build and static export build in a network-enabled environment (GitHub CI will check).
+- [ ] Deploy the **frontend only** via GitHub-connected Cloudflare Pages and check routes on the public URL.
+- [ ] Conduct at least one nontechnical operator walkthrough; record where the product is unclear.
+- [ ] Decide on a real custom domain and functioning contact channel before offering a pilot sign-up.
+
+**Do not publish the existing FastAPI API as a public merchant service.** It lacks authentication and has a destructive reset endpoint. The live site must stay fictional-data-only until a security review and proper merchant onboarding exist.
 
 ## Current build checkpoint (v0.1)
 

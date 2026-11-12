@@ -34,7 +34,17 @@ export default function Demo(){
  const [bootChecked,setBootChecked]=useState(false);
  const preview=getLocal(provider);
 
- useEffect(()=>{let cancelled=false;fetch(`${api}/api/health`,{signal:AbortSignal.timeout(2500)}).then(r=>r.ok?r.json():Promise.reject()).then(()=>{if(!cancelled)setBackend(true)}).catch(()=>{if(!cancelled)setBackend(false)}).finally(()=>{if(!cancelled)setBootChecked(true)});return()=>{cancelled=true}},[]);
+ useEffect(()=>{
+  let cancelled=false;
+  const local = typeof window!== 'undefined' && ['localhost','127.0.0.1'].includes(window.location.hostname);
+  if(!local){setBackend(false);setBootChecked(true);return()=>{cancelled=true}};
+  fetch(`${api}/api/health`,{signal:AbortSignal.timeout(2500)})
+   .then(r=>r.ok?r.json():Promise.reject(new Error('API unavailable')))
+   .then(()=>{if(!cancelled)setBackend(true)})
+   .catch(()=>{if(!cancelled)setBackend(false)})
+   .finally(()=>{if(!cancelled)setBootChecked(true)});
+  return()=>{cancelled=true};
+ },[]);
 
  // Keep the initial page useful even when the local API has not been started.
  const run=useCallback(async()=>{
@@ -78,7 +88,7 @@ export default function Demo(){
  <div className="pipeline-panel"><div className="pipeline-panel-heading"><div><span className="panel-kicker">01 / INGESTION PIPELINE</span><h3>{currentSource.name} → GuestLift</h3></div><span className="fixture-label"><span/> Sample data</span></div>
  <div className="demo-pipeline">{stages.map((s,i)=>{const Icon=s.icon;const active=activeStep>=i;return <div className="demo-pipeline-unit" key={s.title}><div className={'demo-pipeline-node '+(active?'node-done':'')+(activeStep===i&&loading?' node-running':'')}><div className="node-icon"><Icon size={19}/></div><span><b>{s.title}</b><small>{s.subtitle}</small></span>{active&&!loading?<CheckCircle2 size={15} className="node-check"/>:null}</div>{i<stages.length-1&&<div className={'demo-pipeline-connector '+(activeStep>i?'connector-done':'')}><ArrowRight size={17}/></div>}</div>})}</div>
  <div className="pipeline-actions"><span><Info size={15}/> {provider==='toast'?'Three small, fabricated CSV reports':'API-shaped JSON fixture, not live Square Sandbox'} · {fmtInt(preview.records.length)} orders</span><button className="btn btn-dark btn-small" onClick={run} disabled={loading}>{loading?<><LoaderCircle className="spin" size={17}/> Running…</>:<><Play size={16} fill="currentColor"/> {loaded.includes(provider)?'Replay sample':'Run sample pipeline'}</>}</button></div>
- {message&&<div className="success-message"><CheckCircle2 size={18}/>{message}</div>}{error&&<div className="error-message"><ShieldAlert size={18}/>{error}</div>}</div>
+ {message&&<div className="success-message"><CheckCircle2 size={18}/>{message} <Link href={`/offers?source=${provider}`} style={{marginLeft:'auto',textDecoration:'underline',whiteSpace:'nowrap'}}>Plan an offer <ArrowUpRight size={13}/></Link></div>}{error&&<div className="error-message"><ShieldAlert size={18}/>{error}</div>}</div>
  {panel==='overview'?<>
  <div className="metrics-heading"><div><span className="panel-kicker">02 / RECONCILED ANALYTICS</span><h3>Business overview</h3></div><span className="small-muted">{metrics?'Computed from imported demo records':'Run the pipeline to see results'}</span></div>
  <div className="demo-metrics-grid"><div className="demo-metric"><div><span>Net sales</span><BarChart3 size={17}/></div><strong>{metrics?usd(metrics.net_sales_minor):'—'}</strong><small>Pretax · minus discounts & refunds</small></div><div className="demo-metric"><div><span>Orders imported</span><FileSpreadsheet size={17}/></div><strong>{metrics?fmtInt(metrics.order_count):'—'}</strong><small>Unique source orders</small></div><div className="demo-metric"><div><span>Total discounts</span><ArrowDownRight size={17}/></div><strong>{metrics?usd(metrics.discounts_minor):'—'}</strong><small>Deducted once from item gross</small></div><div className="demo-metric"><div><span>Sales refunds</span><ArrowLeftRight size={17}/></div><strong>{metrics?usd(metrics.refunds_minor):'—'}</strong><small>Demo pretax refund amounts</small></div></div>

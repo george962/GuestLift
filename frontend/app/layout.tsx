@@ -3,8 +3,8 @@ import './globals.css';
 import { Nav, Footer } from '@/components/site';
 
 export const metadata: Metadata = {
-  title: 'GuestLift — Restaurant data, finally speaking the same language',
-  description: 'See how Toast POS and Square POS data flow into one transparent, reliable restaurant analytics model. Explore the synthetic demo.',
+  title: 'GuestLift | Restaurant data & offer intelligence',
+  description: 'Explore a transparent Toast and Square data pipeline and model coupon economics using fictional restaurant orders. An independent prototype with no real merchant data.',
   openGraph: { title: 'GuestLift | Restaurant intelligence', description: 'Different POS systems. One trusted data model.' },
 };
 

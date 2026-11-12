@@ -1,7 +1,16 @@
-# GuestLift — Build v0.1 implementation status
+# GuestLift — Build v0.2 implementation status
 
 **Updated:** November 12, 2026  
 **Type:** Demo-only code release, *not* a production integration.
+
+## v0.2 additions (operator-facing prototype)
+
+- Rebuilt homepage for restaurant owners and marketing leaders, with direct links to a new `/offers` studio.
+- Added browser-side synthetic order selection (Toast/Square/both), percentage/fixed/free-item offer modeling, editable coupon code/threshold/unit cost/margin and an order-level cost breakdown.
+- Added `frontend/lib/offer-model.mjs` with **four passing calculation tests**; all calculations use integer cents. Nothing measures coupon redemptions or causal lift.
+- Updated v0.2 brand semantics: **navy=trust**, **indigo=source records**, **teal=validated canonical records**, **amber=campaign assumptions**, **rose=cost/risk**.
+- Added `frontend/next.config.ts` static export mode, docs for Cloudflare Pages deployment, and public-site protection against trying to call a visitor's `localhost:8000`.
+- **Not yet verified:** a full Next.js production/static build in this environment (npm dependency installation could not complete). GitHub CI now tests both builds.
 
 ## Implemented in this package
 
@@ -43,3 +52,5 @@
 - Frontend dependency installation and `next build` could **not** run in this environment because the npm registry was inaccessible. GitHub Actions workflow is included for independent frontend build verification after upload.
 
 **Next engineering priority:** Install dependencies, run the Next.js website, then verify the local frontend-to-FastAPI interaction and fix any issues found before presenting the app to real operators.
+
+**V0.2 verification:** `python -m pytest -q` from `backend/` passed 7 tests, and `node --test frontend/tests/offer-model.test.mjs` passed 4 tests. The Next.js compilation and browser appearance still need confirmation on the user machine / CI.

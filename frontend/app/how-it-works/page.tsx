@@ -1,12 +1,12 @@
 'use client';
 import Link from 'next/link';
 import { useState } from 'react';
-import { ArrowRight, ArrowUpRight, Check, ChevronRight, Code2, Database, FileSpreadsheet, GitMerge, ScanCheck, Server, ShieldAlert, Workflow } from 'lucide-react';
+import { ArrowRight, ArrowUpRight, Check, ChevronRight, Code2, Database, FileSpreadsheet, GitMerge, ScanLine, Server, ShieldAlert, Workflow } from 'lucide-react';
 import { Pill } from '@/components/widgets';
 const stages=[
  {n:'01',name:'Source records',title:'The formats start out different.',desc:'Toast produces multiple CSV reports for orders, item selections and payments. Square has structured Orders API data and separate payment records. Our sample data follows relevant published concepts, but is fully fictional.',icon:<FileSpreadsheet size={27}/>,tag:'Toast CSV / Square-shaped JSON'},
  {n:'02',name:'Source adapters',title:'Translate without rewriting business logic.',desc:'Each adapter understands one provider’s fields and relationships. It maps, parses and validates raw values, while preserving provider IDs for auditability.',icon:<GitMerge size={27}/>,tag:'Python parser / validation'},
- {n:'03',name:'GRDC validation',title:'One contract, shared meaning.',desc:'All providers emit the same canonical order, line-item and payment structure. Fields that do not exist remain unknown instead of being fabricated.',icon:<ScanCheck size={27}/>,tag:'Versioned common contract'},
+ {n:'03',name:'GRDC validation',title:'One contract, shared meaning.',desc:'All providers emit the same canonical order, line-item and payment structure. Fields that do not exist remain unknown instead of being fabricated.',icon:<ScanLine size={27}/>,tag:'Versioned common contract'},
  {n:'04',name:'Persistence',title:'Save one clean view of the data.',desc:'Canonical records go into a local SQL database. Repeated imports are recognized and do not inflate sales or order counts.',icon:<Database size={27}/>,tag:'SQLite locally / PostgreSQL with Docker'},
  {n:'05',name:'Analytics',title:'Metrics with a clear paper trail.',desc:'Compute order count, net sales, discounts and refunds using one definition across providers. Inspect sample orders behind the numbers.',icon:<Server size={27}/>,tag:'Shared SQL / FastAPI / Next.js'}
 ];
