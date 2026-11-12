@@ -56,3 +56,16 @@ The new GuestLift logomark is an **original SVG** defined in `frontend/component
 Use the palette operationally: indigo means provider data, teal means data passed through the GRDC parser, amber means hypothetical coupons/assumptions, rose means failures/financial risks, and navy means application structure. The brand mark uses only the source/validated colors, because neither campaign estimates nor warnings are the brand's core identity.
 
 The homepage hero now contains a **working selectable order walkthrough** in place of a simulated screenshot. The Import Lab uses visible validation, file selection, live totals and order lineage, rather than decorative panels. See `docs/IMPORT_LAB.md` for the visitor path.
+
+---
+
+## v0.4 — Decision-oriented design principles
+
+- **Deep navy (#122f3a):** trust, product framing, high-level orientation.
+- **Indigo (#5368a8):** imported POS source records and integration-specific information.
+- **Teal (#0c827b):** validated data, matched records, reconciliation success.
+- **Amber (#b98131):** coupons, estimated costs, assumptions and experimental caution.
+- **Muted rose (#b56d64):** financial exposure and validation risk—never automatically a bad result.
+- **White / off-white:** readability of input workflows, metric panels and order audits.
+
+The Campaign Lab page should convey *how to make a decision*: which POS data was analyzed, which coupons were matched, what costs were observed vs assumed, and what remains unknown. Keep real interactive orders visible instead of filling space with static imagery. Empty/invalid states and the explanatory labels are part of the visual design.

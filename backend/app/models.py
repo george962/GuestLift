@@ -26,6 +26,7 @@ class CanonicalOrder(BaseModel):
     created_at: str
     currency: str = "USD"
     status: str
+    customer_id: str | None = None
     gross_minor: int = Field(ge=0)
     discount_minor: int = Field(ge=0)
     refund_minor: int = Field(ge=0)

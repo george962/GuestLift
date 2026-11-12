@@ -1,7 +1,7 @@
 export type Provider = 'toast' | 'square';
 export type Item = {item_id:string;name:string;quantity:number;gross_minor:number;discount_minor:number};
 export type Payment = {payment_id:string;amount_minor:number;status:string};
-export type Order = {provider:Provider;source_order_id:string;location_id:string;created_at:string;currency:string;status:string;gross_minor:number;discount_minor:number;refund_minor:number;net_sales_minor:number;tax_minor:number|null;tip_minor:number|null;items:Item[];payments:Payment[];lineage:Record<string,string>;warnings:string[]};
+export type Order = {provider:Provider;source_order_id:string;location_id:string;created_at:string;currency:string;status:string;customer_id?:string|null;gross_minor:number;discount_minor:number;refund_minor:number;net_sales_minor:number;tax_minor:number|null;tip_minor:number|null;items:Item[];payments:Payment[];lineage:Record<string,string>;warnings:string[]};
 export type Preview = {provider:Provider;records:Order[];summary:{orders:number;items:number;payments:number;net_sales_minor:number;discounts_minor:number;refunds_minor:number};files?:Record<string,string>;raw_file?:string;raw_snippet?:string};
 export type Metrics = {order_count:number;net_sales_minor:number;discounts_minor:number;refunds_minor:number;average_order_minor:number;orders:Order[];locations:{location_id:string;provider:string;orders:number;net_sales_minor:number;discounts_minor:number;refunds_minor:number}[]};
 export const usd = (cents:number)=>new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:2}).format(cents/100);

@@ -1,17 +1,39 @@
-# GuestLift v0.3 — Start here
+# GuestLift v0.4 — Start here
 
-This package contains the **complete Next.js + FastAPI + PostgreSQL application**, including the new hands-on Data Import Lab. It replaces the v0.2 files in your existing `george962/GuestLift` repository, but it is **not deployed automatically**.
+This download is a **complete GitHub-ready GuestLift application tree** with a new Campaign Lab, fictional coupon/redemption imports, repeat-customer reporting, local SQL data models, and automated tests. The original `frontend/`, `backend/`, `docs/` and Docker files are included; you do not need to reconstruct them from patches.
 
-## The shortest path
+## 1. Update your existing repository
 
-1. Open [UPGRADE_GUIDE.md](UPGRADE_GUIDE.md). Its Terminal commands unzip and copy this package into your `~/GuestLift` checkout, build Docker, and run tests without manually installing FastAPI.
-2. Visit `http://localhost:3000/import`.
-3. Click **Download Toast CSV sample pack**, extract it, upload all three CSVs and run the import. You should see **28 accepted orders, $594.70 in pretax net sales**, and an optional local SQL import ID.
-4. Repeat with the Square JSON sample ZIP: **28 accepted orders, $650.80 in pretax net sales**.
-5. Try the deliberately invalid Toast ZIP and inspect the validation error; click through a split-payment or refunded order to compare the actual source fields with the normalized GRDC record.
-6. Click **Model an offer on these orders** to evaluate a hypothetical coupon using the canonical synthetic orders from your browser session.
-7. When ready, publish the **static browser-only frontend** via Cloudflare Pages using [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+Read [UPGRADE_GUIDE.md](UPGRADE_GUIDE.md) for the exact Mac steps. Download and extract the release ZIP, then copy the extracted `GuestLift_v0_4/` folder contents into your existing `~/GuestLift/` checkout using `rsync` (preserving `.git`). You can also add the files to an empty repo if starting fresh.
 
-**Never upload real restaurant or customer data to this prototype.** Local FastAPI is unauthenticated and intended for 127.0.0.1 only. The public static version does not send uploaded synthetic files to a server.
+## 2. Build and run with Docker
 
-For technical details and limitations, see [docs/IMPORT_LAB.md](docs/IMPORT_LAB.md) and [docs/IMPLEMENTATION_STATUS.md](docs/IMPLEMENTATION_STATUS.md).
+From the project root:
+
+```bash
+docker compose up --build -d
+docker compose exec -T backend python -m pytest -q
+docker compose exec -T frontend npm test
+docker compose ps
+```
+
+Open http://localhost:3000/campaigns. The site also has `/import`, `/offers`, `/demo`, and `/how-it-works`.
+
+## 3. Try the sample campaign data
+
+- Click **Download sample campaigns** in `/campaigns` or use `frontend/public/samples/campaigns-demo.zip`.
+- Extract `Campaigns.csv` and `Redemptions.csv` and upload them via the two inputs on the page.
+- Expected result: **21 valid redemptions across two fictional campaigns** from 56 sample Toast/Square orders. The figures in each report are computed, not pasted dashboard constants.
+- Explore a wrong order ID or a coupon discount bigger than the POS discount to trigger a validation issue. A broken sample ZIP is included.
+- If Docker is running, **Save to local SQL** should load example orders/campaigns. Use http://localhost:8000/api/campaigns/report to inspect server-side results.
+- If your PostgreSQL volume contains v0.3 example records, optional customer IDs on those already imported records may still be missing; use the local-only `/api/reset` action and reload the new synthetic fixtures for a clean v0.4 demo.
+
+**Never use real merchant exports, transaction data or personal information in this prototype.** Public hosting must use the static frontend, not the local unauthenticated API.
+
+## 4. Publish source after reviewing
+
+Check `git status`, then commit and push the files. CI will run frontend tests and a Next.js build plus Python tests. For public static hosting, follow `docs/DEPLOYMENT.md`.
+
+## Current limits
+
+No real Toast/Square connections, real coupon issuance, production customer identity resolution, multi-tenant security, real profit claims, or experiment/holdout analysis. See `docs/IMPLEMENTATION_STATUS.md`.

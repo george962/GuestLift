@@ -117,3 +117,18 @@ For a future hosted Python API, Render is one option but its **free services spi
 - [ ] Public file processing stays entirely in the browser; no unauthenticated backend API is exposed.
 - [ ] All five public URLs work after deployment.
 - [ ] Domain and contact channels are configured only when genuinely operational.
+
+---
+
+## v0.4 public Campaign Lab
+
+The new `/campaigns` route contains a **browser-side CSV parser**, included fictional POS orders, and preloaded fictional campaign data. It is compatible with the existing Next.js static export (`GUESTLIFT_STATIC_EXPORT=1 npm run build`) and **does not require** exposing the local FastAPI backend, PostgreSQL or Square credentials.
+
+### Public safety constraints
+
+- Public uploads are parsed **only in the user's browser**; there is no public API endpoint in this architecture. The prototype is not an approved route for real customer data; clearly instruct users to upload only synthetic examples.
+- The SQL save feature operates **only when a local developer demo API at localhost:8000 is available**. It is not an online merchant upload service.
+- Keep example costs and sales explicitly labeled synthetic, descriptive or assumed. Never present this as real promotional lift or profit.
+- Before a real merchant pilot, implement authentication, audit logging, per-tenant storage, authorized POS sync, threat modeling, data retention/deletion, and an appropriate privacy/compliance review.
+
+After committing v0.4, the GitHub-connected static hosting workflow can publish the new route. Verify that `https://<your-domain>/campaigns` is accessible and the **Download sample campaigns** link works from the public site.

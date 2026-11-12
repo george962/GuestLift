@@ -111,7 +111,8 @@
       "total_money": {
         "amount": 2528,
         "currency": "USD"
-      }
+      },
+      "customer_id": "TEST-SQUARE-001"
     },
     {
       "id": "sq-order-0003",
@@ -174,7 +175,8 @@
       "total_money": {
         "amount": 3722,
         "currency": "USD"
-      }
+      },
+      "customer_id": "TEST-SQUARE-002"
     },
     {
       "id": "sq-order-0004",
@@ -224,7 +226,8 @@
       "total_money": {
         "amount": 2973,
         "currency": "USD"
-      }
+      },
+      "customer_id": "TEST-SQUARE-003"
     },
     {
       "id": "sq-order-0005",
@@ -261,7 +264,8 @@
       "total_money": {
         "amount": 532,
         "currency": "USD"
-      }
+      },
+      "customer_id": "TEST-SQUARE-004"
     },
     {
       "id": "sq-order-0006",
@@ -311,7 +315,8 @@
       "total_money": {
         "amount": 3071,
         "currency": "USD"
-      }
+      },
+      "customer_id": "TEST-SQUARE-005"
     },
     {
       "id": "sq-order-0007",
@@ -348,7 +353,8 @@
       "total_money": {
         "amount": 1139,
         "currency": "USD"
-      }
+      },
+      "customer_id": "TEST-SQUARE-006"
     },
     {
       "id": "sq-order-0008",
@@ -398,7 +404,8 @@
       "total_money": {
         "amount": 2365,
         "currency": "USD"
-      }
+      },
+      "customer_id": "TEST-SQUARE-007"
     },
     {
       "id": "sq-order-0009",
@@ -498,7 +505,8 @@
       "total_money": {
         "amount": 673,
         "currency": "USD"
-      }
+      },
+      "customer_id": "TEST-SQUARE-008"
     },
     {
       "id": "sq-order-0011",
@@ -535,7 +543,8 @@
       "total_money": {
         "amount": 814,
         "currency": "USD"
-      }
+      },
+      "customer_id": "TEST-SQUARE-009"
     },
     {
       "id": "sq-order-0012",
@@ -585,7 +594,8 @@
       "total_money": {
         "amount": 2094,
         "currency": "USD"
-      }
+      },
+      "customer_id": "TEST-SQUARE-010"
     },
     {
       "id": "sq-order-0013",
@@ -622,7 +632,8 @@
       "total_money": {
         "amount": 673,
         "currency": "USD"
-      }
+      },
+      "customer_id": "TEST-SQUARE-011"
     },
     {
       "id": "sq-order-0014",
@@ -659,7 +670,8 @@
       "total_money": {
         "amount": 369,
         "currency": "USD"
-      }
+      },
+      "customer_id": "TEST-SQUARE-012"
     },
     {
       "id": "sq-order-0015",
@@ -709,7 +721,8 @@
       "total_money": {
         "amount": 2756,
         "currency": "USD"
-      }
+      },
+      "customer_id": "TEST-SQUARE-013"
     },
     {
       "id": "sq-order-0016",
@@ -772,7 +785,8 @@
       "total_money": {
         "amount": 3776,
         "currency": "USD"
-      }
+      },
+      "customer_id": "TEST-SQUARE-014"
     },
     {
       "id": "sq-order-0017",
@@ -885,7 +899,8 @@
       "total_money": {
         "amount": 2213,
         "currency": "USD"
-      }
+      },
+      "customer_id": "TEST-SQUARE-015"
     },
     {
       "id": "sq-order-0019",
@@ -948,7 +963,8 @@
       "total_money": {
         "amount": 6076,
         "currency": "USD"
-      }
+      },
+      "customer_id": "TEST-SQUARE-016"
     },
     {
       "id": "sq-order-0020",
@@ -998,7 +1014,8 @@
       "total_money": {
         "amount": 5284,
         "currency": "USD"
-      }
+      },
+      "customer_id": "TEST-SQUARE-017"
     },
     {
       "id": "sq-order-0021",
@@ -1048,7 +1065,8 @@
       "total_money": {
         "amount": 5013,
         "currency": "USD"
-      }
+      },
+      "customer_id": "TEST-SQUARE-018"
     },
     {
       "id": "sq-order-0022",
@@ -1085,7 +1103,8 @@
       "total_money": {
         "amount": 1139,
         "currency": "USD"
-      }
+      },
+      "customer_id": "TEST-SQUARE-001"
     },
     {
       "id": "sq-order-0023",
@@ -1135,7 +1154,8 @@
       "total_money": {
         "amount": 2539,
         "currency": "USD"
-      }
+      },
+      "customer_id": "TEST-SQUARE-002"
     },
     {
       "id": "sq-order-0024",
@@ -1172,7 +1192,8 @@
       "total_money": {
         "amount": 1834,
         "currency": "USD"
-      }
+      },
+      "customer_id": "TEST-SQUARE-003"
     },
     {
       "id": "sq-order-0025",
@@ -1272,7 +1293,8 @@
       "total_money": {
         "amount": 2593,
         "currency": "USD"
-      }
+      },
+      "customer_id": "TEST-SQUARE-004"
     },
     {
       "id": "sq-order-0027",
@@ -1322,7 +1344,8 @@
       "total_money": {
         "amount": 3016,
         "currency": "USD"
-      }
+      },
+      "customer_id": "TEST-SQUARE-005"
     },
     {
       "id": "sq-order-0028",
@@ -1359,7 +1382,8 @@
       "total_money": {
         "amount": 532,
         "currency": "USD"
-      }
+      },
+      "customer_id": "TEST-SQUARE-006"
     }
   ]
 }

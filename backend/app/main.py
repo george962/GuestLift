@@ -110,3 +110,47 @@ async def import_uploaded_files(provider: str, files: list[UploadFile] = File(..
             }
         except (ValueError, KeyError, TypeError, json.JSONDecodeError) as exc:
             raise HTTPException(status_code=422, detail=f'Validation failed: {str(exc)}') from exc
+
+# Campaigns and redemptions are synthetic and handled on localhost only.
+from .campaigns import import_campaign_csvs, MAX_CSV_BYTES
+from .database import campaign_reports, customer_summary
+
+CAMPAIGN_FIXTURE_DIR = Path(__file__).resolve().parent.parent / 'fixtures' / 'campaigns'
+
+@app.get('/api/campaigns/report')
+def get_campaign_report(margin_percent: int = 35):
+    try:
+        return campaign_reports(margin_percent)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+@app.get('/api/customers/summary')
+def get_customer_summary():
+    return customer_summary()
+
+@app.post('/api/campaigns/upload')
+async def upload_campaigns(campaigns_file: UploadFile = File(...), redemptions_file: UploadFile = File(...)):
+    if campaigns_file.filename != 'Campaigns.csv' or redemptions_file.filename != 'Redemptions.csv':
+        raise HTTPException(status_code=422, detail='Upload Campaigns.csv and Redemptions.csv exactly')
+    campaign_data = await campaigns_file.read(MAX_CSV_BYTES + 1)
+    redemption_data = await redemptions_file.read(MAX_CSV_BYTES + 1)
+    try:
+        outcome = import_campaign_csvs(campaign_data, redemption_data)
+        return {**outcome, 'report':campaign_reports(35)}
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+@app.post('/api/campaigns/demo/load')
+def load_fictional_campaigns():
+    """Convenience: sample POS orders first, followed by sample coupon redemptions.
+
+    Idempotent; no credential exchange and no real customer data. Uses packaged fixtures.
+    """
+    for provider in ('toast','square'):
+        persist(parse(provider))
+    try:
+        outcome = import_campaign_csvs((CAMPAIGN_FIXTURE_DIR / 'Campaigns.csv').read_bytes(),
+                                       (CAMPAIGN_FIXTURE_DIR / 'Redemptions.csv').read_bytes())
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return {**outcome, 'report':campaign_reports(35)}

@@ -1,125 +1,109 @@
 # GuestLift
 
-**Different POS systems. One trusted restaurant data model.**
+**Campaign intelligence for restaurants, built on vendor-neutral POS data.**
 
-GuestLift is an independent restaurant data and promotion-intelligence prototype. It shows how fabricated **Toast POS-style CSVs** and **Square POS API-shaped JSON** become standardized orders through source-specific Python adapters, one **GuestLift Restaurant Data Contract (GRDC)**, and shared SQL analytics.
+[Campaign Lab](frontend/app/campaigns/page.tsx) · [Import Lab](frontend/app/import/page.tsx) · [Architecture](docs/architecture.md) · [Roadmap](ROADMAP.md) · [Implementation status](docs/IMPLEMENTATION_STATUS.md)
 
-**[Try the Import Lab](docs/IMPORT_LAB.md)** · **[Start here](RUN_ME_FIRST.md)** · **[Publish on Cloudflare Pages](docs/DEPLOYMENT.md)** · **[Brand system](docs/BRAND_SYSTEM.md)** · **[Project roadmap](ROADMAP.md)** · **[System architecture](docs/architecture.md)** · **[Implementation status](docs/IMPLEMENTATION_STATUS.md)** · **[Demo script](docs/DEMO_SCRIPT.md)**
+> **v0.4 — synthetic-data product prototype.** This repository is not connected to live Toast or Square accounts. It is not a production service and must never receive real customer data, payment-card data, or merchant credentials. Financial and loyalty figures are fictional and do not demonstrate incremental profit or causality.
 
-## See the site
+## What someone can actually do
 
-GuestLift includes a responsive application with interactive product pages: a restaurant-operator landing page, an interactive architecture explanation, and a pipeline demo with source selection, record inspection, and dashboards.
+1. Open **Campaign Lab** (`/campaigns`) to see **56 fictional POS orders** (28 Toast-style + 28 Square-shaped) and **21 synthetic coupon redemptions** across two campaigns.
+2. Download `Campaigns.csv` and `Redemptions.csv`, modify their sample entries, and upload both files in the browser. The report recalculates based on the uploaded data; invalid or unmatched records are explained.
+3. Inspect recorded coupon discounts, net sales on redeemed orders, assumed campaign costs, and repeat purchasing **only when a fictional customer ID exists**.
+4. Adjust the contribution margin assumption and export a campaign summary CSV.
+5. Optionally sync the packaged synthetic sample into local PostgreSQL with **Save to local SQL** after starting Docker. Replaying an import does not double-count orders or redemptions.
+6. Go to **Import Lab** (`/import`) to upload synthetic Toast-style CSVs or Square-shaped JSON and see provider-specific data transformed into GuestLift's common order model (GRDC).
 
-| Page | Purpose |
-|---|---|
-| `/` | Explain the product and why consistent restaurant data matters |
-| `/how-it-works` | Interactive explanation of the five pipeline stages |
-| `/demo` | Run pre-bundled sample imports and inspect SQL metrics on localhost |
-| `/import` | Upload fabricated Toast CSV or Square JSON files; the file bytes are parsed and validated in-browser, with optional localhost Python + SQL processing |
-| `/offers` | Model a hypothetical coupon or free-item offer against bundled samples or your freshly imported synthetic orders |
+## Local quickstart
 
-The new `/import` Import Lab actually parses the uploaded file bytes. On a public static site it does so inside the browser only; locally it can also send small synthetic files to Python and SQL. The older `/demo` page has two modes: **browser preview** (no backend: bundled pre-normalized examples) and **API-connected** (Python adapters + SQL persistence). The UI labels the difference.
-
-## Local quickstart — two terminals
-
-**Prerequisites:** Node.js 20+ / npm and Python 3.11+.
-
-**Terminal 1: Backend**
+Prerequisites: Docker Desktop (recommended). From the **repository root**:
 
 ```bash
-cd backend
-python -m venv .venv
-source .venv/bin/activate                # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
-uvicorn app.main:app --reload --port 8000
+docker compose up --build -d
+docker compose ps
 ```
 
-The backend starts with a local SQLite database (`backend/guestlift_demo.db`). Visit http://localhost:8000/docs to inspect its endpoints. It has no merchant credentials or integrations.
+- Website: http://localhost:3000
+- Campaign Lab: http://localhost:3000/campaigns
+- Import Lab: http://localhost:3000/import
+- Local FastAPI docs: http://localhost:8000/docs
 
-**Terminal 2: Website**
+Try **Campaign Lab → Download sample campaigns → upload both CSVs → inspect each campaign**. The browser demonstration works without the backend; with Docker running, you can select **Save to local SQL** for the bundled example.
+
+### Tests
 
 ```bash
-cd frontend
-npm install
-npm run dev
+docker compose exec -T backend python -m pytest -q
+docker compose exec -T frontend npm test
 ```
 
-Visit **http://localhost:3000/import** to upload synthetic files, or **http://localhost:3000/demo** to use the existing preloaded example. The browser will connect to the backend if it is running; if not, the standalone browser preview still works using bundled pre-normalized examples.
+Expected in v0.4 source: **19 Python** and **19 JavaScript** tests. These cover the source adapters, financial calculations, coupon-to-order reconciliation, invalid imports, replay deduplication, and repeat-customer treatment.
 
-**Optional: PostgreSQL using Docker Compose**
+**Important:** If you've already run a v0.3 Docker/PostgreSQL installation, the backend adds the optional `customer_id` column using a small additive schema migration. If you want a completely clean demo, the local-only `/api/reset` endpoint clears existing example records; don't use a volume-deleting command unless you intend to discard the demo database.
 
-```bash
-docker compose up --build
-```
+## Import formats
 
-This serves the frontend on **localhost:3000**, FastAPI on **localhost:8000**, and PostgreSQL as an internal Docker service. The configured database password is **demo-only**, not for production use.
+### POS data
 
-## Publish the public website
+- `Toast`: synthetic `OrderDetails.csv`, `ItemSelectionDetails.csv`, `PaymentDetails.csv`
+- `Square`: synthetic `orders.json`, `payments.json`, `refunds.json`
+- The fixture-only `GuestLift Test Customer Id` column in Toast is **not** a promised Toast export column. It is explicitly synthetic and optional. Square's fixture-only `customer_id` serves the same purpose.
 
-A public, static Next.js build can be deployed from this GitHub repo to **Cloudflare Pages** using `frontend/` as the root, `GUESTLIFT_STATIC_EXPORT=1 npm run build` as the command, and `out` as the output. See [step-by-step instructions](docs/DEPLOYMENT.md). The public website includes the browser-based Import Lab and Offer Studio, but does **not** expose the local unauthenticated Python API.
+### Campaign data
 
-## Test the backend
+- [`Campaigns.csv`](frontend/public/samples/Campaigns.csv): campaign ID, coupon code/name, date window, and **assumed** campaign expenses.
+- [`Redemptions.csv`](frontend/public/samples/Redemptions.csv): fictional redemption ID, campaign ID, provider, order ID, event time, and recorded coupon discount in integer cents.
+- Download both CSVs together: [`campaigns-demo.zip`](frontend/public/samples/campaigns-demo.zip).
 
-```bash
-cd backend
-python -m pytest -q
-```
+All CSV fields and validation behavior are documented in [docs/CAMPAIGN_IMPORT.md](docs/CAMPAIGN_IMPORT.md).
 
-Run all JavaScript parsing and scenario tests with `cd frontend && npm test`. The backend tests cover fixture parsing, missing/duplicate headers, financial calculations, repeated imports, SQL metrics, and API responses. A GitHub Actions workflow tests Python and attempts a frontend build when changes are pushed.
-
-## Try actual synthetic file uploads
-
-1. Start the application and open `http://localhost:3000/import`.
-2. Choose Toast; **Download sample pack**, extract it, choose all three CSV files, and click **Run import pipeline**.
-3. Inspect accepted orders, $594.70 net sales, the lineage drill-down, and (locally) the SQL import count.
-4. Do the same for Square's three JSON fixtures: 28 orders and $650.80 pretax net sales.
-5. Try the deliberately broken Toast sample at `/samples/toast-broken-example.zip` and see validation reject it. Then click **Model an offer on these orders**.
-
-**Privacy:** The public static site processes local text in the browser only; the Docker mode can send *synthetic test files* to a **localhost-only, unauthenticated** API. Do not upload real merchant or customer information. See [Import Lab instructions](docs/IMPORT_LAB.md).
-
-## How the pipeline works
+## Architecture
 
 ```mermaid
 flowchart LR
-    A[Toast sample CSVs] --> C[Toast adapter]
-    B[Square sample JSON] --> D[Square adapter]
+    A[Toast fictional CSV] --> C[Python Toast adapter]
+    B[Square fictional JSON] --> D[Python Square adapter]
     C --> E[GRDC canonical orders]
     D --> E
-    E --> F[(SQLite or PostgreSQL)]
-    F --> G[Shared SQL metrics]
-    G --> H[FastAPI + Next.js demo]
+    E --> F[(Local PostgreSQL)]
+    G[Campaigns.csv + Redemptions.csv] --> H[Campaign validation + order ID matching]
+    F --> H
+    H --> I[Recorded coupon cost and repeat-customer summaries]
+    I --> J[FastAPI local demo]
+    E --> K[Public-safe browser demo]
+    G --> K
+    J --> L[Next.js campaign interface]
+    K --> L
 ```
 
-**Initial metrics:** order count, pretax net sales, discounts and sales refunds. See [definitions](docs/METRICS.md). These are **not** causal marketing or loyalty ROI measurements.
+A static-hosted site analyzes *synthetic files in the browser*, with no public data-collection backend. A local Docker installation can persist those fictional records to PostgreSQL. Production merchant onboarding, OAuth integrations, tenant isolation, authentication, privacy controls, and real experimental design are **future work**.
 
-## Repository structure
+## Financial interpretation
 
-```text
-frontend/             Next.js / TypeScript / CSS website
-backend/app/          FastAPI, source adapters, GRDC models, SQL persistence
-backend/fixtures/     Synthetic Toast CSVs and Square-shaped JSON
-backend/tests/        pytest suite
-docs/                 Architecture, metric definitions, demo script, status
-.github/workflows/    CI checks
-compose.yaml          Docker services (PostgreSQL + API + site)
-ROADMAP.md             Product development checklist
-```
+- **Sales on redeemed orders:** Actual net sales *within the fictional sample* for orders matched to recorded redemptions. **Not incremental revenue.**
+- **Recorded discount:** Coupon discount in the synthetic redemption file, constrained to be no more than the discount already on the POS order.
+- **Modeled contribution:** `(sales on redeemed orders × assumed contribution margin) − other per-redemption campaign cost − allocated fixed campaign cost`. POS discounts have **already reduced net sales** and are *not* subtracted again.
+- **Repeat customer:** Provider-scoped fictional customer ID with at least two observed non-voided orders. Anonymous customers remain anonymous; no cross-provider identity linkage is assumed.
 
-## Current limitations
+No uplift, retention causality, or restaurant ROI is claimed.
 
-- **No actual coupon tracking or causal ROI estimate.** The offer studio is a scenario with configurable discount and margin assumptions, not measured redemptions or added traffic.
-- **No production integrations.** Toast files are synthetic examples based on documented export fields. Square fixtures are *API-shaped*, not fetched from a Square Sandbox account yet.
-- **No merchant data.** No credentials, card numbers, real customers, or real restaurant profit claims are present.
-- **Not a production service.** The local API has no authentication, tenant permissions, rate limits or production security controls. Do not expose it publicly or upload sensitive data.
-- **No real experiment engine.** Future work may add loyalty attribution and incremental contribution analysis, but the current prototype makes no causal claims.
-- **No certified accounting model.** Current financial definitions are for the small demo; real POS financial treatment and order updates remain to be validated.
+## Code map
 
-Read **[implementation status](docs/IMPLEMENTATION_STATUS.md)** for the distinction between finished code and pending roadmap items.
+| Directory | Role |
+|---|---|
+| `frontend/app/campaigns/` | Campaign Lab and interactive financial/customer reporting |
+| `frontend/lib/campaign-model.mjs` | Public-safe pure JS CSV validation and calculation engine |
+| `frontend/app/import/` | Browser synthetic POS import/validation lab |
+| `backend/app/campaigns.py` | Local campaign CSV validation, matching, idempotent persistence |
+| `backend/app/database.py` | SQL orders, campaign tables, redemptions, campaign import runs, metrics |
+| `backend/app/main.py` | Local FastAPI demo endpoints |
+| `backend/fixtures/` | Complete fictional POS and campaign examples |
+| `frontend/tests/` / `backend/tests/` | JavaScript and Python regression tests |
+| `docs/` | Architecture, campaign contract, design language, roadmap, deployment guidance |
 
-## Source documentation
+## Deployment
 
-- [Toast data export fields](https://doc.toasttab.com/doc/platformguide/adminDataExportFieldReference.html)
-- [Toast data exports overview](https://doc.toasttab.com/doc/platformguide/adminDataExportOverview.html)
-- [Square Orders API](https://developer.squareup.com/reference/square/objects/order)
+See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md). The recommended first public site is a **static Next.js export** built from `frontend/`. **Never deploy the unauthenticated Docker backend or database publicly.** Public visitors should only use fabricated datasets.
 
-GuestLift is an independent prototype and is not affiliated with or endorsed by Toast or Block/Square. GRDC is a proposed project contract, not an adopted external standard.
+GuestLift is an independent project, not affiliated with Toast, Square, or any restaurant chain. GRDC is a *proposed* internal contract—not an adopted industry specification.

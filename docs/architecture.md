@@ -146,3 +146,30 @@ flowchart LR
 ```
 
 **Public static deployment:** browser-only path; no files are sent to the GuestLift server. **Docker local deployment:** all uploaded synthetic files are first normalized in-browser, then sent to the localhost-only API and persisted. Both modes use the same GRDC order shape; the JavaScript and Python parsers are distinct implementations and need contract tests. For precise file requirements and test expectations see [Import Lab](IMPORT_LAB.md).
+
+---
+
+## v0.4 campaign analytics extension (synthetic only)
+
+```mermaid
+flowchart LR
+    T[Toast-style CSV] --> A[Toast Adapter]
+    S[Square-shaped JSON] --> B[Square Adapter]
+    A --> C[GRDC Orders]
+    B --> C
+    C --> DB[(Local PostgreSQL)]
+    CP[Campaigns.csv] --> M[Validate and match]
+    RD[Redemptions.csv] --> M
+    DB --> M
+    M --> R[Descriptive campaign and customer reporting]
+    R --> API[FastAPI localhost]
+    CP --> WEB[Browser-only synthetic report]
+    RD --> WEB
+    C --> WEB
+    API --> UI[Next.js Campaign Lab]
+    WEB --> UI
+```
+
+Both public browser and local SQL modes use explicit campaign IDs, provider-scoped order matching and unknown customer values. Discounts already included in POS net sales are not deducted twice. This layer describes redemption attribution and assumed cost scenarios; it does **not** identify causal incrementality.
+
+Read [`CAMPAIGN_IMPORT.md`](CAMPAIGN_IMPORT.md) for field definitions and limitations.

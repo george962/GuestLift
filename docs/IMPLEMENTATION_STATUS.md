@@ -1,3 +1,37 @@
+# GuestLift — Current implementation status
+
+**Version:** v0.4 · **Date:** November 12, 2026  
+**Audience:** Restaurant operators and technical reviewers  
+**Status:** Fully synthetic, demo-only application. Not production-ready and not connected to actual Toast or Square merchants.
+
+## What now works (verified in source tests)
+
+- Existing v0.3 Import Lab, with browser parsing of fictional Toast-style CSV and Square-shaped JSON and local SQL persistence, remains in the codebase.
+- New `/campaigns` workflow for two campaign CSVs, coupon event-to-order matching, input validation, descriptive financial analysis and record drill-down.
+- SQL tables for campaign configuration, coupon redemptions and import runs, with idempotent replay behavior.
+- Fictional provider-scoped customer IDs, repeat-customer counts and visibility into anonymous orders; no identity stitching.
+- An additional SQL schema column for optional customer ID, with safe additive migration for local older databases.
+- New public-static browser campaign calculations; local FastAPI has campaign upload, report and sample-import routes.
+- Updated homepage and navigation toward restaurant promotion decisions.
+
+**Tests run:** 19 Python tests passed, 19 JavaScript tests passed, and a cross-language comparison showed identical example totals for both campaigns. The new TSX page passed TypeScript syntax parsing. **Full Next.js compilation, interactive browser visual review and public deployment were not verified in this environment.**
+
+## Remaining limitations / work
+
+- Current API is local-only and has no authentication, tenant isolation, secured storage or real merchant permission. Never expose it publicly.
+- Files, names, coupons, costs, and customer identifiers in the public demo are fictional.
+- Browser and Python paths both validate the *demo file contract*, not every configuration of a real Toast or Square export.
+- Imported order amendments, refunds posted after initial import, campaign corrections, stacked promotions, and reliable source synchronization are not yet supported.
+- Repeat detection works only where a stable synthetic ID exists inside a POS provider. It does not prove customer identity across brands, platforms or delivery systems.
+- The scenario contribution estimate is based on an assumed margin and manually provided campaign cost assumptions. It is **not** measured incremental profit or promotional ROI.
+- Actual restaurant use requires operator interviews, real CSV format validation with permission, and a separate secure onboarding architecture.
+
+See [the new Campaign Import specification](CAMPAIGN_IMPORT.md), [v0.4 release notes](RELEASE_NOTES_v0_4.md), and [ROADMAP](../ROADMAP.md).
+
+---
+
+## Previous engineering checkpoints
+
 # GuestLift — Build v0.2 implementation status
 
 **Updated:** November 12, 2026  

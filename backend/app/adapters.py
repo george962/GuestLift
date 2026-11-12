@@ -80,6 +80,7 @@ def parse_toast(folder: Path | None = None) -> list[CanonicalOrder]:
         output.append(CanonicalOrder(
             provider='toast', source_order_id=oid, location_id=o['Location'], created_at=o['Opened'],
             status='VOIDED' if o['Voided'].strip().lower() == 'true' else 'CLOSED',
+            customer_id=(o.get('GuestLift Test Customer Id') or None),
             gross_minor=gross, discount_minor=discount, refund_minor=refund, net_sales_minor=net,
             tax_minor=cents(o['Tax'] or '0'), tip_minor=cents(o['Tip'] or '0'),
             items=mapped_items, payments=[Payment(payment_id=p['Payment Id'], amount_minor=cents(p['Amount']), status=p['Status']) for p in pays_by_order[oid]],
@@ -140,7 +141,7 @@ def parse_square(folder: Path | None = None) -> list[CanonicalOrder]:
         if not by_order[oid]:
             warnings.append('No matching payment in separate payment fixture.')
         output.append(CanonicalOrder(
-            provider='square', source_order_id=oid, location_id=o['location_id'], created_at=o['created_at'], status=o.get('state', 'UNKNOWN'),
+            provider='square', source_order_id=oid, location_id=o['location_id'], created_at=o['created_at'], status=o.get('state', 'UNKNOWN'), customer_id=o.get('customer_id') or None,
             gross_minor=gross, discount_minor=discount, refund_minor=refund, net_sales_minor=gross-discount-refund,
             tax_minor=money(o.get('total_tax_money'), 'total_tax_money', required=False),
             tip_minor=money(o.get('total_tip_money'), 'total_tip_money', required=False),

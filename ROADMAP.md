@@ -1,11 +1,41 @@
 # GuestLift — Demo-First Development Roadmap
 
-> **Version:** 3.0 (November 12, 2026)  
-> **Status:** v0.2 operator-facing prototype; local code and public static-site deployment configuration. No production integrations or real merchant data. See [implementation status](docs/IMPLEMENTATION_STATUS.md).  
+> **Version:** 4.0 (November 12, 2026)  
+> **Status:** v0.4 synthetic Campaign Analytics MVP. Local Python/JS tests pass; Next.js production build and public hosting still need independent verification. No live POS integrations or real merchant data. See [implementation status](docs/IMPLEMENTATION_STATUS.md).  
 > **Goal:** Build a credible, interactive product demo before expanding the research scope.  
 > **First sources:** **Toast POS** and **Square POS** (not Squarespace Commerce).  
 > **Approach:** Work on **one milestone at a time**. The dates are targets, not deadlines.
 
+
+## Current product milestone — v0.4 Campaign Analytics MVP
+
+**Business objective:** Move beyond hypothetical coupons. Match *recorded* synthetic coupon/redemption events to standardized Toast/Square orders and produce an auditable, **descriptive** campaign report with customer repeat-visit coverage.
+
+**Try the result:** `/campaigns` → download `campaigns-demo.zip` → upload `Campaigns.csv` + `Redemptions.csv` → inspect **21 matched synthetic redemptions across 2 campaigns** → change margin assumption → inspect matched orders and customer coverage. The public site parses the fictional files in-browser; the local Docker installation can save them to PostgreSQL.
+
+### Verified v0.4 delivery checklist
+
+- [x] Add local SQL `campaigns`, `campaign_redemptions`, and `campaign_import_runs` tables and an additive optional `customer_id` order column.
+- [x] Add a documented, versioned two-CSV contract for campaigns and coupon redemptions.
+- [x] Add two bundled fictional coupon campaigns and matching sample redemptions, including a broken-file test pack.
+- [x] Match coupon events to canonical orders using `(provider, source_order_id)`, rejecting or explaining unmatched events and excessive discounts.
+- [x] Make replayed imports idempotent; reject contradictory existing records rather than silently overwrite.
+- [x] Calculate **sales on redeemed orders**, recorded coupon discounts, refunds, and explicitly **assumed** campaign costs.
+- [x] Avoid deducting recorded POS discounts twice when estimating hypothetical contribution.
+- [x] Report provider-scoped repeat customer activity only for synthetic, present customer IDs; count anonymous orders separately.
+- [x] Add public-safe browser campaign upload, an interactive report with drill-down, margin slider and CSV export.
+- [x] Add FastAPI report, customer coverage, campaign upload and sample data endpoints for localhost Docker.
+- [x] Connect homepage and navigation to the operator-facing Campaign Lab.
+- [x] Run 19 Python tests and 19 JavaScript tests; compare backend and frontend example results.
+- [ ] Verify both Next.js normal production and static export builds using npm/Docker with registry access.
+- [ ] Verify the public hosted `/campaigns` page, sample CSV links, mobile layout and no remote API calls.
+- [ ] Ask an actual restaurant owner whether this reporting solves a problem they cannot easily solve today.
+
+**Not in v0.4:** Real merchant accounts, customer identity resolution across vendors, complete data provider certifications, corrected-order upserts, automated coupon delivery, real POS coupon identifiers, incrementality, experimental holdouts, and measured profit uplift. Keep a public static site, **never** the unauthenticated FastAPI demo.
+
+**Technical specification:** [Campaign import contract](docs/CAMPAIGN_IMPORT.md) · [Release notes](docs/RELEASE_NOTES_v0_4.md).
+
+---
 ## What we're building
 
 **GuestLift** is a vendor-neutral restaurant analytics application. Its first demo will show a restaurant operator how data from two different POS providers moves through provider-specific adapters into one canonical GuestLift Restaurant Data Contract (**GRDC**), then into a database and a shared analytics interface.

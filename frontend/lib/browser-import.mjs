@@ -144,7 +144,7 @@ function parseToast(files) {
     if (itemData.reduce((s, i) => s + i.discount_minor, 0) !== discount) warnings.push('Item discounts differ from order discount; using order-level amount.');
     const expectedTotal = gross - discount + toCents(o.Tax || '0', `${id}: tax`) + toCents(o.Tip || '0', `${id}: tip`);
     if (expectedTotal !== toCents(o.Total, `${id}: reported total`)) warnings.push('Reported order total differs from calculated item/discount/tax/tip total.');
-    return {provider:'toast', source_order_id:id, location_id:o.Location, created_at:o.Opened, currency:'USD', status:String(o.Voided).toLowerCase()==='true'?'VOIDED':'CLOSED', gross_minor:gross, discount_minor:discount, refund_minor:refund, net_sales_minor:gross-discount-refund, tax_minor:toCents(o.Tax || '0','tax'), tip_minor:toCents(o.Tip || '0','tip'), items:itemData, payments:paymentData, lineage:{order_file:'OrderDetails.csv',item_file:'ItemSelectionDetails.csv',payment_file:'PaymentDetails.csv'}, warnings};
+    return {provider:'toast', source_order_id:id, location_id:o.Location, created_at:o.Opened, currency:'USD', status:String(o.Voided).toLowerCase()==='true'?'VOIDED':'CLOSED', customer_id:o['GuestLift Test Customer Id']||null, gross_minor:gross, discount_minor:discount, refund_minor:refund, net_sales_minor:gross-discount-refund, tax_minor:toCents(o.Tax || '0','tax'), tip_minor:toCents(o.Tip || '0','tip'), items:itemData, payments:paymentData, lineage:{order_file:'OrderDetails.csv',item_file:'ItemSelectionDetails.csv',payment_file:'PaymentDetails.csv'}, warnings};
   });
 }
 
@@ -179,6 +179,6 @@ function parseSquare(files) {
     const refund = (byRefund.get(id)??[]).filter(r=>r.status==='COMPLETED').reduce((s,r)=>s+minor(r.amount_money,`${id}: refund`),0);
     if (discount + refund > gross) err(`Square order ${id}: discounts and refunds exceed gross`);
     const payerows = byPayment.get(id)??[];
-    return {provider:'square',source_order_id:id,location_id:o.location_id,created_at:o.created_at,currency:'USD',status:o.state ?? 'UNKNOWN',gross_minor:gross,discount_minor:discount,refund_minor:refund,net_sales_minor:gross-discount-refund,tax_minor:minor(o.total_tax_money,`${id}: tax`,true),tip_minor:minor(o.total_tip_money,`${id}: tip`,true),items,payments:payerows.map(p=>({payment_id:p.id,amount_minor:minor(p.amount_money,`${id}: payment`),status:p.status??'UNKNOWN'})),lineage:{order_file:'orders.json',payment_file:'payments.json',refund_file:'refunds.json'},warnings:payerows.length?[]:['No matching payment fixture; payment coverage unknown.']};
+    return {provider:'square',source_order_id:id,location_id:o.location_id,created_at:o.created_at,currency:'USD',status:o.state ?? 'UNKNOWN',customer_id:o.customer_id??null,gross_minor:gross,discount_minor:discount,refund_minor:refund,net_sales_minor:gross-discount-refund,tax_minor:minor(o.total_tax_money,`${id}: tax`,true),tip_minor:minor(o.total_tip_money,`${id}: tip`,true),items,payments:payerows.map(p=>({payment_id:p.id,amount_minor:minor(p.amount_money,`${id}: payment`),status:p.status??'UNKNOWN'})),lineage:{order_file:'orders.json',payment_file:'payments.json',refund_file:'refunds.json'},warnings:payerows.length?[]:['No matching payment fixture; payment coverage unknown.']};
   });
 }

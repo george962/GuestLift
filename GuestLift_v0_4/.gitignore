@@ -1,0 +1,22 @@
+# Dependencies, builds and environment variables
+node_modules/
+.next/
+out/
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Local Python dependencies and caches
+__pycache__/
+.pytest_cache/
+*.py[cod]
+.venv/
+venv/
+
+# Generated local databases, platform files, logs
+*.db
+*.sqlite
+*.sqlite3
+.DS_Store
+*.log

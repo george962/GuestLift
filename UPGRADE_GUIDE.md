@@ -1,55 +1,54 @@
-# GuestLift v0.3 — Install and demo
+# Update GuestLift from v0.3 to v0.4 on your Mac
 
-**This is a full replacement application release for your existing `~/GuestLift` project.** It includes all v0.2 code plus a new Import Lab. No changes to your git remote are necessary.
+The release ZIP is a **complete replacement code tree**, not a patch. It does not contain your `.git` directory, dependencies, database volume or secrets.
 
-## 1. Install on your Mac
+## Install
 
-Download `GuestLift_v0_3_Import_Lab.zip` into `~/Downloads`. From Terminal, paste the full block below. **This block has no `#` comment lines**, to avoid the zsh prompt problem seen previously.
+1. Download `GuestLift_v0_4_Campaign_Analytics_MVP.zip` and save it to your Mac's Downloads folder.
+2. Extract it. The ZIP has one top-level folder named `GuestLift_v0_4`.
+3. From a Mac Terminal, **after confirming the extracted directory exists**, run the following block. It copies the source files into your existing `~/GuestLift` Git checkout and does **not** delete existing files or your SQL volume.
 
 ```bash
-set -e
-unzip -o "$HOME/Downloads/GuestLift_v0_3_Import_Lab.zip" -d "$HOME/Downloads"
-rsync -av --exclude='.git' "$HOME/Downloads/GuestLift_v0_3/" "$HOME/GuestLift/"
-cd "$HOME/GuestLift"
-docker compose up --build -d
-docker compose exec -T backend python -m pytest -q
-docker compose exec -T frontend npm run test
-
-docker compose ps
-git status
+cd "$HOME/GuestLift" || exit 1
+SRC="$HOME/Downloads/GuestLift_v0_4"
+if [[ ! -f "$SRC/frontend/app/campaigns/page.tsx" ]]; then
+  echo "Can't find $SRC/frontend/app/campaigns/page.tsx. Check where Finder extracted the ZIP."
+else
+  rsync -av --exclude='.git/' --exclude='node_modules/' --exclude='.next/' --exclude='__pycache__/' --exclude='.venv/' "$SRC/" "$HOME/GuestLift/" && \
+  docker compose up --build -d && \
+  docker compose exec -T backend python -m pytest -q && \
+  docker compose exec -T frontend npm test && \
+  docker compose ps && \
+  git status
+fi
 ```
 
-The backend should show **10 passing tests**, and the frontend should show **10 passing tests**. If either test fails, **do not commit yet**—read the error output first.
+If Finder unzips the release into a differently named directory, change only the `SRC=` value to that **exact path**. Do not copy from guessed locations. `set -e` is intentionally not required.
 
-## 2. Test real source-file parsing
+## Verify
 
-Open `http://localhost:3000/import`.
+- Open `http://localhost:3000/campaigns`.
+- Click **Download sample campaigns** to get the two CSVs.
+- Use both file controls to upload them in the same browser.
+- See 2 campaigns and 21 matched synthetic redemption events.
+- Use **Save to local SQL**, then visit `http://localhost:8000/api/campaigns/report`.
+- Repeat Save to local SQL; replays should not create extra redemptions.
+- Visit `http://localhost:3000/import` for Toast/Square source-file imports, then return to the Campaign Lab.
 
-**Toast:** Click Download Toast CSV sample pack; extract it; select the three CSVs and click Run import pipeline. Expect 28 accepted orders and $594.70 pretax net sales.
+## Save to GitHub
 
-**Square:** Switch provider; download/extract its JSON pack; upload all three files. Expect 28 accepted orders and $650.80 pretax net sales.
-
-**Broken fixture:** Visit `http://localhost:3000/samples/toast-broken-example.zip`, extract/upload its three CSVs, and confirm you see a missing-header error instead of fabricated metrics.
-
-**Coupon scenario:** After a successful import, click **Model an offer on these orders**; adjust percent-off, minimum order and margin in Offer Studio. The results use the canonical orders you just parsed in this browser session.
-
-You can also edit a copy of any fabricated CSV to test how the calculations change. Use only synthetic data; do not upload real customer or restaurant records.
-
-## 3. Commit your verified version
-
-Only after the above is working:
+Only after the tests and pages work locally:
 
 ```bash
 cd "$HOME/GuestLift"
+git status
 git add .
-git commit -m "feat: interactive import lab, synthetic file upload, new brand identity"
+git commit -m "feat: campaign analytics MVP with synthetic loyalty reports"
 git push origin main
 ```
 
-If Git reports no changes, review `git status`; don't create an empty commit.
+`.gitignore` excludes Python caches, local databases and dependencies. Never commit `.env`, real restaurant transaction files or customer data.
 
-## 4. Public deployment
+## Important deployment distinction
 
-The import page also works on a static public Next.js build: the uploaded synthetic files are processed in the **visitor's browser only**. The static build does not include the Python backend or a remotely accessible SQL database. Use the existing [Cloudflare Pages guide](docs/DEPLOYMENT.md), which sets `GUESTLIFT_STATIC_EXPORT=1`, framework Next.js (static), root `frontend`, output `out`.
-
-Before accepting actual merchant uploads, GuestLift needs seller authorization, authentication, tenant separation, strict data retention, encrypted transport/storage, secure backend hosting and vendor-specific schema verification. None of those are part of v0.3.
+Your public deployment should be the static Next.js export. The FastAPI backend has no merchant authentication or tenant separation and is **not safe to expose on the internet**. Public visitors can safely explore synthetic files in their browsers without a server-side upload service. See `docs/DEPLOYMENT.md`.

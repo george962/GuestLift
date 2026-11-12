@@ -44,3 +44,12 @@ test('Square unsupported currency and missing payment link fail',()=>{
   const broken=fixtures('square');broken['refunds.json']=broken['refunds.json'].replace('"payment_id": "sq-payment-0007"','"payment_id": "does-not-exist"');
   assert.throws(()=>transformUploaded('square',broken),/references missing payment/);
 });
+
+test('fictional customer identity is optional and preserved across provider adapters',()=>{
+  const toast=transformUploaded('toast',fixtures('toast')).records;
+  const square=transformUploaded('square',fixtures('square')).records;
+  assert.ok(toast.some(o=>o.customer_id?.startsWith('TEST-TOAST-')));
+  assert.ok(square.some(o=>o.customer_id?.startsWith('TEST-SQUARE-')));
+  assert.ok(toast.some(o=>o.customer_id==null));
+  assert.ok(square.some(o=>o.customer_id==null));
+});
