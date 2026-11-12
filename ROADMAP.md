@@ -1,53 +1,47 @@
-# TableSignal (working name) — product roadmap
+# TableSignal / GuestLift — Current roadmap
 
-Updated 2026-11-12. Built on the existing GitHub project `george962/GuestLift`.
+**Status as of November 12, 2026:** v0.7 animated SaaS experience prototype, built on the original GuestLift data and campaign engines. This replaces the older demo milestones as the current plan; their implementation and limitations remain documented in `docs/IMPLEMENTATION_STATUS.md`.
 
-## North star
+## Product promise
 
-Restaurant operators open a trusted workspace, understand sales and return visits, evaluate promotion economics, and ask a transparent analyst what to investigate next. A value-creating customer workflow precedes more connectors and AI bells and whistles.
+A restaurant operator should be able to understand customer repeat behavior, measured promotion costs, and significant differences between locations in a single workspace, then ask evidence-backed questions. **We do not claim sales attribution equals incremental profit.**
 
-### v0.6 — Unified website and account journey (delivered in source)
+## Completed in the source release
 
-- [x] Plain-language landing page and non-technical value proposition
-- [x] Automatically moving, pauseable, interactive sample product tour
-- [x] Reduced-motion support and mobile CSS
-- [x] Single clear `/start` entry point with public vs account paths
-- [x] Separate sign-up, sign-in, forgot/reset password pages wired to Supabase
-- [x] Restaurant profile onboarding and settings
-- [x] Dedicated subscription and Stripe TEST controls
-- [x] Public pricing and help/FAQ pages with honest availability
-- [x] Four core operator workspace tabs, utility links moved into settings/data/billing
-- [x] Preserve synthetic source adapters, campaign engine, and evidence-linked analyst
-- [x] Run existing unit tests and TSX parsing
-- [ ] Run full Next.js production/static builds and visual accessibility QA in Mac Docker
-- [ ] Validate responsive marketing and account flows in actual browser
-- [ ] Decide final business name after domain, trademark and usage diligence
-- [ ] Recruit 1–3 restaurant operators for five-minute product walkthroughs
+- [x] M0–M5: synthetic source adapters, normalized orders, PostgreSQL demonstration, browser import, campaign CSV/redemption matching, finance and customer analytics.
+- [x] v0.5: optional Supabase identity foundation, owner-scoped synthetic account workspace, proposed pricing, Stripe **test-only** subscription workflow and read-only analyst.
+- [x] v0.6: simpler four-task workspace, account/billing pages, early homepage motion tour.
+- [x] **v0.7:** longer animated homepage with meaningful interactions, interactive analyst, four-step product story, customer/account journey, more polished sign-in / sign-up experience, account-aware navigation, direct pricing-to-billing route, biller configuration status and tests.
+- [x] v0.7: 25 backend / 29 frontend source tests pass.
 
-### v0.7 — True customer decision intelligence (next)
+## Acceptance still outstanding
 
-- [ ] Reliable 30/60/90 day cohorts with consistent observation periods and guest-ID coverage
-- [ ] Segments such as observed repeat, recently active and potentially lapsed (only from stable IDs)
-- [ ] Practical insights linked to campaign and location records
-- [ ] Written operator interviews identifying a high-value repeat workflow
-- [ ] AI model evaluated on evidence quality, uncertainty, refusal of unsupported requests
+- [ ] Run full Next.js production build and static export on Mac with npm registry access.
+- [ ] Manually verify responsive navigation, scroll reveal, reduced motion and account forms in an actual browser.
+- [ ] Configure a Supabase test project and complete email confirmation / reset flows end-to-end.
+- [ ] Configure Stripe test product/price and webhook; perform successful checkout and cancellation, ensure entitlement follows verified event only.
+- [ ] Publish the synthetic-only frontend and verify all public routes. Do **not** publish legacy API.
+- [ ] Test product value proposition with at least one independent restaurant operator.
+- [ ] Verify working name availability before committing to a domain or trademark.
 
-### v0.8 — Secure pilot foundation (before real merchant data)
+## Next milestone: v0.8 — Secure merchant pilot architecture
 
-- [ ] Production host/backend authentication, tenant authorization and policy review
-- [ ] Per-merchant storage boundaries and least-privilege access
-- [ ] Encryption, retention, deletion, audit events and backup/restore
-- [ ] Protected ingestion; handle malformed data, retries and amendment/upsert/reconciliation
-- [ ] Authorized Square Sandbox OAuth test integration and Toast partner feasibility
-- [ ] Account recovery flows, billing lifecycle, plan limits, location metering, taxes, refunds, cancellations
-- [ ] Published Privacy Policy, Terms, support contact and incident process reviewed by qualified parties
-- [ ] Security review, staging tests and limited explicitly approved merchant pilot
+**Do this before charging live or receiving real merchant data.**
 
-### Later (only with evidence)
+1. Isolate all unauthenticated demo routes from production API deployment, and secure each authenticated endpoint by tenant/role.
+2. Add per-merchant authorized data import, protected storage, deletion and backup policies; strengthen transactional schema, migrations and reconciliation.
+3. Test real Square Sandbox authorization; investigate Toast partner requirements; do not claim a live connection based on fixtures.
+4. Implement robust subscription lifecycle: invoice failure/dunning, subscription reconciliation, location-based quantity, cancellation, tax and plan limits.
+5. Add organization membership/invites, service roles, audit logs, rate limits, monitoring and recovery procedures.
+6. Publish and review legal/privacy/support policies before a limited approved pilot.
+7. Validate at least one problem a restaurant operator will actually pay to solve and update pricing hypothesis.
 
-- Randomized controlled campaign tests and incremental contribution measurement
-- Automated recommendations and campaign execution with user approval, budget and guardrails
-- Multiple merchant teams, granular roles, multi-location rollups, integrations with loyalty platforms
-- Operator admin dashboard and internal staff tooling
+## After a pilot: evidence-based AI and retention
 
-**Guardrails:** No real client uploads to the public sandbox. No claim of paid production service. No causal lift without valid test design. No automatic sensitive-data transmission to an LLM.
+- Customer cohorts and repeat/at-risk segments with stable identifiers and known coverage limitations.
+- Restaurant-specific business context (hours, locations, menu, promotion eligibility, verified costs).
+- Read-only AI research using approved analytics APIs and citations, never fabricated metrics.
+- Controlled campaign experimentation and margin-aware incremental outcomes.
+- More POS/loyalty integrations only when demonstrated customer value justifies them.
+
+**Working rule:** One customer journey first; technical tools available in secondary flows. No live billing or sensitive uploads into the prototype. Update this file after independently completing the unfinished checks.

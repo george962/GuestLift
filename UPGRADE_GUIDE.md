@@ -1,10 +1,9 @@
-# Upgrade v0.5 → v0.6
+# Upgrading from GuestLift / TableSignal v0.6 to v0.7
 
-- Full replacement files: this folder contains a complete codebase based on v0.5; backend and tests remain.
-- Existing project directory on Mac can remain `~/GuestLift`, and the GitHub repo stays `george962/GuestLift`.
-- Copy the extracted **contents** of this release into your project; preserve `.git/`, your personal `.env` and database volume.
-- Do not unzip anything if the files are already in your project folder.
-- Starting command is `docker compose up --build -d`.
-- New navigation, account pages, animated tour and marketing design do not require a data migration.
-- Only the public-facing name changes to a working label. Internal `GUESTLIFT_*` environment variables remain so existing setups keep working.
-- This release is not a production merchant-service launch; no real account or billing functionality works until you configure external providers.
+- Full replacement repository provided: frontend, backend, tests, fixtures, website and documentation. **No separate patches.**
+- Copy the entire release's *contents* into the same existing `~/GuestLift` folder. Preserve your `.git` and your ignored `.env`. Keep existing PostgreSQL Docker volume if it contains your local synthetic test data.
+- You do **not** need another unzip command after extracting the files yourself.
+- Run the full one-block instructions in `RUN_ME_FIRST.md`.
+- Rebuild the frontend after changing `NEXT_PUBLIC_SUPABASE_*` values: the env vars are embedded at build time.
+- Old technical demo routes remain accessible but are no longer the primary public navigation.
+- The name `TableSignal` is still temporary. Python internal identifiers and database volumes remain named GuestLift for backwards compatibility.

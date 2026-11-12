@@ -1,3 +1,15 @@
+# TableSignal v0.7 — Implementation status (November 12, 2026)
+
+**Delivered:** complete replacement source, expanded animated landing, Supabase Auth screens, safe pricing-to-account-to-billing path, server-generated Stripe **test** Checkout, signed webhook subscription handling, account page, and synthetic-only analytics.
+
+**Verified:** 25 backend pytest tests, 29 frontend Node tests; TS/TSX source parsed without syntax errors. **Not verified:** full Next.js production build, Supabase/Stripe end-to-end tests using actual test credentials, public deployment, or interactive real-browser acceptance.
+
+**Restrictions:** test/synthetic only. No live merchant data or live charges. Unauthenticated local fixture API must never be exposed publicly. No production security sign-off.
+
+See [setup](ACCOUNT_BILLING_SETUP.md), [v0.7 notes](RELEASE_NOTES_v0_7.md), and [current roadmap](../ROADMAP.md).
+
+---
+
 # GuestLift v0.5 implementation checkpoint — 2026-11-12
 
 The latest version is **v0.5**. It includes a unified fictional restaurant workspace, a controlled evidence-backed analyst, optional Supabase verified account auth and synthetic tenant data, and Stripe **test-only** subscription scaffolding. Billing and a real merchant-data API are **not** production-ready.

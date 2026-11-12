@@ -137,6 +137,20 @@ def _scoped_summary(db:Session,w:Workspace)->dict:
        'discount_minor':o.discount_minor,'campaign_code':o.campaign_code,
        'campaign_discount_minor':o.campaign_discount_minor} for o in rows])
 
+@router.get('/config')
+def public_configuration():
+    """Report enabled integrations without disclosing credentials or account details."""
+    stripe_key=os.getenv('STRIPE_SECRET_KEY','')
+    price_id=os.getenv('STRIPE_GROWTH_PRICE_ID','')
+    return {
+        'auth_configured':bool(os.getenv('SUPABASE_URL') and os.getenv('SUPABASE_PUBLISHABLE_KEY')),
+        'test_checkout_configured':stripe_key.startswith('sk_test_') and price_id.startswith('price_'),
+        'test_webhook_configured':bool(os.getenv('STRIPE_WEBHOOK_SECRET')) and stripe_key.startswith('sk_test_'),
+        'live_payments_enabled':False,
+        'real_merchant_data_allowed':False,
+        'mode':'developer_test_only'
+    }
+
 @router.get('/me')
 def me(sub:str=Depends(authenticated_subject)):
     with Session(engine) as db:

@@ -13,7 +13,7 @@ async def lifespan(app: FastAPI):
     init_db()
     yield
 
-app=FastAPI(title='GuestLift Demo API',version='0.5.0',lifespan=lifespan,
+app=FastAPI(title='TableSignal Demo API',version='0.7.0',lifespan=lifespan,
     description='Local fictional restaurant analytics, account foundation and Stripe test-mode subscription tools. Never expose demo endpoints publicly.')
 app.add_middleware(CORSMiddleware, allow_origins=['http://localhost:3000','http://127.0.0.1:3000'], allow_methods=['GET','POST'], allow_headers=['*'])
 app.include_router(saas_router)

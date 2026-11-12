@@ -2,15 +2,18 @@
 import Link from 'next/link';
 import {usePathname} from 'next/navigation';
 import {ArrowRight,Menu,X,ArrowUpRight} from 'lucide-react';
-import {useState} from 'react';
+import {useEffect,useState} from 'react';
+import {supabaseClient} from '@/lib/supabase-client';
 import {BrandMark} from './brand-mark';
 export function Brand(){return <Link href="/" className="brand ts-brand" aria-label="TableSignal home"><span className="brand-mark"><BrandMark width={30} height={30}/></span><span>table<span className="ts-brand-teal">signal</span><span className="brand-dot">.</span></span></Link>}
 export function Nav(){
- const pathname=usePathname(); const [open,setOpen]=useState(false);
+ const pathname=usePathname(); const [open,setOpen]=useState(false),[signedIn,setSignedIn]=useState(false);
+ const sb=supabaseClient();
+ useEffect(()=>{if(!sb)return;let mounted=true;void sb.auth.getSession().then(({data})=>{if(mounted)setSignedIn(Boolean(data.session))});const {data}=sb.auth.onAuthStateChange((_event,session)=>{if(mounted)setSignedIn(Boolean(session))});return()=>{mounted=false;data.subscription.unsubscribe()}},[sb]);
  const links=[{href:'/product',label:'How it works'},{href:'/pricing',label:'Pricing'},{href:'/help',label:'Help'}];
  return <header className="nav-shell ts-header"><div className="nav-inner"><Brand/>
- <nav className={'nav-links '+(open?'nav-open':'')} aria-label="Main navigation">{links.map(l=><Link key={l.href} href={l.href} onClick={()=>setOpen(false)} className={pathname===l.href?'active':''}>{l.label}</Link>)}<Link href="/sign-in" className="ts-nav-mobile-signin" onClick={()=>setOpen(false)}>Sign in</Link></nav>
- <div className="ts-nav-actions"><Link className="ts-nav-signin" href="/sign-in">Sign in</Link><Link className="nav-cta" href="/start">Try the demo <ArrowRight size={16}/></Link></div>
+ <nav className={'nav-links '+(open?'nav-open':'')} aria-label="Main navigation">{links.map(l=><Link key={l.href} href={l.href} onClick={()=>setOpen(false)} className={pathname===l.href?'active':''}>{l.label}</Link>)}<Link href={signedIn?"/account":"/sign-in"} className="ts-nav-mobile-signin" onClick={()=>setOpen(false)}>{signedIn?"My account":"Sign in"}</Link></nav>
+ <div className="ts-nav-actions"><Link className="ts-nav-signin" href={signedIn?"/account":"/sign-in"}>{signedIn?"My account":"Sign in"}</Link><Link className="nav-cta" href="/start">Try the demo <ArrowRight size={16}/></Link></div>
  <button className="nav-mobile-toggle" aria-label={open?'Close menu':'Open menu'} aria-expanded={open} onClick={()=>setOpen(!open)}>{open?<X/>:<Menu/>}</button>
  </div></header>
 }
