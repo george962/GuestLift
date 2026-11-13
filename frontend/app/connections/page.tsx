@@ -72,7 +72,7 @@ export default function Connections(){
           {status?.last_error&&<div className="ts9-notice danger">{status.last_error}</div>}
           <div className="ts9-inline-actions"><button className="ts9-button primary" disabled={busy} onClick={()=>void action('sync')}><RefreshCcw size={17}/>{busy?'Working…':'Sync last 180 days'}</button>
           <button className="ts9-button secondary" disabled={busy} onClick={remove}><Trash2 size={16}/> Disconnect and delete imported orders</button></div>
-          {synced&&<div className="ts9-notice success"><CheckCircle2 size={17}/> {synced.inserted} new · {synced.updated} refreshed · {synced.skipped} skipped · {synced.scanned} scanned</div>}
+          {synced&&<div className="ts9-notice success" role="status"><CheckCircle2 size={17}/> Sync complete: {synced.inserted} new · {synced.updated} refreshed · {synced.skipped} skipped · {synced.scanned} scanned. <Link href="/opportunities" style={{fontWeight:700}}>Review business opportunities <ArrowRight size={14}/></Link></div>}
         </>:<>
           <div className="ts9-connection-choices"><div><h3>Option A · One-click developer Sandbox</h3><p>For testing your own Square Sandbox seller. Its token stays in your local backend <code>.env</code>, never in the browser.</p>
             <button className="ts9-button primary" disabled={busy||!status?.developer_token_configured} onClick={()=>void action('connect-developer-sandbox')}>Connect my Sandbox <ArrowRight size={16}/></button>

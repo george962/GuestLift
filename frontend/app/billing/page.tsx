@@ -124,11 +124,11 @@ export default function Billing() {
   const canCheckout=Boolean(config?.test_checkout_configured);
   const hasCustomer=Boolean(account?.has_billing_customer);
 
-  return <main className="ts-public-page v7-billing-page">
+  return <main className="ts-public-page v7-billing-page ts10-billing">
     <div className="ts-page-hero">
       <span className="ts-kicker">YOUR ACCOUNT · BILLING</span>
-      <h1>Your plan, payments<br/>and subscription.</h1>
-      <p>Secure subscriptions run through Stripe-hosted Checkout. This local release uses <strong>test payments only</strong>; no live payments are collected.</p>
+      <h1>Your subscription.</h1>
+      <p>Manage your verified test subscription. Payment details and cancellations are handled securely by Stripe.</p>
     </div>
     <div className="v7-billing-layout">
       <section className="ts-settings-card v7-billing-main">
@@ -153,12 +153,12 @@ export default function Billing() {
             {message}
           </div>}
           <div className="v7-billing-buttons">
-            <button type="button" className="ts-btn-dark" disabled={!token||busy||loading||repairing||active||!canCheckout} onClick={()=>void action('checkout')}>
-              Continue to Stripe test checkout <ExternalLink size={16}/>
-            </button>
-            <button type="button" className="ts-btn-outline" disabled={!token||busy||loading||repairing||!hasCustomer} onClick={()=>void action('portal')}>
-              Manage test subscription <ExternalLink size={16}/>
-            </button>
+            {!active&&<button type="button" className="ts-btn-dark" disabled={!token||busy||loading||repairing||!canCheckout} onClick={()=>void action('checkout')}>
+              Start Growth test checkout <ExternalLink size={16}/>
+            </button>}
+            {hasCustomer&&<button type="button" className="ts-btn-dark" disabled={!token||busy||loading||repairing} onClick={()=>void action('portal')}>
+              Manage my Stripe subscription <ExternalLink size={16}/>
+            </button>}
             {!active&&canCheckout&&<button type="button" className="ts-mini-button" disabled={!token||busy||loading||repairing} onClick={()=>void repair()}>
               <RefreshCcw size={15}/> {repairing?'Checking Stripe…':'Find my completed test checkout'}
             </button>}
@@ -168,7 +168,7 @@ export default function Billing() {
           </div>
           {!canCheckout&&<div className="ts-alert">Stripe test Checkout is not configured on the backend. Add the sandbox secret and recurring Price ID in your local .env.</div>}
           {active&&<p style={{marginTop:18}}><Link href="/connections">Connect Square Sandbox <ArrowRight size={16}/></Link></p>}
-          {!active&&<p className="ts-auth-disclaimer" style={{marginTop:20}}>Already paid in Stripe Sandbox? Use <strong>Find my completed test checkout</strong> before attempting another payment. Payment confirmation must come from Stripe, not from this page URL.</p>}
+          {!active&&<div className="ts10-notice" style={{marginTop:18}}>Already completed a test purchase? Use “Find my completed test checkout” first. You should not pay twice.</div>}
         </>}
       </section>
       <aside className="v7-billing-aside">

@@ -35,6 +35,17 @@ class Workspace(Base):
     stripe_subscription_id:Mapped[str|None]=mapped_column(String(120),nullable=True,unique=True)
     created_at:Mapped[str]=mapped_column(String(40))
 
+class OnboardingProgress(Base):
+    __tablename__ = 'tablesignal_onboarding_progress'
+    workspace_id:Mapped[str]=mapped_column(ForeignKey('saas_workspaces.id'),primary_key=True)
+    stage:Mapped[int]=mapped_column(Integer,default=1)
+    plan_choice:Mapped[str]=mapped_column(String(20),default='not_chosen')
+    updated_at:Mapped[str]=mapped_column(String(40))
+
+class OnboardingUpdate(BaseModel):
+    stage:int=Field(ge=1,le=3)
+    plan_choice:str=Field(pattern='^(not_chosen|sandbox|growth)$')
+
 class WorkspaceOrder(Base):
     __tablename__='saas_workspace_demo_orders'
     id:Mapped[int]=mapped_column(Integer,primary_key=True,autoincrement=True)
@@ -157,11 +168,43 @@ def me(sub:str=Depends(authenticated_subject)):
         w=_get_workspace(db,sub)
         return {'workspace':_workspace_json(w),'summary':_scoped_summary(db,w)}
 
+@router.get('/onboarding')
+def read_onboarding(sub:str=Depends(authenticated_subject)):
+    with Session(engine) as db:
+        w=_get_workspace(db,sub)
+        progress=db.get(OnboardingProgress,w.id)
+        if progress:
+            return {'stage':progress.stage,'plan_choice':progress.plan_choice}
+        # Existing v0.9 profiles get a sensible starting point.
+        return {'stage':2 if w.name!='My Restaurant' else 1,'plan_choice':'not_chosen'}
+
+@router.post('/onboarding')
+def save_onboarding(payload:OnboardingUpdate,sub:str=Depends(authenticated_subject)):
+    with Session(engine) as db:
+        w=_get_workspace(db,sub)
+        if payload.stage>1 and w.name=='My Restaurant':
+            raise HTTPException(status_code=409,detail='Save your restaurant profile first.')
+        if payload.stage==3 and payload.plan_choice=='not_chosen':
+            raise HTTPException(status_code=422,detail='Choose a plan first.')
+        progress=db.get(OnboardingProgress,w.id)
+        if not progress:
+            progress=OnboardingProgress(workspace_id=w.id,stage=payload.stage,
+                   plan_choice=payload.plan_choice,updated_at=_now());db.add(progress)
+        else:
+            progress.stage=payload.stage;progress.plan_choice=payload.plan_choice;progress.updated_at=_now()
+        db.commit()
+        return {'stage':progress.stage,'plan_choice':progress.plan_choice}
+
 @router.post('/profile')
 def profile(profile:ProfileUpdate,sub:str=Depends(authenticated_subject)):
     with Session(engine) as db:
         w=_get_workspace(db,sub)
         w.name=profile.name.strip();w.restaurant_type=profile.restaurant_type;w.goal=profile.goal
+        progress=db.get(OnboardingProgress,w.id)
+        if not progress:
+            db.add(OnboardingProgress(workspace_id=w.id,stage=2,plan_choice='not_chosen',updated_at=_now()))
+        elif progress.stage<2:
+            progress.stage=2;progress.updated_at=_now()
         db.commit();db.refresh(w)
         return {'workspace':_workspace_json(w)}
 
@@ -217,32 +260,16 @@ def _stripe_client():
 
 
 def _stripe_payload(value):
-    """Convert Stripe SDK v15+ resources into ordinary Python dictionaries.
-
-    StripeObject and ListObject no longer expose dict.get().
-    Their to_dict() method recursively converts nested API resources.
-    Existing dictionary-based test fixtures remain supported.
-    """
-    if isinstance(value, dict):
-        return value
-
-    converter = getattr(value, 'to_dict', None)
+    if isinstance(value, dict): return value
+    converter=getattr(value, 'to_dict', None)
     if callable(converter):
-        result = converter()
-        if isinstance(result, dict):
-            return result
-
-    raise HTTPException(
-        status_code=502,
-        detail='Unexpected Stripe API response format.'
-    )
-
+        result=converter()
+        if isinstance(result, dict): return result
+    raise HTTPException(status_code=502, detail='Unexpected Stripe API response format.')
 
 def _object_id(value):
-    if isinstance(value, str):
-        return value
-    if value is None:
-        return None
+    if isinstance(value, str): return value
+    if value is None: return None
     return _stripe_payload(value).get('id')
 
 
@@ -255,7 +282,7 @@ def _subscription_has_growth_price(subscription) -> bool:
 
 
 def _apply_verified_subscription(db: Session, w: Workspace, subscription, customer_id: str):
-    subscription = _stripe_payload(subscription)
+    subscription=_stripe_payload(subscription)
     sub_id = _object_id(subscription.get('id'))
     if not sub_id or not sub_id.startswith('sub_'):
         raise HTTPException(status_code=409, detail='Stripe did not return a subscription identifier.')

@@ -9,18 +9,20 @@ from .database import init_db, reset_db, persist, metrics, recent_runs
 from .local_auth import router as local_auth_router
 from .saas import router as saas_router
 from .connections import router as square_router
+from .decisions import router as decisions_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
     yield
 
-app=FastAPI(title='TableSignal Demo API',version='0.9.1',lifespan=lifespan,
+app=FastAPI(title='TableSignal Demo API',version='0.10.0',lifespan=lifespan,
     description='Local fictional restaurant analytics, account foundation and Stripe test-mode subscription tools. Never expose demo endpoints publicly.')
 app.add_middleware(CORSMiddleware, allow_origins=['http://localhost:3000','http://127.0.0.1:3000'], allow_credentials=True, allow_methods=['GET','POST'], allow_headers=['*'])
 app.include_router(local_auth_router)
 app.include_router(saas_router)
 app.include_router(square_router)
+app.include_router(decisions_router)
 
 def validate_provider(provider: str):
     if provider not in ('toast','square'):raise HTTPException(status_code=404,detail='Provider not supported')

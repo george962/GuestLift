@@ -85,10 +85,10 @@ export function LandingExperience(){
     <div className="v7-hero-copy" data-reveal>
      <div className="v7-brow"><span className="v7-brow-signal"/> RESTAURANT CUSTOMER & PROMOTION INTELLIGENCE</div>
      <h1>Know your guests.<br/><span>Grow with clarity.</span></h1>
-     <p className="v7-hero-sub">See who returns, what your offers actually cost, and what to investigate next—together in one restaurant intelligence workspace.</p>
+     <p className="v7-hero-sub">Understand returning guests, compare promotion costs, and save your next business decision—with the evidence and assumptions in one place.</p>
      <div className="v7-hero-cta"><Link className="v7-button-primary" href="/start">Explore the live demo <ArrowRight size={18}/></Link><Link className="v7-button-ghost" href="/pricing">See plans <ArrowUpRight size={17}/></Link></div>
      <div className="v7-hero-safe"><ShieldCheck size={17}/> Try it instantly using fictional data. No account required.</div>
-     <div className="v7-hero-micro"><div className="v7-pulse-dots"><i/><i/><i/><i/></div><span>Sales intelligence</span><span className="v7-mini-dot">·</span><span>Guest behavior</span><span className="v7-mini-dot">·</span><span>AI-ready analysis</span></div>
+     <div className="v7-hero-micro"><div className="v7-pulse-dots"><i/><i/><i/><i/></div><span>Sales intelligence</span><span className="v7-mini-dot">·</span><span>Guest behavior</span><span className="v7-mini-dot">·</span><span>Saved decisions</span></div>
     </div>
     <div className="v7-hero-product" data-reveal>
      <div className="v7-product-halo"/><div className="v7-motion-float v7-float-1"><Users size={17}/><span>Repeat guest visibility</span></div>

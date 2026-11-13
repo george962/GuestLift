@@ -40,7 +40,7 @@ export function AuthPanel({mode}:{mode:Mode}){
    }
    if(mode==='sign-up'){
     const {data,error}=await sb.auth.signUp({email,password});if(error)throw error;
-    if(data.session){router.push(next==='/billing'?'/onboarding?next=billing':'/onboarding')}else{setNotice('Account created. Sign in to continue.')}return;
+    if(data.session){router.push('/account/welcome')}else{setNotice('Account created. Sign in to continue.')}return;
    }
    const {data,error}=await sb.auth.signInWithPassword({email,password});if(error)throw error;
    if(!data.session)throw new Error('No verified session was established.');router.push(next);

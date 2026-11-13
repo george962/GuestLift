@@ -28,7 +28,7 @@ from .database import Base, engine
 
 router = APIRouter(prefix='/api/local-auth', tags=['Local development authentication'])
 SESSION_COOKIE = 'tablesignal_dev_session'
-SESSION_TTL = 7 * 24 * 60 * 60
+SESSION_TTL = 30 * 24 * 60 * 60
 PASSWORD_HASHER = PasswordHasher(time_cost=2, memory_cost=19456, parallelism=1, hash_len=32, salt_len=16)
 _ALLOWED_ORIGINS = {'http://localhost:3000', 'http://127.0.0.1:3000'}
 _EMAIL_RE = re.compile(r'^[^\s@]{1,64}@[^\s@]{1,190}\.[^\s@]{2,}$')

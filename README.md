@@ -1,3 +1,15 @@
+# TableSignal v0.10 — Restaurant Retention & Promotion Intelligence
+
+**Local developer release (not production merchant ready).** See [Customer Journey](docs/V010_CUSTOMER_JOURNEY.md), [Acceptance Tests](docs/V010_ACCEPTANCE_TESTS.md), and [Safe Upgrade](INSTALL_V010.md).
+
+This version turns private Square Sandbox orders into evidence-backed opportunities, hypothetical offer-cost comparisons, and saved account-specific experiment drafts, alongside improved account confirmation, onboarding progress, navigation, and session resilience.
+
+**Quick start (on Mac):** `docker compose up --build -d`; browse `http://localhost:3000`. Keep existing `.env` credentials and Docker PostgreSQL volume. Stripe is test-only and Square is Sandbox-only. No actual messages or campaigns are sent.
+
+**Verification:** 45 backend tests and 39 frontend JavaScript tests passed in the builder. The full Next.js production build, real browser E2E and external Stripe/Square connectivity must be tested on the Mac.
+
+---
+
 # TableSignal v0.9 — Connected Restaurant Onboarding (local development release)
 
 **TableSignal connects Square Sandbox test orders to a private, account-specific restaurant dashboard.** Each account begins empty. The public fictional demo remains separate, and paid analyst endpoints still require a verified **Stripe TEST** subscription. This package is a complete replacement of v0.8 based on [`george962/GuestLift`](https://github.com/george962/GuestLift).

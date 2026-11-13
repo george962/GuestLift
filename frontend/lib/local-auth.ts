@@ -23,12 +23,18 @@ async function api(path:string,method:'GET'|'POST'='GET',body?:unknown,csrf?:str
  return result;
 }
 async function session():Promise<LocalSession|null>{
- try{
-  const result=await api('/api/local-auth/session');
-  csrfToken=result.authenticated?result.csrf_token:null;
-  return result.authenticated?{user:result.user,access_token:'cookie-session'}:null;
- }catch{csrfToken=null;return null}
+ let lastError:unknown=null;
+ for(let attempt=0;attempt<3;attempt++){
+  try{
+   const result=await api('/api/local-auth/session');
+   csrfToken=result.authenticated?result.csrf_token:null;
+   return result.authenticated?{user:result.user,access_token:'cookie-session'}:null;
+  }catch(e){lastError=e;if(attempt<2)await new Promise(resolve=>setTimeout(resolve,250*(attempt+1)));}
+ }
+ // A network outage is NOT a logout. Do not erase an existing CSRF token.
+ throw lastError instanceof Error?lastError:new Error('Account connection temporarily unavailable. Retry.');
 }
+
 async function authenticate(path:'/api/local-auth/login'|'/api/local-auth/register',email:string,password:string):Promise<AuthResult>{
  try{
   const result=await api(path,'POST',{email,password});
@@ -40,7 +46,7 @@ async function authenticate(path:'/api/local-auth/login'|'/api/local-auth/regist
 }
 const localClient={
  auth:{
-  async getSession(){return {data:{session:await session()},error:null}},
+  async getSession(){try{return {data:{session:await session()},error:null}}catch(e){return {data:{session:null},error:e instanceof Error?e:new Error('Session check unavailable')}}},
   signUp({email,password}:{email:string;password:string;options?:unknown}){return authenticate('/api/local-auth/register',email,password)},
   signInWithPassword({email,password}:{email:string;password:string}){return authenticate('/api/local-auth/login',email,password)},
   async signOut(){try{await api('/api/local-auth/logout','POST',{},csrfToken||(await api('/api/local-auth/session')).csrf_token);csrfToken=null;notify('SIGNED_OUT',null);return {error:null}}catch(e){return {error:e instanceof Error?e:new Error('Sign out failed')}}},
