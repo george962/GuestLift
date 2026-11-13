@@ -1,81 +1,71 @@
-# TableSignal v0.8 — Local accounts and restaurant workspaces
+# TableSignal v0.9 — Connected Restaurant Onboarding (local development release)
 
-**Know your guests. Grow with clarity.** TableSignal remains a prototype restaurant intelligence platform with an animated product website, a sample sales and customer dashboard, promotion analysis, and a rules-based analyst grounded in synthetic transaction metrics.
+**TableSignal connects Square Sandbox test orders to a private, account-specific restaurant dashboard.** Each account begins empty. The public fictional demo remains separate, and paid analyst endpoints still require a verified **Stripe TEST** subscription. This package is a complete replacement of v0.8 based on [`george962/GuestLift`](https://github.com/george962/GuestLift).
 
-## What changed in v0.8
+> This is a local developer/pilot foundation, **not a production merchant service**. Do not upload real customer data, connect real seller accounts, share secrets or expose the backend publicly. The name TableSignal is provisional.
 
-**Supabase was removed.** You do not need an external identity service, hosted database, account credentials, or a company registration to test the local app.
+## What is new
 
-- Create an email/password **developer account** at `/sign-up`; passwords are hashed using Argon2id.
-- Sign in at `/sign-in` using a revocable, 7-day, **HttpOnly cookie**; session tokens are hashed in PostgreSQL rather than kept in localStorage.
-- Set up a fictional restaurant profile in `/onboarding` and edit it later in `/settings`.
-- Each local user receives a separate synthetic restaurant workspace and can revisit it after a Docker restart.
-- Sign out on `/account`; change a password on `/reset-password` after supplying the current password. Password changes revoke other sessions.
-- Browser-to-API requests use credentialed CORS restricted to local site origins, plus origin checks and anti-forgery tokens for state-changing authenticated endpoints.
-- Existing operator dashboard, campaign models, import demo, animated homepage, and **optional Stripe test mode** are preserved.
-- No live payments, real merchant data, or production hosting are enabled.
+- **Real account journey:** `/sign-up` → `/onboarding` (restaurant → plan → connection) → `/connections` → `/dashboard`.
+- **Private dashboard:** new accounts no longer inherit the same 56 fictional orders. All private figures are calculated server-side from that account's own Square Sandbox synchronized orders. Sales trend, locations, observed repeat guests, data completeness, promotions and analyst statuses are represented faithfully.
+- **Real Square *Sandbox* API access:** `ListLocations`, `SearchOrders`, `ListPayments` (to join customer IDs when present), with pagination, completed-order filter, USD currency validation and a bounded 180-day import window.
+- **Connection methods:** your **own local developer Sandbox token** (easy first test) or **Square Sandbox OAuth** (scoped test authorization). OAuth state is time-bound and single-use, credentials are encrypted with a developer-supplied Fernet key. Secrets never appear in API status responses.
+- **Tenant-scoped persistence:** `square_sandbox_connections`, `square_sandbox_oauth_states`, `square_sandbox_orders`, `square_sandbox_sync_runs`, and `assisted_setup_requests` added to existing Postgres using additive SQLAlchemy table creation.
+- **Sync operations:** authenticated, CSRF-protected sync; order IDs upsert on re-run, existing orders are refreshed; one failed sync rolls back imported rows while recording a failed job. Disconnect deletes local credentials and associated Sandbox orders. Supported volume: max 800 orders per location batch in the last 180 days.
+- **Assisted onboarding:** records *local-only* implementation requests for future review—no imaginary outgoing support email or integration-fee charge.
+- **Local test data:** a developer-only utility can create paid fictional orders **through Square's real Sandbox APIs**. It never uses production.
+- **Test billing:** optional Stripe Checkout and signed subscription webhooks from v0.8 remain. Registration itself is free; private AI usage is gated by a verified Growth test subscription. No live charges.
 
-## Start the app locally
+## Start locally
 
-The ZIP contains the **complete replacement project** (not a patch). Copy its contents into the existing `~/GuestLift` folder, keeping that folder's `.git` and any private `.env` file. If you've already copied v0.8 into `~/GuestLift`, skip copying and **do not unzip or reinstall again**.
-
-From the project root:
+From your Mac's project folder `~/GuestLift`, after replacing its source files with this package:
 
 ```bash
-cd "$HOME/GuestLift" || exit 1
-grep '"version"' frontend/package.json
+cd "$HOME/GuestLift"
 docker compose up --build -d
 docker compose exec -T backend python -m pytest -q
 docker compose exec -T frontend npm test
 docker compose ps
 ```
 
-The frontend should report `0.8.0` and the services should be available at:
+**No separate Supabase installation.** Existing PostgreSQL Docker volume persists; do **not** run `docker compose down -v`. Keep `.git` and `.env` unchanged when copying a release.
 
 - Homepage: http://localhost:3000
-- Sign up: http://localhost:3000/sign-up
-- Sign in: http://localhost:3000/sign-in
-- Saved restaurant profile: http://localhost:3000/settings
-- Account and password change: http://localhost:3000/account
-- Test billing: http://localhost:3000/billing
-- Backend API docs: http://localhost:8000/docs (development only)
+- Free fictional demo: http://localhost:3000/workspace
+- Account registration: http://localhost:3000/sign-up
+- Onboarding: http://localhost:3000/onboarding
+- Private account dashboard: http://localhost:3000/dashboard
+- Square Sandbox connection: http://localhost:3000/connections
+- Test subscription management: http://localhost:3000/billing
 
-**No Supabase, Stripe, or OpenAI keys are required to register and use local sample accounts.** Stripe test Checkout remains disabled until its own **test-only** keys are configured.
+## First real API experiment
 
-## End-to-end local account walkthrough
+1. Create a developer Sandbox app at [Square Developer Console](https://developer.squareup.com/apps).
+2. Open Sandbox → Credentials and locate **your own Sandbox access token** (never send it in chat or put it in GitHub).
+3. Set `SQUARE_SANDBOX_ACCESS_TOKEN` in root `.env` using `.env.example` as a reference, then restart `docker compose up -d --force-recreate backend`.
+4. Register an account on TableSignal and provide a restaurant name.
+5. At `/connections`, choose **Connect my Sandbox** and **Sync last 180 days**.
+6. If you have no completed Sandbox orders, generate fictional transactions using Square API Explorer or, intentionally, run `docker compose exec backend env TABLESIGNAL_SEED_CONFIRM=YES python -m app.dev_seed_square` and sync again.
+7. Verify that `/dashboard` contains your Sandbox data, then register a second account using a different browser profile. The second account must not see the first's orders or reuse the same connected seller.
 
-1. Open `/sign-up`, enter a developer email and a password with at least 12 characters.
-2. Registration creates a local user record and session automatically; complete `/onboarding` with a fictional restaurant name and goal.
-3. Visit `/settings`, save a change, then `/account` and sign out.
-4. Sign in again with the same email/password. Your restaurant profile and synthetic workspace should persist.
-5. Create a second test account. Its restaurant profile remains separate. Each account starts with the same **fictional** seed dataset, not shared writable records.
-6. Optionally open `/billing` to see the Sandbox tier. Stripe test checkout requires separate configuration; no real charges are enabled.
-7. To change your password, sign in and visit `/reset-password`. Email reset is intentionally unavailable without a mail delivery service. A local developer recovery CLI is documented below.
+The token is stored **only** in the backend environment for developer-token mode, not sent from the browser and not persisted in the SQL connection table. The optional OAuth flow stores encrypted access/refresh tokens. See [detailed setup](docs/SQUARE_SANDBOX_SETUP.md).
 
-## Where data is stored
+## Source of truth and financial caution
 
-| Record | Local storage |
-|---|---|
-| User email + Argon2id password hash | `local_users` table in the existing PostgreSQL Docker volume |
-| Hashed session token + expiry + CSRF secret | `local_sessions` table in the same database |
-| Restaurant name, goals, synthetic orders | `saas_workspaces`, `saas_workspace_demo_orders` |
-| Optional test subscription status + Stripe references | `saas_workspaces` and `saas_billing_events` |
-| Full payment card details | Never stored by TableSignal; Stripe test Checkout handles payment methods |
+- Only orders in Square state `COMPLETED` are included in reported order counts. `OPEN` orders are omitted; canceled records do not contribute.
+- Dashboard **observed order value** is `Square total_money − reported total_tax_money − reported total_tip_money`. It is *not fully reconciled net sales*: return/refund processing, service charges, payment reconciliation and currency conversions are **not implemented**. The UI names this limitation.
+- Stable customer IDs are used only when present in exact order or linked completed payment records. Missing customer IDs remain anonymous, not inferred.
+- A direct, connected order total does **not** prove revenue lift, promotion attribution, acquisition or retention causality.
+- **No automatic background synchronization** yet. A human clicks Sync; a monitored queue, pagination checkpoints, retries, corrections and webhook reconcilers remain production blockers.
 
-The local Docker database uses the existing `guestlift_pg` persistent volume. Ordinary rebuilds and `docker compose down` **do not delete** that volume. `docker compose down -v` **does delete** the database, including accounts. Do not run that command unless you intend to lose the data. Back up before migrating your development database.
+## Verified scope
 
-## Account and billing limitations
+- Backend: end-to-end tests with mocked Square responses and real local SQL ORM verify registration, CSRF, workspace separation, new-account zero state, upsert/replay, updated customer IDs, seller ownership, encrypted OAuth, one-use state, assisted request scoping and rollback after sync failure.
+- Frontend: existing offer/import/analytics test suite plus v0.9 route checks and TypeScript syntax checks.
+- **Not verified in this build environment:** full Next.js compile (npm registry inaccessible), live Square Sandbox API calls (your own Sandbox token needed), Stripe external test checkout, mobile browser acceptance. These need verification on your Mac before calling this milestone fully accepted.
 
-These accounts are suitable for local developer testing only. There is no confirmed-email signup, automatic email recovery, user invitation/team role system, production rate limiting, security monitoring, hosted backups, or completed tenant security audit. The existing legacy fixture API also includes unauthenticated routes; **never expose port 8000 to the public internet**.
+## Next
 
-The demonstration contains fictional Toast/Square-shaped order records. It does not establish real marketing incrementality or profit lift. The AI analyst is read-only and model-based explanations are disabled unless explicitly configured on the backend for fictional aggregate data.
+See [ROADMAP.md](ROADMAP.md), [architecture and security](docs/V09_ARCHITECTURE.md), and [release deployment checklist](docs/PRODUCTION_READINESS.md).
 
-## Documentation
-
-- [Local account setup, testing and recovery](docs/LOCAL_ACCOUNT_SETUP.md)
-- [Stripe test billing (optional)](docs/ACCOUNT_BILLING_SETUP.md)
-- [Security and storage architecture](docs/SAAS_ARCHITECTURE.md)
-- [Roadmap and production blockers](ROADMAP.md)
-- [Upgrade guide](UPGRADE_GUIDE.md)
-
-The repository remains `george962/GuestLift`; TableSignal is a working product name, not a verified domain or trademark. This ZIP does **not** automatically commit or deploy the code.
+TableSignal is independent and not affiliated with Square or Toast. No production seller onboarding or public merchant-data handling is enabled.

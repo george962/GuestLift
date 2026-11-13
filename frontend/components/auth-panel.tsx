@@ -12,14 +12,14 @@ const headings:Record<Mode,{tag:string,title:string,body:string}>={
  'forgot-password':{tag:'LOCAL ACCOUNT RECOVERY',title:'Password recovery.',body:'Email recovery is not enabled in this local developer release.'},
  'reset-password':{tag:'ACCOUNT SECURITY',title:'Change your password.',body:'While signed in, confirm your current password before setting a new one.'}
 };
-const allowed=new Set(['/billing','/workspace','/settings','/onboarding','/account']);
-function safeNext(value:string|null){return value&&allowed.has(value)?value:'/workspace'}
+const allowed=new Set(['/billing','/dashboard','/connections','/settings','/onboarding','/account']);
+function safeNext(value:string|null){return value&&allowed.has(value)?value:'/dashboard'}
 
 export function AuthPanel({mode}:{mode:Mode}){
  const router=useRouter();const sb=localAuthClient();
  const [email,setEmail]=useState(''),[password,setPassword]=useState(''),[confirm,setConfirm]=useState(''),[currentPassword,setCurrentPassword]=useState('');
  const [showPassword,setShowPassword]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState('');
- const [next,setNext]=useState('/workspace'),[recoveryReady,setRecoveryReady]=useState(false);
+ const [next,setNext]=useState('/dashboard'),[recoveryReady,setRecoveryReady]=useState(false);
  const words=headings[mode];
  useEffect(()=>{setNext(safeNext(new URLSearchParams(window.location.search).get('next')))},[]);
  useEffect(()=>{if(!sb||mode!=='reset-password')return;let mounted=true;
@@ -57,7 +57,7 @@ export function AuthPanel({mode}:{mode:Mode}){
    <form className="ts-form" onSubmit={submit}>
     {mode!=='reset-password'&&<label>Email address<input type="email" autoComplete="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@restaurant.com" required/></label>}
     {mode==='reset-password'&&<label>Current password<input type="password" autoComplete="current-password" value={currentPassword} onChange={e=>setCurrentPassword(e.target.value)} required /></label>}
-    {mode!=='forgot-password'&&<label>{mode==='reset-password'?'New password':'Password'}<div className="v7-password-wrap"><input type={showPassword?'text':'password'} autoComplete={mode==='sign-in'?'current-password':'new-password'} minLength={mode==='sign-in'?1:12} value={password} onChange={e=>setPassword(e.target.value)} required placeholder={mode==='sign-in'?'Enter password':'At least 12 characters'}/><button type="button" aria-label={showPassword?'Hide password':'Show password'} onClick={()=>setShowPassword(x=>!x)}>{showPassword?<EyeOff size={17}/>:<Eye size={17}/>}</button></div></label>}
+    {<label>{mode==='reset-password'?'New password':'Password'}<div className="v7-password-wrap"><input type={showPassword?'text':'password'} autoComplete={mode==='sign-in'?'current-password':'new-password'} minLength={mode==='sign-in'?1:12} value={password} onChange={e=>setPassword(e.target.value)} required placeholder={mode==='sign-in'?'Enter password':'At least 12 characters'}/><button type="button" aria-label={showPassword?'Hide password':'Show password'} onClick={()=>setShowPassword(x=>!x)}>{showPassword?<EyeOff size={17}/>:<Eye size={17}/>}</button></div></label>}
     {(mode==='sign-up'||mode==='reset-password')&&<label>Confirm password<input type={showPassword?'text':'password'} autoComplete="new-password" minLength={12} value={confirm} onChange={e=>setConfirm(e.target.value)} required placeholder="Re-enter your password"/></label>}
     <button type="submit" className="ts-btn-dark" disabled={busy}>{busy?'Please wait…':({'sign-in':'Sign in','sign-up':'Create account','forgot-password':'Send recovery email','reset-password':'Update password'} as const)[mode]} <ArrowRight size={17}/></button>
    </form>}

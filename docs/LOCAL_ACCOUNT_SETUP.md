@@ -1,4 +1,4 @@
-# TableSignal v0.8 — Local account operations
+# TableSignal v0.9 — Local account operations
 
 ## What to install
 
@@ -14,7 +14,7 @@ docker compose exec -T backend python -m pytest -q
 docker compose exec -T frontend npm test
 ```
 
-Try registration at http://localhost:3000/sign-up with **fictional/development** contact details. You'll immediately be signed in, since this local release does not send account verification emails.
+Try registration at http://localhost:3000/sign-up with **fictional/development** contact details. The private `/dashboard` starts with no orders; connecting Square Sandbox at `/connections` is a separate deliberate action. You'll immediately be signed in, since this local release does not send account verification emails.
 
 ## What gets stored
 
@@ -26,7 +26,7 @@ PostgreSQL tables: `local_users` (email + Argon2id password hash), `local_sessio
 
 1. Create account A at `/sign-up` and complete the restaurant profile.
 2. Visit `/settings`, change the name, save, and reload. It should persist.
-3. Register account B in a separate browser profile. Its saved profile must be independent from account A.
+3. Register account B in a separate browser profile. Its saved profile must be independent from account A, and its private dashboard should show no orders unless it has its own Sandbox connection.
 4. Sign out at `/account` and sign back in at `/sign-in`. Try `/reset-password` while authenticated to change the password after entering the current one.
 5. Restart Docker with `docker compose restart`. The database and active session should persist.
 6. Optionally configure Stripe **test-only** keys for `/billing`, but no Stripe account is needed for local login.

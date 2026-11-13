@@ -1,3 +1,13 @@
+# CURRENT IMPLEMENTATION STATUS — v0.9, November 2026
+
+**Local prototype, not production merchant software.** Private account dashboard starts empty, Square Sandbox OAuth or developer-token integration is implemented with server-only credentials, API sync per account and bounded data handling. The fictional free demo is separate. Backend test suite and frontend calculation/source tests run locally. Full Next.js build and actual Square Sandbox transactions still require verification on the user's Mac.
+
+**Most important distinction:** The private dashboard is from the authenticated workspace's SQL-backed Square **Sandbox** data, not the same bundled 56 orders for everyone. Paid account AI is still gated behind a verified Stripe TEST subscription. No live payments and no real merchant customer data.
+
+**Remaining gate:** read [Production readiness](PRODUCTION_READINESS.md), [Square Sandbox setup](SQUARE_SANDBOX_SETUP.md), and [v0.9 architecture](V09_ARCHITECTURE.md) before any external onboarding. Documentation below is retained as historical notes for older versions and can be outdated.
+
+---
+
 # TableSignal v0.7 — Implementation status (November 12, 2026)
 
 **Delivered:** complete replacement source, expanded animated landing, Supabase Auth screens, safe pricing-to-account-to-billing path, server-generated Stripe **test** Checkout, signed webhook subscription handling, account page, and synthetic-only analytics.

@@ -23,7 +23,7 @@ def test_evidence_first_analyst_from_fictional_orders():
         assert r['evidence_keys'] and r['engine']=='verified_rules'
 
 
-def test_workspace_isolation_and_synthetic_seeding(tmp_path,monkeypatch):
+def test_workspace_isolation_and_zero_default(tmp_path,monkeypatch):
     engine=create_engine('sqlite:///'+str(tmp_path/'saas.sqlite'),connect_args={'check_same_thread':False})
     monkeypatch.setattr(saas,'engine',engine)
     Base.metadata.create_all(engine)
@@ -33,12 +33,12 @@ def test_workspace_isolation_and_synthetic_seeding(tmp_path,monkeypatch):
         assert a.id!=b.id
         summary_a=saas._scoped_summary(db,a)
         summary_b=saas._scoped_summary(db,b)
-        assert summary_a['orders']==56 and summary_b['orders']==56
-        assert saas._seed_workspace(db,a.id)==0
+        assert summary_a['orders']==0 and summary_b['orders']==0
+        assert saas._seed_workspace(db,a.id)==56
         from sqlalchemy import delete
         db.execute(delete(saas.WorkspaceOrder).where(saas.WorkspaceOrder.workspace_id==a.id));db.commit()
         assert saas._scoped_summary(db,a)['orders']==0
-        assert saas._scoped_summary(db,b)['orders']==56
+        assert saas._scoped_summary(db,b)['orders']==0
         assert saas._seed_workspace(db,a.id)==56
     engine.dispose()
 
@@ -65,7 +65,6 @@ def test_plan_gates_analyst_and_checkout_is_test_only(tmp_path,monkeypatch):
                 row=db.get(saas.Workspace,w.id)
                 row.subscription_plan='growth';row.subscription_status='active';db.commit()
             res=c.post('/api/saas/analyst',json={'question':'Which campaign gave discounts?'})
-            assert res.status_code==200 and res.json()['engine']=='verified_rules'
-            assert res.json()['causal_claim'] is False
+            assert res.status_code==409, res.text  # Need a connected source, even for a paid test account.
     finally:
         app.dependency_overrides.clear();engine.dispose()

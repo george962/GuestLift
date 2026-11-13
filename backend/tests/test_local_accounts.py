@@ -44,7 +44,7 @@ def test_full_local_user_workflow_and_workspace_isolation(tmp_path,monkeypatch):
             assert person is not None
             assert 'fourteen-characters-safe' not in person.password_hash
             assert db.get(local_auth.LocalSession,hashlib.sha256(cookie.encode()).hexdigest()) is not None
-        assert one.get('/api/saas/me').json()['summary']['orders']==56
+        assert one.get('/api/saas/me').json()['summary']['orders']==0
         assert two.get('/api/saas/me').status_code==401
         assert register(two,'second@example.com').status_code==201
         a=one.get('/api/saas/me').json()['workspace']
@@ -56,8 +56,8 @@ def test_full_local_user_workflow_and_workspace_isolation(tmp_path,monkeypatch):
         assert post.status_code==200,post.text
         assert one.get('/api/saas/me').json()['workspace']['name']=='Owner Restaurant'
         assert two.get('/api/saas/me').json()['workspace']['name']=='My Restaurant'
-        assert one.post('/api/saas/demo-reset',headers={**ORIGIN,'X-CSRF-Token':csrf(one)}).status_code==200
-        assert two.get('/api/saas/me').json()['summary']['orders']==56
+        assert one.post('/api/saas/demo-reset',headers={**ORIGIN,'X-CSRF-Token':csrf(one)}).status_code==410
+        assert two.get('/api/saas/me').json()['summary']['orders']==0
     engine.dispose()
 
 

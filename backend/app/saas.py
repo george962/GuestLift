@@ -1,6 +1,6 @@
 """Account, workspace, billing TEST mode and evidence-backed analyst.
 
-Not a production merchant service. All workspace orders are synthetic and seeded from packaged fixtures.
+Not a production merchant service. Square Sandbox transactions only; real seller uploads disabled.
 Authentication is via local PostgreSQL sessions. No developer bypass or magic token exists.
 """
 from __future__ import annotations
@@ -74,7 +74,7 @@ def _get_workspace(db:Session,owner_sub:str) -> Workspace:
     if w is None:
         w=Workspace(id=str(uuid.uuid4()),owner_sub=owner_sub,created_at=_now())
         db.add(w);db.commit();db.refresh(w)
-        _seed_workspace(db,w.id)
+        # No automatic demo seeding: a new account starts with zero connected data.
     return w
 
 
@@ -105,15 +105,32 @@ def _workspace_json(w:Workspace)->dict:
     enabled=w.subscription_plan=='growth' and w.subscription_status in ('active','trialing')
     return {'workspace_id':w.id,'name':w.name,'restaurant_type':w.restaurant_type,'goal':w.goal,
       'plan':w.subscription_plan,'subscription_status':w.subscription_status,'ai_enabled':enabled,
-      'source_mode':'fictional_workspace_seed','payments_live':False}
+      'source_mode':'square_sandbox_api_or_empty','payments_live':False}
 
 
-def _scoped_summary(db:Session,w:Workspace)->dict:
-    rows=db.scalars(select(WorkspaceOrder).where(WorkspaceOrder.workspace_id==w.id)).all()
-    return analyze_orders([{'provider':o.provider,'location_id':o.location_id,'source_order_id':o.source_order_id,
-       'created_at':o.created_at,'status':o.status,'customer_id':o.customer_id,'net_sales_minor':o.net_sales_minor,
-       'discount_minor':o.discount_minor,'campaign_code':o.campaign_code,
-       'campaign_discount_minor':o.campaign_discount_minor} for o in rows])
+def _scoped_summary(db: Session, w: Workspace) -> dict:
+    """Only orders imported from this account's own authenticated Square Sandbox connection."""
+    from .connections import SquareOrder, SquareConnection
+    connection = db.scalar(select(SquareConnection).where(SquareConnection.workspace_id == w.id))
+    rows = db.scalars(select(SquareOrder).where(SquareOrder.workspace_id == w.id)).all()
+    data = [{'provider': 'square', 'location_id': o.location_id,
+             'source_order_id': o.source_order_id, 'created_at': o.created_at,
+             'status': o.status, 'customer_id': o.customer_id,
+             'net_sales_minor': o.net_sales_minor, 'discount_minor': o.discount_minor,
+             'campaign_code': None, 'campaign_discount_minor': 0} for o in rows]
+    summary = analyze_orders(data)
+    summary['data_origin'] = 'square_sandbox_api' if connection else 'no_connected_data'
+    summary['has_connected_source'] = bool(connection)
+    summary['methodology']['sales'] = (
+        'Square Sandbox COMPLETED orders in the last 180 days: order total less recorded taxes/tips. '
+        'Payments, refunds, and service charges are NOT fully reconciled; do not call this final net sales.'
+    )
+    summary['methodology']['repeat'] = (
+        'Two or more observed completed orders with the same provider-scoped customer ID. '
+        'Anonymous orders are excluded; no claim of measured retention or customer identity resolution.'
+    )
+    summary['methodology']['campaigns'] = 'No verified coupon attribution: Square Sandbox promotion import not connected.'
+    return summary
 
 @router.get('/config')
 def public_configuration():
@@ -144,13 +161,10 @@ def profile(profile:ProfileUpdate,sub:str=Depends(authenticated_subject)):
         return {'workspace':_workspace_json(w)}
 
 @router.post('/demo-reset')
-def reset_demo(sub:str=Depends(authenticated_subject)):
-    """Reset only own synthetic rows. Never touch other workspaces or legacy demo tables."""
-    with Session(engine) as db:
-        w=_get_workspace(db,sub)
-        db.execute(delete(WorkspaceOrder).where(WorkspaceOrder.workspace_id==w.id));db.commit()
-        inserted=_seed_workspace(db,w.id)
-        return {'seeded':inserted,'source_mode':'fictional_workspace_seed'}
+def reset_demo(sub: str = Depends(authenticated_subject)):
+    """Deprecated: private accounts never receive fake sample orders."""
+    raise HTTPException(status_code=410,
+                        detail='Private workspaces no longer contain demo fixtures. Use the public free demo at /workspace.')
 
 @router.post('/analyst')
 def analyst(data:AnalystRequest,sub:str=Depends(authenticated_subject)):
@@ -159,6 +173,8 @@ def analyst(data:AnalystRequest,sub:str=Depends(authenticated_subject)):
         if not (w.subscription_plan=='growth' and w.subscription_status in ('active','trialing')):
             raise HTTPException(status_code=402,detail='Growth subscription required for account-based analyst. Free synthetic demo available without sign-in.')
         summary=_scoped_summary(db,w)
+        if not summary['has_connected_source']:
+            raise HTTPException(status_code=409, detail='Connect and sync Square Sandbox before using the account analyst.')
     result=answer_question(data.question,summary)
     # Optional actual language model uses aggregates only; never raw customer/order IDs.
     if os.getenv('GUESTLIFT_ENABLE_LLM')=='1' and os.getenv('OPENAI_API_KEY') and os.getenv('OPENAI_MODEL'):
@@ -169,7 +185,7 @@ def analyst(data:AnalystRequest,sub:str=Depends(authenticated_subject)):
             safe={k:summary[k] for k in ('orders','net_sales_minor','discount_minor','identified_customers',
                'repeat_customers','repeat_customer_rate_percent','identification_coverage_percent','locations','campaigns')}
             response=client.responses.create(model=os.environ['OPENAI_MODEL'],store=False,
-                instructions=('You are a read-only restaurant analyst. The user is looking at FICTIONAL SYNTHETIC data. '
+                instructions=('You are a read-only restaurant analyst analyzing SQUARE SANDBOX TEST data, never real merchant data. '
                  'Use ONLY supplied summary numbers. Never invent figures, infer identity, or claim causal lift. '
                  'Explain uncertainty and cite evidence keys verbatim. If data is insufficient, say so.'),
                 input=json.dumps({'question':data.question,'verified_aggregate_metrics':safe,

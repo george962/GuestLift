@@ -1,13 +1,19 @@
-# Upgrading from v0.7 to v0.8
+# v0.8 to v0.9 — preserve your local accounts
 
-The v0.8 ZIP is a **complete replacement source tree** based on your existing v0.7 project. Copy its files into `~/GuestLift`; preserve the `.git` directory and local secrets (`.env`). Do **not** copy a second nested folder into `~/GuestLift` if the contents are already at the project root.
+1. Back up your existing Postgres database (especially if you care about prior development accounts):
 
-**What changes:** The login backend now uses local `local_users` and `local_sessions` SQL tables instead of Supabase. `frontend/lib/supabase-client.ts` is now a tiny **local-auth compatibility shim** to overwrite stale v0.7 copies (it does not use Supabase). `frontend/lib/local-auth.ts` handles cookie-based sessions; `backend/app/local_auth.py` provides local register/login/logout/change-password endpoints. Your existing tables are not removed or wiped.
+   ```bash
+   cd "$HOME/GuestLift"
+   docker compose exec -T database pg_dump -U guestlift guestlift > tablesignal-backup-before-v09.sql
+   ```
 
-**Previous Supabase test identities are not automatically migrated.** Create new local test accounts. Orphaned old synthetic workspaces stay in PostgreSQL until explicitly migrated/cleaned later.
+   This backup contains sensitive password hashes and emails. Keep it private, encrypted if possible, and outside GitHub.
 
-**No volume deletion:** use `docker compose up --build -d`; **not** `docker compose down -v`. This adds the local-user tables to your database without deleting the existing demo data.
+2. Copy only the v0.9 source files over the matching contents of `~/GuestLift`; keep `.git/`, `.env`, and the Docker database volume unchanged. Do not nest `TableSignal_v0_9_Connected_Onboarding/` inside another copy of the project.
+3. Bring up services using the complete block in `RUN_ME_FIRST.md`.
+4. Sign in to your existing local account. New v0.9 SQL tables are created additively. Prior accounts and profile names are preserved.
+5. **Intentional change:** private dashboards now show **only connected Square Sandbox orders**. Old `saas_workspace_demo_orders` from v0.8 remain in the database for backward compatibility but are not displayed. Public sample data remains available separately at `/workspace`.
+6. Configure optional Square Sandbox credentials in the same ignored `.env`. See `docs/SQUARE_SANDBOX_SETUP.md`. Never paste secrets into the browser or GitHub.
+7. Verify real Sandbox test calls and data ownership before committing v0.9. Do not switch Stripe to live keys or publish the unauthenticated demo API.
 
-**Git warning:** The included `supabase-client.ts` shim safely overwrites the old Supabase-dependent source when upgrading by copying files over an existing project; it contains no third-party authentication dependency. Avoid committing your `.env` or backups.
-
-Run the test block in `RUN_ME_FIRST.md`. A browser-based signup/signout/profile test is required before calling the frontend verified.
+The full Next.js build and external Square Sandbox communication must be verified on the user's Mac; they were not runnable in the file creation environment.

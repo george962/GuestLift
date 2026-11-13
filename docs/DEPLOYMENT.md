@@ -1,3 +1,5 @@
+> **v0.9 safety notice:** This historical deployment guide covers a **static public fictional demo**. Do NOT deploy the connected/private account features or FastAPI backend publicly. Production security, OAuth, Stripe and merchant data controls are not ready. See [PRODUCTION_READINESS.md](PRODUCTION_READINESS.md).
+
 # GuestLift v0.5 Deployment — Public Demo vs. Private SaaS
 
 ## Publish the safe, no-backend sandbox first

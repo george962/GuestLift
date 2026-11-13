@@ -64,11 +64,11 @@ def answer_question(question: str, summary: dict) -> dict:
     q = question.lower().strip()[:500]
     if not q:
         raise ValueError('Question is required')
-    source = 'fictional_workspace_seed / normalized orders'
+    source = str(summary.get('data_origin', 'fictional_workspace_seed')) + ' / normalized orders'
     fmt = lambda n: f"${n/100:,.2f}"
     if any(k in q for k in ('customer','repeat','loyal','retention','return','lapse')):
         n=summary['identified_customers']; rate=summary['repeat_customer_rate_percent']
-        answer = (f"Among {n} identified synthetic customers, {summary['repeat_customers']} purchased at least twice "
+        answer = (f"Among {n} identified customers in this limited sample, {summary['repeat_customers']} purchased at least twice "
                   f"({rate}% of identified customers). Identity coverage is {summary['identification_coverage_percent']}% of orders. "
                   "This observed-sample repeat rate is not a retention experiment; anonymous customers are excluded.") if n else 'No usable customer identifiers are present, so repeat purchasing cannot be estimated.'
         tool='repeat_customer_analysis'; evidence=['identified_customers','repeat_customers','repeat_customer_rate_percent','identification_coverage_percent']
@@ -77,23 +77,23 @@ def answer_question(question: str, summary: dict) -> dict:
         offers=summary['campaigns']
         total_redemptions=sum(o['redemptions'] for o in offers)
         campaign_discounts=sum(o['recorded_discount_minor'] for o in offers)
-        answer=(f"The sample contains {total_redemptions} matched redemptions across {len(offers)} campaigns, "
+        answer=(f"The available dataset contains {total_redemptions} matched redemptions across {len(offers)} campaigns, "
                 f"with {fmt(campaign_discounts)} in recorded campaign discounts. "
                 "This is descriptive attribution, not proof the offers created additional sales or profit.")
         tool='promotion_performance';evidence=['campaigns','discount_minor'];next_step='Run a randomized holdout and measure contribution per eligible customer.'
     elif any(k in q for k in ('location','store','branch','best','worst')):
         locs=sorted(summary['locations'],key=lambda o:o['net_sales_minor'],reverse=True)
         if locs:
-            a=locs[0];answer=(f"In these fictional records, {a['location']} has the highest observed net sales "
+            a=locs[0];answer=(f"In the observed sample, {a['location']} has the highest observed net sales "
             f"({fmt(a['net_sales_minor'])} from {a['orders']} orders). Store size, hours, and coverage differ; this is not a performance ranking after adjustment.")
         else:answer='There are no location records to compare.'
         tool='location_comparison';evidence=['locations'];next_step='Compare normalized, same-period sales with operating hours and traffic before making a location decision.'
     else:
-        answer=(f"I can verify {summary['orders']} synthetic orders and {fmt(summary['net_sales_minor'])} in net sales "
+        answer=(f"I can verify {summary['orders']} observed orders and {fmt(summary['net_sales_minor'])} in net sales "
                 f"(average {fmt(summary['average_order_minor'])} per order). "
                 "To explain a cause, we would need comparison periods, operational context, and suitable evidence.")
         tool='sales_overview';evidence=['orders','net_sales_minor','average_order_minor'];next_step='Ask about returning customers, campaign discounts, or individual locations.'
     return {'question':question[:500], 'answer':answer,'tool':tool,'evidence_keys':evidence,
             'source':source,'recommended_next_step':next_step,
-            'causal_claim':False,'data_origin':'synthetic','engine':'verified_rules',
-            'disclaimer':'Demo analysis only. No real guest histories, no independent causal inference.'}
+            'causal_claim':False,'data_origin':summary.get('data_origin', 'synthetic'),'engine':'verified_rules',
+            'disclaimer':'Sandbox/development analysis only. No independent causal inference; see metric limitations.'}
