@@ -1,0 +1,31 @@
+{
+  "refunds": [
+    {
+      "id": "sq-refund-0007",
+      "payment_id": "sq-payment-0007",
+      "status": "COMPLETED",
+      "amount_money": {
+        "amount": 300,
+        "currency": "USD"
+      }
+    },
+    {
+      "id": "sq-refund-0018",
+      "payment_id": "sq-payment-0018",
+      "status": "COMPLETED",
+      "amount_money": {
+        "amount": 300,
+        "currency": "USD"
+      }
+    },
+    {
+      "id": "sq-refund-0026",
+      "payment_id": "sq-payment-0026",
+      "status": "COMPLETED",
+      "amount_money": {
+        "amount": 300,
+        "currency": "USD"
+      }
+    }
+  ]
+}

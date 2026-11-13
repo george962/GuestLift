@@ -147,3 +147,69 @@ def test_signed_webhook_verifies_active_then_revokes_on_cancel(tmp_path,monkeypa
             assert status['plan']=='sandbox' and status['subscription_status']=='canceled'
     finally:
         app.dependency_overrides.clear();engine.dispose()
+
+
+
+def test_stripe_sdk_v15_object_compatibility(tmp_path, monkeypatch):
+    """Exercise SDK-style resources without dictionary .get() methods."""
+    engine, wid = _db(tmp_path, monkeypatch)
+    calls = _fake_stripe(monkeypatch, wid)
+    calls['recent_checkouts'].append(calls['session_data'])
+
+    class SDKObject:
+        def __init__(self, data):
+            self._data = data
+
+        def to_dict(self):
+            return self._data
+
+    fake = sys.modules['stripe']
+
+    fake.checkout.Session.list = lambda **kwargs: SDKObject({
+        'data': calls['recent_checkouts']
+    })
+
+    fake.checkout.Session.retrieve = lambda sid: SDKObject(
+        calls['session_data']
+    )
+
+    fake.Subscription.retrieve = lambda sid: SDKObject(
+        calls['subscription']
+    )
+
+    try:
+        with TestClient(app) as client:
+            response = client.post(
+                '/api/saas/billing/reconcile',
+                json={}
+            )
+
+            assert response.status_code == 200, response.text
+            assert response.json()['access_granted'] is True
+
+            workspace = client.get('/api/saas/me').json()['workspace']
+            assert workspace['plan'] == 'growth'
+            assert workspace['subscription_status'] == 'active'
+
+            calls['subscription']['status'] = 'canceled'
+            calls['event'] = SDKObject({
+                'id': 'evt_sdk_v15_cancel',
+                'type': 'customer.subscription.deleted',
+                'livemode': False,
+                'data': {'object': calls['subscription']}
+            })
+
+            webhook = client.post(
+                '/api/saas/billing/webhook',
+                content=b'{}',
+                headers={'stripe-signature': 'synthetic'}
+            )
+
+            assert webhook.status_code == 200, webhook.text
+
+            workspace = client.get('/api/saas/me').json()['workspace']
+            assert workspace['plan'] == 'sandbox'
+            assert workspace['subscription_status'] == 'canceled'
+    finally:
+        app.dependency_overrides.clear()
+        engine.dispose()

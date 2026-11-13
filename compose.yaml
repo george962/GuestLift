@@ -44,5 +44,7 @@ services:
       - backend
     ports:
       - '127.0.0.1:3000:3000'
+    volumes:
+      - ./backend/fixtures:/backend/fixtures:ro
 volumes:
   guestlift_pg:

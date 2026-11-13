@@ -216,12 +216,34 @@ def _stripe_client():
     return stripe
 
 
+def _stripe_payload(value):
+    """Convert Stripe SDK v15+ resources into ordinary Python dictionaries.
+
+    StripeObject and ListObject no longer expose dict.get().
+    Their to_dict() method recursively converts nested API resources.
+    Existing dictionary-based test fixtures remain supported.
+    """
+    if isinstance(value, dict):
+        return value
+
+    converter = getattr(value, 'to_dict', None)
+    if callable(converter):
+        result = converter()
+        if isinstance(result, dict):
+            return result
+
+    raise HTTPException(
+        status_code=502,
+        detail='Unexpected Stripe API response format.'
+    )
+
+
 def _object_id(value):
     if isinstance(value, str):
         return value
-    if value is not None and hasattr(value, 'get'):
-        return value.get('id')
-    return None
+    if value is None:
+        return None
+    return _stripe_payload(value).get('id')
 
 
 def _subscription_has_growth_price(subscription) -> bool:
@@ -233,6 +255,7 @@ def _subscription_has_growth_price(subscription) -> bool:
 
 
 def _apply_verified_subscription(db: Session, w: Workspace, subscription, customer_id: str):
+    subscription = _stripe_payload(subscription)
     sub_id = _object_id(subscription.get('id'))
     if not sub_id or not sub_id.startswith('sub_'):
         raise HTTPException(status_code=409, detail='Stripe did not return a subscription identifier.')
@@ -264,7 +287,7 @@ def _reconcile_checkout(db: Session, w: Workspace, stripe, session_id: str):
     if not session_id.startswith('cs_test_'):
         raise HTTPException(status_code=422, detail='A Stripe test Checkout session is required.')
     try:
-        session = stripe.checkout.Session.retrieve(session_id)
+        session = _stripe_payload(stripe.checkout.Session.retrieve(session_id))
     except Exception as exc:
         raise HTTPException(status_code=502, detail='Could not verify Checkout with Stripe. Try again.') from exc
     if session.get('livemode') is not False or session.get('mode') != 'subscription':
@@ -283,7 +306,7 @@ def _reconcile_checkout(db: Session, w: Workspace, stripe, session_id: str):
         return {'verified': False, 'pending': True,
                 'message': 'Waiting for Stripe to create the subscription.', 'workspace': _workspace_json(w)}
     try:
-        subscription = stripe.Subscription.retrieve(sub_id)
+        subscription = _stripe_payload(stripe.Subscription.retrieve(sub_id))
     except Exception as exc:
         raise HTTPException(status_code=502, detail='Could not verify subscription with Stripe. Try again.') from exc
     return _apply_verified_subscription(db, w, subscription, customer_id)
@@ -292,7 +315,7 @@ def _reconcile_checkout(db: Session, w: Workspace, stripe, session_id: str):
 def _recent_owner_checkouts(stripe, workspace_id: str):
     """Find recent server-issued Checkout sessions for this local test workspace."""
     try:
-        sessions = stripe.checkout.Session.list(limit=100)
+        sessions = _stripe_payload(stripe.checkout.Session.list(limit=100))
     except Exception as exc:
         raise HTTPException(status_code=502, detail='Could not check existing Stripe purchases. Retry before paying again.') from exc
     return [entry for entry in (sessions.get('data') or [])
@@ -383,7 +406,7 @@ async def webhook(request: Request):
     payload = await request.body()
     sig = request.headers.get('stripe-signature', '')
     try:
-        event = stripe.Webhook.construct_event(payload, sig, secret)
+        event = _stripe_payload(stripe.Webhook.construct_event(payload, sig, secret))
     except (ValueError, stripe.error.SignatureVerificationError) as exc:
         raise HTTPException(status_code=400, detail='Invalid Stripe webhook signature.') from exc
     if event.get('livemode') is not False:
