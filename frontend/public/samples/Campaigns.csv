@@ -1,3 +1,0 @@
-campaign_id,code,name,offer_type,start_date,end_date,variable_cost_minor,fixed_cost_minor,description
-CAMP-LUNCH,LUNCHPERK,Weekday lunch perk,fixed,2026-10-01,2027-03-31,40,300,Fictional lunch incentive; 40-cent assumed service cost per redemption.
-CAMP-RETURN,RETURNING,Come back for more,other,2026-10-01,2027-03-31,55,450,Fictional return visit campaign; 55-cent assumed fulfillment cost.
