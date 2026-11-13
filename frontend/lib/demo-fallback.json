@@ -1,0 +1,2445 @@
+{
+  "toast": {
+    "provider": "toast",
+    "records": [
+      {
+        "provider": "toast",
+        "source_order_id": "9100001",
+        "location_id": "Northline \u00b7 Downtown",
+        "created_at": "10/30/2026 12:17:00",
+        "currency": "USD",
+        "status": "CLOSED",
+        "customer_id": null,
+        "gross_minor": 2180,
+        "discount_minor": 150,
+        "refund_minor": 0,
+        "net_sales_minor": 2030,
+        "tax_minor": 173,
+        "tip_minor": 0,
+        "items": [
+          {
+            "item_id": "91000011",
+            "name": "Crispy tofu bowl",
+            "quantity": 1.0,
+            "gross_minor": 1290,
+            "discount_minor": 150
+          },
+          {
+            "item_id": "91000012",
+            "name": "Sesame noodle cup",
+            "quantity": 1.0,
+            "gross_minor": 890,
+            "discount_minor": 0
+          }
+        ],
+        "payments": [
+          {
+            "payment_id": "91000011",
+            "amount_minor": 2203,
+            "status": "PAID"
+          }
+        ],
+        "lineage": {
+          "order_file": "OrderDetails.csv",
+          "item_file": "ItemSelectionDetails.csv",
+          "payment_file": "PaymentDetails.csv"
+        },
+        "warnings": []
+      },
+      {
+        "provider": "toast",
+        "source_order_id": "9100002",
+        "location_id": "Northline \u00b7 Lakeside",
+        "created_at": "11/02/2026 13:24:00",
+        "currency": "USD",
+        "status": "CLOSED",
+        "customer_id": "TEST-TOAST-001",
+        "gross_minor": 1540,
+        "discount_minor": 0,
+        "refund_minor": 0,
+        "net_sales_minor": 1540,
+        "tax_minor": 131,
+        "tip_minor": 0,
+        "items": [
+          {
+            "item_id": "91000021",
+            "name": "Citrus sparkling tea",
+            "quantity": 1.0,
+            "gross_minor": 490,
+            "discount_minor": 0
+          },
+          {
+            "item_id": "91000022",
+            "name": "Miso garden salad",
+            "quantity": 1.0,
+            "gross_minor": 1050,
+            "discount_minor": 0
+          }
+        ],
+        "payments": [
+          {
+            "payment_id": "91000021",
+            "amount_minor": 1671,
+            "status": "PAID"
+          }
+        ],
+        "lineage": {
+          "order_file": "OrderDetails.csv",
+          "item_file": "ItemSelectionDetails.csv",
+          "payment_file": "PaymentDetails.csv"
+        },
+        "warnings": []
+      },
+      {
+        "provider": "toast",
+        "source_order_id": "9100003",
+        "location_id": "Northline \u00b7 Market",
+        "created_at": "11/05/2026 14:31:00",
+        "currency": "USD",
+        "status": "CLOSED",
+        "customer_id": "TEST-TOAST-002",
+        "gross_minor": 2630,
+        "discount_minor": 0,
+        "refund_minor": 0,
+        "net_sales_minor": 2630,
+        "tax_minor": 224,
+        "tip_minor": 0,
+        "items": [
+          {
+            "item_id": "91000031",
+            "name": "Sweet potato fries",
+            "quantity": 1.0,
+            "gross_minor": 650,
+            "discount_minor": 0
+          },
+          {
+            "item_id": "91000032",
+            "name": "Citrus sparkling tea",
+            "quantity": 1.0,
+            "gross_minor": 490,
+            "discount_minor": 0
+          },
+          {
+            "item_id": "91000033",
+            "name": "Spicy chicken bowl",
+            "quantity": 1.0,
+            "gross_minor": 1490,
+            "discount_minor": 0
+          }
+        ],
+        "payments": [
+          {
+            "payment_id": "91000031",
+            "amount_minor": 1427,
+            "status": "PAID"
+          },
+          {
+            "payment_id": "91000032",
+            "amount_minor": 1427,
+            "status": "PAID"
+          }
+        ],
+        "lineage": {
+          "order_file": "OrderDetails.csv",
+          "item_file": "ItemSelectionDetails.csv",
+          "payment_file": "PaymentDetails.csv"
+        },
+        "warnings": []
+      },
+      {
+        "provider": "toast",
+        "source_order_id": "9100004",
+        "location_id": "Northline \u00b7 Eastside",
+        "created_at": "11/08/2026 15:38:00",
+        "currency": "USD",
+        "status": "CLOSED",
+        "customer_id": "TEST-TOAST-003",
+        "gross_minor": 1510,
+        "discount_minor": 150,
+        "refund_minor": 0,
+        "net_sales_minor": 1360,
+        "tax_minor": 116,
+        "tip_minor": 0,
+        "items": [
+          {
+            "item_id": "91000041",
+            "name": "Matcha iced latte",
+            "quantity": 1.0,
+            "gross_minor": 620,
+            "discount_minor": 150
+          },
+          {
+            "item_id": "91000042",
+            "name": "Sesame noodle cup",
+            "quantity": 1.0,
+            "gross_minor": 890,
+            "discount_minor": 0
+          }
+        ],
+        "payments": [
+          {
+            "payment_id": "91000041",
+            "amount_minor": 1476,
+            "status": "PAID"
+          }
+        ],
+        "lineage": {
+          "order_file": "OrderDetails.csv",
+          "item_file": "ItemSelectionDetails.csv",
+          "payment_file": "PaymentDetails.csv"
+        },
+        "warnings": []
+      },
+      {
+        "provider": "toast",
+        "source_order_id": "9100005",
+        "location_id": "Northline \u00b7 Downtown",
+        "created_at": "11/11/2026 16:45:00",
+        "currency": "USD",
+        "status": "CLOSED",
+        "customer_id": "TEST-TOAST-004",
+        "gross_minor": 1540,
+        "discount_minor": 0,
+        "refund_minor": 0,
+        "net_sales_minor": 1540,
+        "tax_minor": 131,
+        "tip_minor": 0,
+        "items": [
+          {
+            "item_id": "91000051",
+            "name": "Sweet potato fries",
+            "quantity": 1.0,
+            "gross_minor": 650,
+            "discount_minor": 0
+          },
+          {
+            "item_id": "91000052",
+            "name": "Sesame noodle cup",
+            "quantity": 1.0,
+            "gross_minor": 890,
+            "discount_minor": 0
+          }
+        ],
+        "payments": [
+          {
+            "payment_id": "91000051",
+            "amount_minor": 1671,
+            "status": "PAID"
+          }
+        ],
+        "lineage": {
+          "order_file": "OrderDetails.csv",
+          "item_file": "ItemSelectionDetails.csv",
+          "payment_file": "PaymentDetails.csv"
+        },
+        "warnings": []
+      },
+      {
+        "provider": "toast",
+        "source_order_id": "9100006",
+        "location_id": "Northline \u00b7 Lakeside",
+        "created_at": "11/14/2026 17:52:00",
+        "currency": "USD",
+        "status": "CLOSED",
+        "customer_id": "TEST-TOAST-005",
+        "gross_minor": 1490,
+        "discount_minor": 250,
+        "refund_minor": 0,
+        "net_sales_minor": 1240,
+        "tax_minor": 105,
+        "tip_minor": 0,
+        "items": [
+          {
+            "item_id": "91000061",
+            "name": "Spicy chicken bowl",
+            "quantity": 1.0,
+            "gross_minor": 1490,
+            "discount_minor": 250
+          }
+        ],
+        "payments": [
+          {
+            "payment_id": "91000061",
+            "amount_minor": 1345,
+            "status": "PAID"
+          }
+        ],
+        "lineage": {
+          "order_file": "OrderDetails.csv",
+          "item_file": "ItemSelectionDetails.csv",
+          "payment_file": "PaymentDetails.csv"
+        },
+        "warnings": []
+      },
+      {
+        "provider": "toast",
+        "source_order_id": "9100007",
+        "location_id": "Northline \u00b7 Market",
+        "created_at": "10/27/2026 18:59:00",
+        "currency": "USD",
+        "status": "CLOSED",
+        "customer_id": "TEST-TOAST-006",
+        "gross_minor": 2400,
+        "discount_minor": 0,
+        "refund_minor": 300,
+        "net_sales_minor": 2100,
+        "tax_minor": 204,
+        "tip_minor": 0,
+        "items": [
+          {
+            "item_id": "91000071",
+            "name": "Crispy tofu bowl",
+            "quantity": 1.0,
+            "gross_minor": 1290,
+            "discount_minor": 0
+          },
+          {
+            "item_id": "91000072",
+            "name": "Matcha iced latte",
+            "quantity": 1.0,
+            "gross_minor": 620,
+            "discount_minor": 0
+          },
+          {
+            "item_id": "91000073",
+            "name": "Citrus sparkling tea",
+            "quantity": 1.0,
+            "gross_minor": 490,
+            "discount_minor": 0
+          }
+        ],
+        "payments": [
+          {
+            "payment_id": "91000071",
+            "amount_minor": 2604,
+            "status": "PAID"
+          }
+        ],
+        "lineage": {
+          "order_file": "OrderDetails.csv",
+          "item_file": "ItemSelectionDetails.csv",
+          "payment_file": "PaymentDetails.csv"
+        },
+        "warnings": []
+      },
+      {
+        "provider": "toast",
+        "source_order_id": "9100008",
+        "location_id": "Northline \u00b7 Eastside",
+        "created_at": "10/30/2026 12:06:00",
+        "currency": "USD",
+        "status": "CLOSED",
+        "customer_id": null,
+        "gross_minor": 4890,
+        "discount_minor": 0,
+        "refund_minor": 0,
+        "net_sales_minor": 4890,
+        "tax_minor": 416,
+        "tip_minor": 0,
+        "items": [
+          {
+            "item_id": "91000081",
+            "name": "Spicy chicken bowl",
+            "quantity": 2.0,
+            "gross_minor": 2980,
+            "discount_minor": 0
+          },
+          {
+            "item_id": "91000082",
+            "name": "Crispy tofu bowl",
+            "quantity": 1.0,
+            "gross_minor": 1290,
+            "discount_minor": 0
+          },
+          {
+            "item_id": "91000083",
+            "name": "Matcha iced latte",
+            "quantity": 1.0,
+            "gross_minor": 620,
+            "discount_minor": 0
+          }
+        ],
+        "payments": [
+          {
+            "payment_id": "91000081",
+            "amount_minor": 5306,
+            "status": "PAID"
+          }
+        ],
+        "lineage": {
+          "order_file": "OrderDetails.csv",
+          "item_file": "ItemSelectionDetails.csv",
+          "payment_file": "PaymentDetails.csv"
+        },
+        "warnings": []
+      },
+      {
+        "provider": "toast",
+        "source_order_id": "9100009",
+        "location_id": "Northline \u00b7 Downtown",
+        "created_at": "11/02/2026 13:13:00",
+        "currency": "USD",
+        "status": "CLOSED",
+        "customer_id": "TEST-TOAST-007",
+        "gross_minor": 5080,
+        "discount_minor": 0,
+        "refund_minor": 0,
+        "net_sales_minor": 5080,
+        "tax_minor": 432,
+        "tip_minor": 0,
+        "items": [
+          {
+            "item_id": "91000091",
+            "name": "Spicy chicken bowl",
+            "quantity": 2.0,
+            "gross_minor": 2980,
+            "discount_minor": 0
+          },
+          {
+            "item_id": "91000092",
+            "name": "Miso garden salad",
+            "quantity": 2.0,
+            "gross_minor": 2100,
+            "discount_minor": 0
+          }
+        ],
+        "payments": [
+          {
+            "payment_id": "91000091",
+            "amount_minor": 5512,
+            "status": "PAID"
+          }
+        ],
+        "lineage": {
+          "order_file": "OrderDetails.csv",
+          "item_file": "ItemSelectionDetails.csv",
+          "payment_file": "PaymentDetails.csv"
+        },
+        "warnings": []
+      },
+      {
+        "provider": "toast",
+        "source_order_id": "9100010",
+        "location_id": "Northline \u00b7 Lakeside",
+        "created_at": "11/05/2026 14:20:00",
+        "currency": "USD",
+        "status": "CLOSED",
+        "customer_id": "TEST-TOAST-008",
+        "gross_minor": 1050,
+        "discount_minor": 0,
+        "refund_minor": 0,
+        "net_sales_minor": 1050,
+        "tax_minor": 89,
+        "tip_minor": 0,
+        "items": [
+          {
+            "item_id": "91000101",
+            "name": "Miso garden salad",
+            "quantity": 1.0,
+            "gross_minor": 1050,
+            "discount_minor": 0
+          }
+        ],
+        "payments": [
+          {
+            "payment_id": "91000101",
+            "amount_minor": 1139,
+            "status": "PAID"
+          }
+        ],
+        "lineage": {
+          "order_file": "OrderDetails.csv",
+          "item_file": "ItemSelectionDetails.csv",
+          "payment_file": "PaymentDetails.csv"
+        },
+        "warnings": []
+      },
+      {
+        "provider": "toast",
+        "source_order_id": "9100011",
+        "location_id": "Northline \u00b7 Market",
+        "created_at": "11/08/2026 15:27:00",
+        "currency": "USD",
+        "status": "CLOSED",
+        "customer_id": "TEST-TOAST-009",
+        "gross_minor": 1690,
+        "discount_minor": 0,
+        "refund_minor": 0,
+        "net_sales_minor": 1690,
+        "tax_minor": 144,
+        "tip_minor": 0,
+        "items": [
+          {
+            "item_id": "91000111",
+            "name": "Korean BBQ rice",
+            "quantity": 1.0,
+            "gross_minor": 1690,
+            "discount_minor": 0
+          }
+        ],
+        "payments": [
+          {
+            "payment_id": "91000111",
+            "amount_minor": 1834,
+            "status": "PAID"
+          }
+        ],
+        "lineage": {
+          "order_file": "OrderDetails.csv",
+          "item_file": "ItemSelectionDetails.csv",
+          "payment_file": "PaymentDetails.csv"
+        },
+        "warnings": []
+      },
+      {
+        "provider": "toast",
+        "source_order_id": "9100012",
+        "location_id": "Northline \u00b7 Eastside",
+        "created_at": "11/11/2026 16:34:00",
+        "currency": "USD",
+        "status": "CLOSED",
+        "customer_id": "TEST-TOAST-010",
+        "gross_minor": 4760,
+        "discount_minor": 250,
+        "refund_minor": 0,
+        "net_sales_minor": 4510,
+        "tax_minor": 383,
+        "tip_minor": 0,
+        "items": [
+          {
+            "item_id": "91000121",
+            "name": "Spicy chicken bowl",
+            "quantity": 2.0,
+            "gross_minor": 2980,
+            "discount_minor": 250
+          },
+          {
+            "item_id": "91000122",
+            "name": "Sesame noodle cup",
+            "quantity": 2.0,
+            "gross_minor": 1780,
+            "discount_minor": 0
+          }
+        ],
+        "payments": [
+          {
+            "payment_id": "91000121",
+            "amount_minor": 4893,
+            "status": "PAID"
+          }
+        ],
+        "lineage": {
+          "order_file": "OrderDetails.csv",
+          "item_file": "ItemSelectionDetails.csv",
+          "payment_file": "PaymentDetails.csv"
+        },
+        "warnings": []
+      },
+      {
+        "provider": "toast",
+        "source_order_id": "9100013",
+        "location_id": "Northline \u00b7 Downtown",
+        "created_at": "11/14/2026 17:41:00",
+        "currency": "USD",
+        "status": "CLOSED",
+        "customer_id": "TEST-TOAST-011",
+        "gross_minor": 2740,
+        "discount_minor": 150,
+        "refund_minor": 0,
+        "net_sales_minor": 2590,
+        "tax_minor": 220,
+        "tip_minor": 0,
+        "items": [
+          {
+            "item_id": "91000131",
+            "name": "Miso garden salad",
+            "quantity": 1.0,
+            "gross_minor": 1050,
+            "discount_minor": 150
+          },
+          {
+            "item_id": "91000132",
+            "name": "Korean BBQ rice",
+            "quantity": 1.0,
+            "gross_minor": 1690,
+            "discount_minor": 0
+          }
+        ],
+        "payments": [
+          {
+            "payment_id": "91000131",
+            "amount_minor": 2810,
+            "status": "PAID"
+          }
+        ],
+        "lineage": {
+          "order_file": "OrderDetails.csv",
+          "item_file": "ItemSelectionDetails.csv",
+          "payment_file": "PaymentDetails.csv"
+        },
+        "warnings": []
+      },
+      {
+        "provider": "toast",
+        "source_order_id": "9100014",
+        "location_id": "Northline \u00b7 Lakeside",
+        "created_at": "10/27/2026 18:48:00",
+        "currency": "USD",
+        "status": "CLOSED",
+        "customer_id": "TEST-TOAST-012",
+        "gross_minor": 2540,
+        "discount_minor": 0,
+        "refund_minor": 0,
+        "net_sales_minor": 2540,
+        "tax_minor": 216,
+        "tip_minor": 0,
+        "items": [
+          {
+            "item_id": "91000141",
+            "name": "Miso garden salad",
+            "quantity": 1.0,
+            "gross_minor": 1050,
+            "discount_minor": 0
+          },
+          {
+            "item_id": "91000142",
+            "name": "Spicy chicken bowl",
+            "quantity": 1.0,
+            "gross_minor": 1490,
+            "discount_minor": 0
+          }
+        ],
+        "payments": [
+          {
+            "payment_id": "91000141",
+            "amount_minor": 2756,
+            "status": "PAID"
+          }
+        ],
+        "lineage": {
+          "order_file": "OrderDetails.csv",
+          "item_file": "ItemSelectionDetails.csv",
+          "payment_file": "PaymentDetails.csv"
+        },
+        "warnings": []
+      },
+      {
+        "provider": "toast",
+        "source_order_id": "9100015",
+        "location_id": "Northline \u00b7 Market",
+        "created_at": "10/30/2026 19:55:00",
+        "currency": "USD",
+        "status": "CLOSED",
+        "customer_id": null,
+        "gross_minor": 1050,
+        "discount_minor": 150,
+        "refund_minor": 0,
+        "net_sales_minor": 900,
+        "tax_minor": 76,
+        "tip_minor": 0,
+        "items": [
+          {
+            "item_id": "91000151",
+            "name": "Miso garden salad",
+            "quantity": 1.0,
+            "gross_minor": 1050,
+            "discount_minor": 150
+          }
+        ],
+        "payments": [
+          {
+            "payment_id": "91000151",
+            "amount_minor": 976,
+            "status": "PAID"
+          }
+        ],
+        "lineage": {
+          "order_file": "OrderDetails.csv",
+          "item_file": "ItemSelectionDetails.csv",
+          "payment_file": "PaymentDetails.csv"
+        },
+        "warnings": []
+      },
+      {
+        "provider": "toast",
+        "source_order_id": "9100016",
+        "location_id": "Northline \u00b7 Eastside",
+        "created_at": "11/02/2026 13:02:00",
+        "currency": "USD",
+        "status": "CLOSED",
+        "customer_id": "TEST-TOAST-013",
+        "gross_minor": 620,
+        "discount_minor": 0,
+        "refund_minor": 0,
+        "net_sales_minor": 620,
+        "tax_minor": 53,
+        "tip_minor": 0,
+        "items": [
+          {
+            "item_id": "91000161",
+            "name": "Matcha iced latte",
+            "quantity": 1.0,
+            "gross_minor": 620,
+            "discount_minor": 0
+          }
+        ],
+        "payments": [
+          {
+            "payment_id": "91000161",
+            "amount_minor": 673,
+            "status": "PAID"
+          }
+        ],
+        "lineage": {
+          "order_file": "OrderDetails.csv",
+          "item_file": "ItemSelectionDetails.csv",
+          "payment_file": "PaymentDetails.csv"
+        },
+        "warnings": []
+      },
+      {
+        "provider": "toast",
+        "source_order_id": "9100017",
+        "location_id": "Northline \u00b7 Downtown",
+        "created_at": "11/05/2026 14:09:00",
+        "currency": "USD",
+        "status": "CLOSED",
+        "customer_id": "TEST-TOAST-014",
+        "gross_minor": 1240,
+        "discount_minor": 0,
+        "refund_minor": 0,
+        "net_sales_minor": 1240,
+        "tax_minor": 105,
+        "tip_minor": 0,
+        "items": [
+          {
+            "item_id": "91000171",
+            "name": "Matcha iced latte",
+            "quantity": 2.0,
+            "gross_minor": 1240,
+            "discount_minor": 0
+          }
+        ],
+        "payments": [
+          {
+            "payment_id": "91000171",
+            "amount_minor": 1345,
+            "status": "PAID"
+          }
+        ],
+        "lineage": {
+          "order_file": "OrderDetails.csv",
+          "item_file": "ItemSelectionDetails.csv",
+          "payment_file": "PaymentDetails.csv"
+        },
+        "warnings": []
+      },
+      {
+        "provider": "toast",
+        "source_order_id": "9100018",
+        "location_id": "Northline \u00b7 Lakeside",
+        "created_at": "11/08/2026 15:16:00",
+        "currency": "USD",
+        "status": "CLOSED",
+        "customer_id": "TEST-TOAST-015",
+        "gross_minor": 2340,
+        "discount_minor": 0,
+        "refund_minor": 300,
+        "net_sales_minor": 2040,
+        "tax_minor": 199,
+        "tip_minor": 0,
+        "items": [
+          {
+            "item_id": "91000181",
+            "name": "Korean BBQ rice",
+            "quantity": 1.0,
+            "gross_minor": 1690,
+            "discount_minor": 0
+          },
+          {
+            "item_id": "91000182",
+            "name": "Sweet potato fries",
+            "quantity": 1.0,
+            "gross_minor": 650,
+            "discount_minor": 0
+          }
+        ],
+        "payments": [
+          {
+            "payment_id": "91000181",
+            "amount_minor": 2539,
+            "status": "PAID"
+          }
+        ],
+        "lineage": {
+          "order_file": "OrderDetails.csv",
+          "item_file": "ItemSelectionDetails.csv",
+          "payment_file": "PaymentDetails.csv"
+        },
+        "warnings": []
+      },
+      {
+        "provider": "toast",
+        "source_order_id": "9100019",
+        "location_id": "Northline \u00b7 Market",
+        "created_at": "11/11/2026 16:23:00",
+        "currency": "USD",
+        "status": "CLOSED",
+        "customer_id": "TEST-TOAST-016",
+        "gross_minor": 2140,
+        "discount_minor": 0,
+        "refund_minor": 0,
+        "net_sales_minor": 2140,
+        "tax_minor": 182,
+        "tip_minor": 0,
+        "items": [
+          {
+            "item_id": "91000191",
+            "name": "Spicy chicken bowl",
+            "quantity": 1.0,
+            "gross_minor": 1490,
+            "discount_minor": 0
+          },
+          {
+            "item_id": "91000192",
+            "name": "Sweet potato fries",
+            "quantity": 1.0,
+            "gross_minor": 650,
+            "discount_minor": 0
+          }
+        ],
+        "payments": [
+          {
+            "payment_id": "91000191",
+            "amount_minor": 2322,
+            "status": "PAID"
+          }
+        ],
+        "lineage": {
+          "order_file": "OrderDetails.csv",
+          "item_file": "ItemSelectionDetails.csv",
+          "payment_file": "PaymentDetails.csv"
+        },
+        "warnings": []
+      },
+      {
+        "provider": "toast",
+        "source_order_id": "9100020",
+        "location_id": "Northline \u00b7 Eastside",
+        "created_at": "11/14/2026 17:30:00",
+        "currency": "USD",
+        "status": "CLOSED",
+        "customer_id": "TEST-TOAST-017",
+        "gross_minor": 4130,
+        "discount_minor": 0,
+        "refund_minor": 0,
+        "net_sales_minor": 4130,
+        "tax_minor": 351,
+        "tip_minor": 0,
+        "items": [
+          {
+            "item_id": "91000201",
+            "name": "Miso garden salad",
+            "quantity": 1.0,
+            "gross_minor": 1050,
+            "discount_minor": 0
+          },
+          {
+            "item_id": "91000202",
+            "name": "Sweet potato fries",
+            "quantity": 2.0,
+            "gross_minor": 1300,
+            "discount_minor": 0
+          },
+          {
+            "item_id": "91000203",
+            "name": "Sesame noodle cup",
+            "quantity": 2.0,
+            "gross_minor": 1780,
+            "discount_minor": 0
+          }
+        ],
+        "payments": [
+          {
+            "payment_id": "91000201",
+            "amount_minor": 4481,
+            "status": "PAID"
+          }
+        ],
+        "lineage": {
+          "order_file": "OrderDetails.csv",
+          "item_file": "ItemSelectionDetails.csv",
+          "payment_file": "PaymentDetails.csv"
+        },
+        "warnings": []
+      },
+      {
+        "provider": "toast",
+        "source_order_id": "9100021",
+        "location_id": "Northline \u00b7 Downtown",
+        "created_at": "10/27/2026 18:37:00",
+        "currency": "USD",
+        "status": "CLOSED",
+        "customer_id": "TEST-TOAST-018",
+        "gross_minor": 2540,
+        "discount_minor": 0,
+        "refund_minor": 0,
+        "net_sales_minor": 2540,
+        "tax_minor": 216,
+        "tip_minor": 0,
+        "items": [
+          {
+            "item_id": "91000211",
+            "name": "Miso garden salad",
+            "quantity": 1.0,
+            "gross_minor": 1050,
+            "discount_minor": 0
+          },
+          {
+            "item_id": "91000212",
+            "name": "Spicy chicken bowl",
+            "quantity": 1.0,
+            "gross_minor": 1490,
+            "discount_minor": 0
+          }
+        ],
+        "payments": [
+          {
+            "payment_id": "91000211",
+            "amount_minor": 2756,
+            "status": "PAID"
+          }
+        ],
+        "lineage": {
+          "order_file": "OrderDetails.csv",
+          "item_file": "ItemSelectionDetails.csv",
+          "payment_file": "PaymentDetails.csv"
+        },
+        "warnings": []
+      },
+      {
+        "provider": "toast",
+        "source_order_id": "9100022",
+        "location_id": "Northline \u00b7 Lakeside",
+        "created_at": "10/30/2026 19:44:00",
+        "currency": "USD",
+        "status": "CLOSED",
+        "customer_id": null,
+        "gross_minor": 1540,
+        "discount_minor": 0,
+        "refund_minor": 0,
+        "net_sales_minor": 1540,
+        "tax_minor": 131,
+        "tip_minor": 0,
+        "items": [
+          {
+            "item_id": "91000221",
+            "name": "Sweet potato fries",
+            "quantity": 1.0,
+            "gross_minor": 650,
+            "discount_minor": 0
+          },
+          {
+            "item_id": "91000222",
+            "name": "Sesame noodle cup",
+            "quantity": 1.0,
+            "gross_minor": 890,
+            "discount_minor": 0
+          }
+        ],
+        "payments": [
+          {
+            "payment_id": "91000221",
+            "amount_minor": 1671,
+            "status": "PAID"
+          }
+        ],
+        "lineage": {
+          "order_file": "OrderDetails.csv",
+          "item_file": "ItemSelectionDetails.csv",
+          "payment_file": "PaymentDetails.csv"
+        },
+        "warnings": []
+      },
+      {
+        "provider": "toast",
+        "source_order_id": "9100023",
+        "location_id": "Northline \u00b7 Market",
+        "created_at": "11/02/2026 20:51:00",
+        "currency": "USD",
+        "status": "CLOSED",
+        "customer_id": "TEST-TOAST-001",
+        "gross_minor": 2580,
+        "discount_minor": 150,
+        "refund_minor": 0,
+        "net_sales_minor": 2430,
+        "tax_minor": 207,
+        "tip_minor": 0,
+        "items": [
+          {
+            "item_id": "91000231",
+            "name": "Crispy tofu bowl",
+            "quantity": 2.0,
+            "gross_minor": 2580,
+            "discount_minor": 150
+          }
+        ],
+        "payments": [
+          {
+            "payment_id": "91000231",
+            "amount_minor": 2637,
+            "status": "PAID"
+          }
+        ],
+        "lineage": {
+          "order_file": "OrderDetails.csv",
+          "item_file": "ItemSelectionDetails.csv",
+          "payment_file": "PaymentDetails.csv"
+        },
+        "warnings": []
+      },
+      {
+        "provider": "toast",
+        "source_order_id": "9100024",
+        "location_id": "Northline \u00b7 Eastside",
+        "created_at": "11/05/2026 13:58:00",
+        "currency": "USD",
+        "status": "CLOSED",
+        "customer_id": "TEST-TOAST-002",
+        "gross_minor": 1940,
+        "discount_minor": 250,
+        "refund_minor": 0,
+        "net_sales_minor": 1690,
+        "tax_minor": 144,
+        "tip_minor": 0,
+        "items": [
+          {
+            "item_id": "91000241",
+            "name": "Sesame noodle cup",
+            "quantity": 1.0,
+            "gross_minor": 890,
+            "discount_minor": 250
+          },
+          {
+            "item_id": "91000242",
+            "name": "Miso garden salad",
+            "quantity": 1.0,
+            "gross_minor": 1050,
+            "discount_minor": 0
+          }
+        ],
+        "payments": [
+          {
+            "payment_id": "91000241",
+            "amount_minor": 1834,
+            "status": "PAID"
+          }
+        ],
+        "lineage": {
+          "order_file": "OrderDetails.csv",
+          "item_file": "ItemSelectionDetails.csv",
+          "payment_file": "PaymentDetails.csv"
+        },
+        "warnings": []
+      },
+      {
+        "provider": "toast",
+        "source_order_id": "9100025",
+        "location_id": "Northline \u00b7 Downtown",
+        "created_at": "11/08/2026 15:05:00",
+        "currency": "USD",
+        "status": "CLOSED",
+        "customer_id": "TEST-TOAST-003",
+        "gross_minor": 2990,
+        "discount_minor": 0,
+        "refund_minor": 0,
+        "net_sales_minor": 2990,
+        "tax_minor": 254,
+        "tip_minor": 0,
+        "items": [
+          {
+            "item_id": "91000251",
+            "name": "Sweet potato fries",
+            "quantity": 2.0,
+            "gross_minor": 1300,
+            "discount_minor": 0
+          },
+          {
+            "item_id": "91000252",
+            "name": "Korean BBQ rice",
+            "quantity": 1.0,
+            "gross_minor": 1690,
+            "discount_minor": 0
+          }
+        ],
+        "payments": [
+          {
+            "payment_id": "91000251",
+            "amount_minor": 3244,
+            "status": "PAID"
+          }
+        ],
+        "lineage": {
+          "order_file": "OrderDetails.csv",
+          "item_file": "ItemSelectionDetails.csv",
+          "payment_file": "PaymentDetails.csv"
+        },
+        "warnings": []
+      },
+      {
+        "provider": "toast",
+        "source_order_id": "9100026",
+        "location_id": "Northline \u00b7 Lakeside",
+        "created_at": "11/11/2026 16:12:00",
+        "currency": "USD",
+        "status": "CLOSED",
+        "customer_id": "TEST-TOAST-004",
+        "gross_minor": 490,
+        "discount_minor": 0,
+        "refund_minor": 300,
+        "net_sales_minor": 190,
+        "tax_minor": 42,
+        "tip_minor": 0,
+        "items": [
+          {
+            "item_id": "91000261",
+            "name": "Citrus sparkling tea",
+            "quantity": 1.0,
+            "gross_minor": 490,
+            "discount_minor": 0
+          }
+        ],
+        "payments": [
+          {
+            "payment_id": "91000261",
+            "amount_minor": 532,
+            "status": "PAID"
+          }
+        ],
+        "lineage": {
+          "order_file": "OrderDetails.csv",
+          "item_file": "ItemSelectionDetails.csv",
+          "payment_file": "PaymentDetails.csv"
+        },
+        "warnings": []
+      },
+      {
+        "provider": "toast",
+        "source_order_id": "9100027",
+        "location_id": "Northline \u00b7 Market",
+        "created_at": "11/14/2026 17:19:00",
+        "currency": "USD",
+        "status": "CLOSED",
+        "customer_id": "TEST-TOAST-005",
+        "gross_minor": 1240,
+        "discount_minor": 300,
+        "refund_minor": 0,
+        "net_sales_minor": 940,
+        "tax_minor": 80,
+        "tip_minor": 0,
+        "items": [
+          {
+            "item_id": "91000271",
+            "name": "Matcha iced latte",
+            "quantity": 2.0,
+            "gross_minor": 1240,
+            "discount_minor": 300
+          }
+        ],
+        "payments": [
+          {
+            "payment_id": "91000271",
+            "amount_minor": 1020,
+            "status": "PAID"
+          }
+        ],
+        "lineage": {
+          "order_file": "OrderDetails.csv",
+          "item_file": "ItemSelectionDetails.csv",
+          "payment_file": "PaymentDetails.csv"
+        },
+        "warnings": []
+      },
+      {
+        "provider": "toast",
+        "source_order_id": "9100028",
+        "location_id": "Northline \u00b7 Eastside",
+        "created_at": "10/27/2026 18:26:00",
+        "currency": "USD",
+        "status": "CLOSED",
+        "customer_id": "TEST-TOAST-006",
+        "gross_minor": 1540,
+        "discount_minor": 250,
+        "refund_minor": 0,
+        "net_sales_minor": 1290,
+        "tax_minor": 110,
+        "tip_minor": 0,
+        "items": [
+          {
+            "item_id": "91000281",
+            "name": "Sweet potato fries",
+            "quantity": 1.0,
+            "gross_minor": 650,
+            "discount_minor": 250
+          },
+          {
+            "item_id": "91000282",
+            "name": "Sesame noodle cup",
+            "quantity": 1.0,
+            "gross_minor": 890,
+            "discount_minor": 0
+          }
+        ],
+        "payments": [
+          {
+            "payment_id": "91000281",
+            "amount_minor": 1400,
+            "status": "PAID"
+          }
+        ],
+        "lineage": {
+          "order_file": "OrderDetails.csv",
+          "item_file": "ItemSelectionDetails.csv",
+          "payment_file": "PaymentDetails.csv"
+        },
+        "warnings": []
+      }
+    ],
+    "summary": {
+      "orders": 28,
+      "items": 51,
+      "payments": 29,
+      "net_sales_minor": 59470,
+      "discounts_minor": 2050,
+      "refunds_minor": 900
+    },
+    "raw_file": "ItemSelectionDetails.csv",
+    "raw_snippet": "Location,Order Id,Item Selection Id,Menu Item,Qty,Gross Price,Discnt,Void?\nNorthline \u00b7 Downtown,9100001,91000011,Crispy tofu bowl,1,12.90,1.50,False\nNorthline \u00b7 Downtown,9100001,91000012,Sesame noodle cup,1,8.90,0.00,False\nNorthline \u00b7 Lakeside,9100002,91000021,Citrus sparkling tea,1,4.90,0.00,False\nNorthline \u00b7 Lakeside,9100002,91000022,Miso garden salad,1,10.50,0.00,False\nNorthline \u00b7 Market,9100003,91000031,Sweet potato fries,1,6.50,0.00,False\nNorthline \u00b7 Market,9100003,91000032,Citrus sparkling tea,1,4.90,0.00,False\nNorthline \u00b7 Market,9100003,91000033,Spicy chicken bowl,1,14.90,0.00,False\nNorthline \u00b7 Eastside,9100004,91000041,Matcha iced latte,1,6.20,1.50,False\nNorthline \u00b7 Eastside,9100004,91000042,Sesame noodle cup,1,8.90,0.00,False\nNorthline \u00b7 Downtown,9100005,91000051,Sweet potato fries,1,6.50,0.00,False\nNorthline \u00b7 Downtown,9100005,91000052,Sesame noodle cup,1,8.90,0.00,False\nNorthline \u00b7 Lakeside,9100006,91000061,Spicy chicken bowl,1,14.90,2.50,False\nNorthline \u00b7 Market,9100007,91000071,Crispy tofu bowl,1,12.90,0.00,False\nNorthline \u00b7 Market,9100007,91000072,Matcha iced latte,1,6.20,0.00,False\nNorthline \u00b7 Market,9100007,91000073,Citrus sparkling tea,1,4.90,0.00,False\nNorthline \u00b7 Eastside,9100008,91000081,Spicy chicken bowl,2,29.80,0.00,False\nNorthline \u00b7 Eastside,9100008,91000082,Crispy tofu bowl,1,12.90,0.00,False\nNorthline \u00b7 Eastside,9100008,91000083,Matcha iced latte,1,6.20,0.00,False\nNorthline \u00b7 Downtown,9100009,91000091,Spicy chicken bowl,2,29.80,0.00,False\nNorthline \u00b7 Downtown,9100009,91000092,Miso garden salad,2,21.00,0.00,False\nNorthline \u00b7 Lakeside,9100010,91000101,Miso garden salad,1,10.50,0.00,False\nNorthline \u00b7 Market,9100011,91000111,Korean BBQ rice,1,16.90,0.00,False\nNorthline \u00b7 Eastside,9100012,91000121,Spicy chicken bowl,2,29.80,2.50,False\nNorthline \u00b7 Eastside,9100012,91000122,Sesame noodle cup,2,17.80,0.00,False\nNorthline \u00b7 Downtown,9100013,91000131,Miso garden salad,1,10.50,1.50,False\nNorthline \u00b7 Downtown,9100013,91000132,Korean BBQ rice,1,16.90,0.00,False\nNorthline \u00b7 Lakeside,9100014,91000141,Miso garden salad,1,10.50,0.00,False\nNorthline \u00b7 Lakeside,9100014,91000142,Spicy chicken bowl,1,14.90,0.00,False\nNorthline \u00b7 Market,9100015,91000151,Miso garden salad,1,10.50,1.50,False\nNorthline \u00b7 Eastside,9100016,91000161,Matcha iced latte,1,6.20,0.00,False\nNorthline \u00b7 Downtown,9100017,91000171,Matcha iced latte,2,12.40,0.00,False\nNorthline \u00b7 Lakeside,9100018,91000181,Korean BBQ rice,1,16.90,0.00,False\nNorthline \u00b7 Lakeside,9100018,91000182,Sweet potato fries,1,6.50,0.00,False\nNorthline \u00b7 Market,9100019,91000191,Spicy chicken bowl,1,14.90,0.00,False\nNorthline \u00b7 Market,9100019,91000192,Sweet potato fries,1,6.50,0.00,False\nNorthline \u00b7 Eastside,9100020,91000201,Miso garden salad,1,10.50,0.00,False\nNorthline \u00b7 Eastside,9100020,91000202,Sweet potato fries,2,13.00,0.00,False\nNorthline \u00b7 Eastside,9100020,91000203,Sesame noodle cup,2,17.80,0.00,False\nNorthline \u00b7 Downtown,9100021,91000211,Miso garden salad,1,10.50,0.00,False\nNorthline \u00b7 Downtown,9100021,91000212,Spicy chicken bowl,1,14.90,0.00,False\nNorthline \u00b7 Lakeside,9100022,91000221,Sweet potato fries,1,6.50,0.00,False\nNorthline \u00b7 Lakeside,9100022,91000222,Sesame noodle cup,1,8.90,0.00,False\nNorthline \u00b7 Market,9100023,91000231,Crispy tofu bowl,2,25.80,1.50,False\nNorthline \u00b7 Eastside,9100024,91000241,Sesame noodle cup,1,8.90,2.50,False\nNorthline \u00b7 Eastside,9100024,91000242,Miso garden salad,1,10.50,0.00,False\nNorthline \u00b7 Downtown,9100025,91000251,Sweet potato fries,2,13.00,0.00,False\nNorthline \u00b7 Downtown,9100025,91000252,Korean BBQ rice,1,16.90,0.00,False\nNorthline \u00b7 Lakeside,9100026,91000261,Citrus sparkling tea,1,4.90,0.00,False\nNorthline \u00b7 Market,9100027,91000271,Matcha iced la"
+  },
+  "square": {
+    "provider": "square",
+    "records": [
+      {
+        "provider": "square",
+        "source_order_id": "sq-order-0001",
+        "location_id": "sq-downtown",
+        "created_at": "2026-10-30T12:17:00+00:00",
+        "currency": "USD",
+        "status": "COMPLETED",
+        "customer_id": null,
+        "gross_minor": 2580,
+        "discount_minor": 0,
+        "refund_minor": 0,
+        "net_sales_minor": 2580,
+        "tax_minor": 219,
+        "tip_minor": 0,
+        "items": [
+          {
+            "item_id": "li-0001-1",
+            "name": "Korean BBQ rice",
+            "quantity": 1.0,
+            "gross_minor": 1690,
+            "discount_minor": 0
+          },
+          {
+            "item_id": "li-0001-2",
+            "name": "Sesame noodle cup",
+            "quantity": 1.0,
+            "gross_minor": 890,
+            "discount_minor": 0
+          }
+        ],
+        "payments": [
+          {
+            "payment_id": "sq-payment-0001",
+            "amount_minor": 2799,
+            "status": "COMPLETED"
+          }
+        ],
+        "lineage": {
+          "order_file": "orders.json",
+          "payment_file": "payments.json",
+          "refund_file": "refunds.json"
+        },
+        "warnings": []
+      },
+      {
+        "provider": "square",
+        "source_order_id": "sq-order-0002",
+        "location_id": "sq-lakeside",
+        "created_at": "2026-11-02T13:24:00+00:00",
+        "currency": "USD",
+        "status": "COMPLETED",
+        "customer_id": "TEST-SQUARE-001",
+        "gross_minor": 2630,
+        "discount_minor": 300,
+        "refund_minor": 0,
+        "net_sales_minor": 2330,
+        "tax_minor": 198,
+        "tip_minor": 0,
+        "items": [
+          {
+            "item_id": "li-0002-1",
+            "name": "Spicy chicken bowl",
+            "quantity": 1.0,
+            "gross_minor": 1490,
+            "discount_minor": 300
+          },
+          {
+            "item_id": "li-0002-2",
+            "name": "Sweet potato fries",
+            "quantity": 1.0,
+            "gross_minor": 650,
+            "discount_minor": 0
+          },
+          {
+            "item_id": "li-0002-3",
+            "name": "Citrus sparkling tea",
+            "quantity": 1.0,
+            "gross_minor": 490,
+            "discount_minor": 0
+          }
+        ],
+        "payments": [
+          {
+            "payment_id": "sq-payment-0002",
+            "amount_minor": 2528,
+            "status": "COMPLETED"
+          }
+        ],
+        "lineage": {
+          "order_file": "orders.json",
+          "payment_file": "payments.json",
+          "refund_file": "refunds.json"
+        },
+        "warnings": []
+      },
+      {
+        "provider": "square",
+        "source_order_id": "sq-order-0003",
+        "location_id": "sq-market",
+        "created_at": "2026-11-05T14:31:00+00:00",
+        "currency": "USD",
+        "status": "COMPLETED",
+        "customer_id": "TEST-SQUARE-002",
+        "gross_minor": 3430,
+        "discount_minor": 0,
+        "refund_minor": 0,
+        "net_sales_minor": 3430,
+        "tax_minor": 292,
+        "tip_minor": 0,
+        "items": [
+          {
+            "item_id": "li-0003-1",
+            "name": "Spicy chicken bowl",
+            "quantity": 1.0,
+            "gross_minor": 1490,
+            "discount_minor": 0
+          },
+          {
+            "item_id": "li-0003-2",
+            "name": "Miso garden salad",
+            "quantity": 1.0,
+            "gross_minor": 1050,
+            "discount_minor": 0
+          },
+          {
+            "item_id": "li-0003-3",
+            "name": "Sesame noodle cup",
+            "quantity": 1.0,
+            "gross_minor": 890,
+            "discount_minor": 0
+          }
+        ],
+        "payments": [
+          {
+            "payment_id": "sq-payment-0003",
+            "amount_minor": 3722,
+            "status": "COMPLETED"
+          }
+        ],
+        "lineage": {
+          "order_file": "orders.json",
+          "payment_file": "payments.json",
+          "refund_file": "refunds.json"
+        },
+        "warnings": []
+      },
+      {
+        "provider": "square",
+        "source_order_id": "sq-order-0004",
+        "location_id": "sq-eastside",
+        "created_at": "2026-11-08T15:38:00+00:00",
+        "currency": "USD",
+        "status": "COMPLETED",
+        "customer_id": "TEST-SQUARE-003",
+        "gross_minor": 2740,
+        "discount_minor": 0,
+        "refund_minor": 0,
+        "net_sales_minor": 2740,
+        "tax_minor": 233,
+        "tip_minor": 0,
+        "items": [
+          {
+            "item_id": "li-0004-1",
+            "name": "Korean BBQ rice",
+            "quantity": 1.0,
+            "gross_minor": 1690,
+            "discount_minor": 0
+          },
+          {
+            "item_id": "li-0004-2",
+            "name": "Miso garden salad",
+            "quantity": 1.0,
+            "gross_minor": 1050,
+            "discount_minor": 0
+          }
+        ],
+        "payments": [
+          {
+            "payment_id": "sq-payment-0004",
+            "amount_minor": 2973,
+            "status": "COMPLETED"
+          }
+        ],
+        "lineage": {
+          "order_file": "orders.json",
+          "payment_file": "payments.json",
+          "refund_file": "refunds.json"
+        },
+        "warnings": []
+      },
+      {
+        "provider": "square",
+        "source_order_id": "sq-order-0005",
+        "location_id": "sq-downtown",
+        "created_at": "2026-11-11T16:45:00+00:00",
+        "currency": "USD",
+        "status": "COMPLETED",
+        "customer_id": "TEST-SQUARE-004",
+        "gross_minor": 490,
+        "discount_minor": 0,
+        "refund_minor": 0,
+        "net_sales_minor": 490,
+        "tax_minor": 42,
+        "tip_minor": 0,
+        "items": [
+          {
+            "item_id": "li-0005-1",
+            "name": "Citrus sparkling tea",
+            "quantity": 1.0,
+            "gross_minor": 490,
+            "discount_minor": 0
+          }
+        ],
+        "payments": [
+          {
+            "payment_id": "sq-payment-0005",
+            "amount_minor": 532,
+            "status": "COMPLETED"
+          }
+        ],
+        "lineage": {
+          "order_file": "orders.json",
+          "payment_file": "payments.json",
+          "refund_file": "refunds.json"
+        },
+        "warnings": []
+      },
+      {
+        "provider": "square",
+        "source_order_id": "sq-order-0006",
+        "location_id": "sq-lakeside",
+        "created_at": "2026-11-14T17:52:00+00:00",
+        "currency": "USD",
+        "status": "COMPLETED",
+        "customer_id": "TEST-SQUARE-005",
+        "gross_minor": 2830,
+        "discount_minor": 0,
+        "refund_minor": 0,
+        "net_sales_minor": 2830,
+        "tax_minor": 241,
+        "tip_minor": 0,
+        "items": [
+          {
+            "item_id": "li-0006-1",
+            "name": "Miso garden salad",
+            "quantity": 1.0,
+            "gross_minor": 1050,
+            "discount_minor": 0
+          },
+          {
+            "item_id": "li-0006-2",
+            "name": "Sesame noodle cup",
+            "quantity": 2.0,
+            "gross_minor": 1780,
+            "discount_minor": 0
+          }
+        ],
+        "payments": [
+          {
+            "payment_id": "sq-payment-0006",
+            "amount_minor": 3071,
+            "status": "COMPLETED"
+          }
+        ],
+        "lineage": {
+          "order_file": "orders.json",
+          "payment_file": "payments.json",
+          "refund_file": "refunds.json"
+        },
+        "warnings": []
+      },
+      {
+        "provider": "square",
+        "source_order_id": "sq-order-0007",
+        "location_id": "sq-market",
+        "created_at": "2026-10-27T18:59:00+00:00",
+        "currency": "USD",
+        "status": "COMPLETED",
+        "customer_id": "TEST-SQUARE-006",
+        "gross_minor": 1050,
+        "discount_minor": 0,
+        "refund_minor": 300,
+        "net_sales_minor": 750,
+        "tax_minor": 89,
+        "tip_minor": 0,
+        "items": [
+          {
+            "item_id": "li-0007-1",
+            "name": "Miso garden salad",
+            "quantity": 1.0,
+            "gross_minor": 1050,
+            "discount_minor": 0
+          }
+        ],
+        "payments": [
+          {
+            "payment_id": "sq-payment-0007",
+            "amount_minor": 1139,
+            "status": "COMPLETED"
+          }
+        ],
+        "lineage": {
+          "order_file": "orders.json",
+          "payment_file": "payments.json",
+          "refund_file": "refunds.json"
+        },
+        "warnings": []
+      },
+      {
+        "provider": "square",
+        "source_order_id": "sq-order-0008",
+        "location_id": "sq-eastside",
+        "created_at": "2026-10-30T12:06:00+00:00",
+        "currency": "USD",
+        "status": "COMPLETED",
+        "customer_id": "TEST-SQUARE-007",
+        "gross_minor": 2180,
+        "discount_minor": 0,
+        "refund_minor": 0,
+        "net_sales_minor": 2180,
+        "tax_minor": 185,
+        "tip_minor": 0,
+        "items": [
+          {
+            "item_id": "li-0008-1",
+            "name": "Korean BBQ rice",
+            "quantity": 1.0,
+            "gross_minor": 1690,
+            "discount_minor": 0
+          },
+          {
+            "item_id": "li-0008-2",
+            "name": "Citrus sparkling tea",
+            "quantity": 1.0,
+            "gross_minor": 490,
+            "discount_minor": 0
+          }
+        ],
+        "payments": [
+          {
+            "payment_id": "sq-payment-0008",
+            "amount_minor": 2365,
+            "status": "COMPLETED"
+          }
+        ],
+        "lineage": {
+          "order_file": "orders.json",
+          "payment_file": "payments.json",
+          "refund_file": "refunds.json"
+        },
+        "warnings": []
+      },
+      {
+        "provider": "square",
+        "source_order_id": "sq-order-0009",
+        "location_id": "sq-downtown",
+        "created_at": "2026-11-02T13:13:00+00:00",
+        "currency": "USD",
+        "status": "COMPLETED",
+        "customer_id": null,
+        "gross_minor": 4030,
+        "discount_minor": 300,
+        "refund_minor": 0,
+        "net_sales_minor": 3730,
+        "tax_minor": 317,
+        "tip_minor": 0,
+        "items": [
+          {
+            "item_id": "li-0009-1",
+            "name": "Sweet potato fries",
+            "quantity": 2.0,
+            "gross_minor": 1300,
+            "discount_minor": 300
+          },
+          {
+            "item_id": "li-0009-2",
+            "name": "Spicy chicken bowl",
+            "quantity": 1.0,
+            "gross_minor": 1490,
+            "discount_minor": 0
+          },
+          {
+            "item_id": "li-0009-3",
+            "name": "Matcha iced latte",
+            "quantity": 2.0,
+            "gross_minor": 1240,
+            "discount_minor": 0
+          }
+        ],
+        "payments": [
+          {
+            "payment_id": "sq-payment-0009",
+            "amount_minor": 4047,
+            "status": "COMPLETED"
+          }
+        ],
+        "lineage": {
+          "order_file": "orders.json",
+          "payment_file": "payments.json",
+          "refund_file": "refunds.json"
+        },
+        "warnings": []
+      },
+      {
+        "provider": "square",
+        "source_order_id": "sq-order-0010",
+        "location_id": "sq-lakeside",
+        "created_at": "2026-11-05T14:20:00+00:00",
+        "currency": "USD",
+        "status": "COMPLETED",
+        "customer_id": "TEST-SQUARE-008",
+        "gross_minor": 620,
+        "discount_minor": 0,
+        "refund_minor": 0,
+        "net_sales_minor": 620,
+        "tax_minor": 53,
+        "tip_minor": 0,
+        "items": [
+          {
+            "item_id": "li-0010-1",
+            "name": "Matcha iced latte",
+            "quantity": 1.0,
+            "gross_minor": 620,
+            "discount_minor": 0
+          }
+        ],
+        "payments": [
+          {
+            "payment_id": "sq-payment-0010",
+            "amount_minor": 673,
+            "status": "COMPLETED"
+          }
+        ],
+        "lineage": {
+          "order_file": "orders.json",
+          "payment_file": "payments.json",
+          "refund_file": "refunds.json"
+        },
+        "warnings": []
+      },
+      {
+        "provider": "square",
+        "source_order_id": "sq-order-0011",
+        "location_id": "sq-market",
+        "created_at": "2026-11-08T15:27:00+00:00",
+        "currency": "USD",
+        "status": "COMPLETED",
+        "customer_id": "TEST-SQUARE-009",
+        "gross_minor": 1050,
+        "discount_minor": 300,
+        "refund_minor": 0,
+        "net_sales_minor": 750,
+        "tax_minor": 64,
+        "tip_minor": 0,
+        "items": [
+          {
+            "item_id": "li-0011-1",
+            "name": "Miso garden salad",
+            "quantity": 1.0,
+            "gross_minor": 1050,
+            "discount_minor": 300
+          }
+        ],
+        "payments": [
+          {
+            "payment_id": "sq-payment-0011",
+            "amount_minor": 814,
+            "status": "COMPLETED"
+          }
+        ],
+        "lineage": {
+          "order_file": "orders.json",
+          "payment_file": "payments.json",
+          "refund_file": "refunds.json"
+        },
+        "warnings": []
+      },
+      {
+        "provider": "square",
+        "source_order_id": "sq-order-0012",
+        "location_id": "sq-eastside",
+        "created_at": "2026-11-11T16:34:00+00:00",
+        "currency": "USD",
+        "status": "COMPLETED",
+        "customer_id": "TEST-SQUARE-010",
+        "gross_minor": 2180,
+        "discount_minor": 250,
+        "refund_minor": 0,
+        "net_sales_minor": 1930,
+        "tax_minor": 164,
+        "tip_minor": 0,
+        "items": [
+          {
+            "item_id": "li-0012-1",
+            "name": "Korean BBQ rice",
+            "quantity": 1.0,
+            "gross_minor": 1690,
+            "discount_minor": 250
+          },
+          {
+            "item_id": "li-0012-2",
+            "name": "Citrus sparkling tea",
+            "quantity": 1.0,
+            "gross_minor": 490,
+            "discount_minor": 0
+          }
+        ],
+        "payments": [
+          {
+            "payment_id": "sq-payment-0012",
+            "amount_minor": 2094,
+            "status": "COMPLETED"
+          }
+        ],
+        "lineage": {
+          "order_file": "orders.json",
+          "payment_file": "payments.json",
+          "refund_file": "refunds.json"
+        },
+        "warnings": []
+      },
+      {
+        "provider": "square",
+        "source_order_id": "sq-order-0013",
+        "location_id": "sq-downtown",
+        "created_at": "2026-11-14T17:41:00+00:00",
+        "currency": "USD",
+        "status": "COMPLETED",
+        "customer_id": "TEST-SQUARE-011",
+        "gross_minor": 620,
+        "discount_minor": 0,
+        "refund_minor": 0,
+        "net_sales_minor": 620,
+        "tax_minor": 53,
+        "tip_minor": 0,
+        "items": [
+          {
+            "item_id": "li-0013-1",
+            "name": "Matcha iced latte",
+            "quantity": 1.0,
+            "gross_minor": 620,
+            "discount_minor": 0
+          }
+        ],
+        "payments": [
+          {
+            "payment_id": "sq-payment-0013",
+            "amount_minor": 673,
+            "status": "COMPLETED"
+          }
+        ],
+        "lineage": {
+          "order_file": "orders.json",
+          "payment_file": "payments.json",
+          "refund_file": "refunds.json"
+        },
+        "warnings": []
+      },
+      {
+        "provider": "square",
+        "source_order_id": "sq-order-0014",
+        "location_id": "sq-lakeside",
+        "created_at": "2026-10-27T18:48:00+00:00",
+        "currency": "USD",
+        "status": "COMPLETED",
+        "customer_id": "TEST-SQUARE-012",
+        "gross_minor": 490,
+        "discount_minor": 150,
+        "refund_minor": 0,
+        "net_sales_minor": 340,
+        "tax_minor": 29,
+        "tip_minor": 0,
+        "items": [
+          {
+            "item_id": "li-0014-1",
+            "name": "Citrus sparkling tea",
+            "quantity": 1.0,
+            "gross_minor": 490,
+            "discount_minor": 150
+          }
+        ],
+        "payments": [
+          {
+            "payment_id": "sq-payment-0014",
+            "amount_minor": 369,
+            "status": "COMPLETED"
+          }
+        ],
+        "lineage": {
+          "order_file": "orders.json",
+          "payment_file": "payments.json",
+          "refund_file": "refunds.json"
+        },
+        "warnings": []
+      },
+      {
+        "provider": "square",
+        "source_order_id": "sq-order-0015",
+        "location_id": "sq-market",
+        "created_at": "2026-10-30T19:55:00+00:00",
+        "currency": "USD",
+        "status": "COMPLETED",
+        "customer_id": "TEST-SQUARE-013",
+        "gross_minor": 2790,
+        "discount_minor": 250,
+        "refund_minor": 0,
+        "net_sales_minor": 2540,
+        "tax_minor": 216,
+        "tip_minor": 0,
+        "items": [
+          {
+            "item_id": "li-0015-1",
+            "name": "Sweet potato fries",
+            "quantity": 2.0,
+            "gross_minor": 1300,
+            "discount_minor": 250
+          },
+          {
+            "item_id": "li-0015-2",
+            "name": "Spicy chicken bowl",
+            "quantity": 1.0,
+            "gross_minor": 1490,
+            "discount_minor": 0
+          }
+        ],
+        "payments": [
+          {
+            "payment_id": "sq-payment-0015",
+            "amount_minor": 2756,
+            "status": "COMPLETED"
+          }
+        ],
+        "lineage": {
+          "order_file": "orders.json",
+          "payment_file": "payments.json",
+          "refund_file": "refunds.json"
+        },
+        "warnings": []
+      },
+      {
+        "provider": "square",
+        "source_order_id": "sq-order-0016",
+        "location_id": "sq-eastside",
+        "created_at": "2026-11-02T13:02:00+00:00",
+        "currency": "USD",
+        "status": "COMPLETED",
+        "customer_id": "TEST-SQUARE-014",
+        "gross_minor": 3480,
+        "discount_minor": 0,
+        "refund_minor": 0,
+        "net_sales_minor": 3480,
+        "tax_minor": 296,
+        "tip_minor": 0,
+        "items": [
+          {
+            "item_id": "li-0016-1",
+            "name": "Miso garden salad",
+            "quantity": 1.0,
+            "gross_minor": 1050,
+            "discount_minor": 0
+          },
+          {
+            "item_id": "li-0016-2",
+            "name": "Sweet potato fries",
+            "quantity": 1.0,
+            "gross_minor": 650,
+            "discount_minor": 0
+          },
+          {
+            "item_id": "li-0016-3",
+            "name": "Sesame noodle cup",
+            "quantity": 2.0,
+            "gross_minor": 1780,
+            "discount_minor": 0
+          }
+        ],
+        "payments": [
+          {
+            "payment_id": "sq-payment-0016",
+            "amount_minor": 3776,
+            "status": "COMPLETED"
+          }
+        ],
+        "lineage": {
+          "order_file": "orders.json",
+          "payment_file": "payments.json",
+          "refund_file": "refunds.json"
+        },
+        "warnings": []
+      },
+      {
+        "provider": "square",
+        "source_order_id": "sq-order-0017",
+        "location_id": "sq-downtown",
+        "created_at": "2026-11-05T14:09:00+00:00",
+        "currency": "USD",
+        "status": "COMPLETED",
+        "customer_id": null,
+        "gross_minor": 4920,
+        "discount_minor": 0,
+        "refund_minor": 0,
+        "net_sales_minor": 4920,
+        "tax_minor": 418,
+        "tip_minor": 0,
+        "items": [
+          {
+            "item_id": "li-0017-1",
+            "name": "Sesame noodle cup",
+            "quantity": 1.0,
+            "gross_minor": 890,
+            "discount_minor": 0
+          },
+          {
+            "item_id": "li-0017-2",
+            "name": "Korean BBQ rice",
+            "quantity": 2.0,
+            "gross_minor": 3380,
+            "discount_minor": 0
+          },
+          {
+            "item_id": "li-0017-3",
+            "name": "Sweet potato fries",
+            "quantity": 1.0,
+            "gross_minor": 650,
+            "discount_minor": 0
+          }
+        ],
+        "payments": [
+          {
+            "payment_id": "sq-payment-0017",
+            "amount_minor": 5338,
+            "status": "COMPLETED"
+          }
+        ],
+        "lineage": {
+          "order_file": "orders.json",
+          "payment_file": "payments.json",
+          "refund_file": "refunds.json"
+        },
+        "warnings": []
+      },
+      {
+        "provider": "square",
+        "source_order_id": "sq-order-0018",
+        "location_id": "sq-lakeside",
+        "created_at": "2026-11-08T15:16:00+00:00",
+        "currency": "USD",
+        "status": "COMPLETED",
+        "customer_id": "TEST-SQUARE-015",
+        "gross_minor": 2190,
+        "discount_minor": 150,
+        "refund_minor": 300,
+        "net_sales_minor": 1740,
+        "tax_minor": 173,
+        "tip_minor": 0,
+        "items": [
+          {
+            "item_id": "li-0018-1",
+            "name": "Sesame noodle cup",
+            "quantity": 1.0,
+            "gross_minor": 890,
+            "discount_minor": 150
+          },
+          {
+            "item_id": "li-0018-2",
+            "name": "Sweet potato fries",
+            "quantity": 2.0,
+            "gross_minor": 1300,
+            "discount_minor": 0
+          }
+        ],
+        "payments": [
+          {
+            "payment_id": "sq-payment-0018",
+            "amount_minor": 2213,
+            "status": "COMPLETED"
+          }
+        ],
+        "lineage": {
+          "order_file": "orders.json",
+          "payment_file": "payments.json",
+          "refund_file": "refunds.json"
+        },
+        "warnings": []
+      },
+      {
+        "provider": "square",
+        "source_order_id": "sq-order-0019",
+        "location_id": "sq-market",
+        "created_at": "2026-11-11T16:23:00+00:00",
+        "currency": "USD",
+        "status": "COMPLETED",
+        "customer_id": "TEST-SQUARE-016",
+        "gross_minor": 5850,
+        "discount_minor": 250,
+        "refund_minor": 0,
+        "net_sales_minor": 5600,
+        "tax_minor": 476,
+        "tip_minor": 0,
+        "items": [
+          {
+            "item_id": "li-0019-1",
+            "name": "Spicy chicken bowl",
+            "quantity": 1.0,
+            "gross_minor": 1490,
+            "discount_minor": 250
+          },
+          {
+            "item_id": "li-0019-2",
+            "name": "Sesame noodle cup",
+            "quantity": 2.0,
+            "gross_minor": 1780,
+            "discount_minor": 0
+          },
+          {
+            "item_id": "li-0019-3",
+            "name": "Crispy tofu bowl",
+            "quantity": 2.0,
+            "gross_minor": 2580,
+            "discount_minor": 0
+          }
+        ],
+        "payments": [
+          {
+            "payment_id": "sq-payment-0019",
+            "amount_minor": 6076,
+            "status": "COMPLETED"
+          }
+        ],
+        "lineage": {
+          "order_file": "orders.json",
+          "payment_file": "payments.json",
+          "refund_file": "refunds.json"
+        },
+        "warnings": []
+      },
+      {
+        "provider": "square",
+        "source_order_id": "sq-order-0020",
+        "location_id": "sq-eastside",
+        "created_at": "2026-11-14T17:30:00+00:00",
+        "currency": "USD",
+        "status": "COMPLETED",
+        "customer_id": "TEST-SQUARE-017",
+        "gross_minor": 4870,
+        "discount_minor": 0,
+        "refund_minor": 0,
+        "net_sales_minor": 4870,
+        "tax_minor": 414,
+        "tip_minor": 0,
+        "items": [
+          {
+            "item_id": "li-0020-1",
+            "name": "Korean BBQ rice",
+            "quantity": 2.0,
+            "gross_minor": 3380,
+            "discount_minor": 0
+          },
+          {
+            "item_id": "li-0020-2",
+            "name": "Spicy chicken bowl",
+            "quantity": 1.0,
+            "gross_minor": 1490,
+            "discount_minor": 0
+          }
+        ],
+        "payments": [
+          {
+            "payment_id": "sq-payment-0020",
+            "amount_minor": 5284,
+            "status": "COMPLETED"
+          }
+        ],
+        "lineage": {
+          "order_file": "orders.json",
+          "payment_file": "payments.json",
+          "refund_file": "refunds.json"
+        },
+        "warnings": []
+      },
+      {
+        "provider": "square",
+        "source_order_id": "sq-order-0021",
+        "location_id": "sq-downtown",
+        "created_at": "2026-10-27T18:37:00+00:00",
+        "currency": "USD",
+        "status": "COMPLETED",
+        "customer_id": "TEST-SQUARE-018",
+        "gross_minor": 4870,
+        "discount_minor": 250,
+        "refund_minor": 0,
+        "net_sales_minor": 4620,
+        "tax_minor": 393,
+        "tip_minor": 0,
+        "items": [
+          {
+            "item_id": "li-0021-1",
+            "name": "Korean BBQ rice",
+            "quantity": 2.0,
+            "gross_minor": 3380,
+            "discount_minor": 250
+          },
+          {
+            "item_id": "li-0021-2",
+            "name": "Spicy chicken bowl",
+            "quantity": 1.0,
+            "gross_minor": 1490,
+            "discount_minor": 0
+          }
+        ],
+        "payments": [
+          {
+            "payment_id": "sq-payment-0021",
+            "amount_minor": 5013,
+            "status": "COMPLETED"
+          }
+        ],
+        "lineage": {
+          "order_file": "orders.json",
+          "payment_file": "payments.json",
+          "refund_file": "refunds.json"
+        },
+        "warnings": []
+      },
+      {
+        "provider": "square",
+        "source_order_id": "sq-order-0022",
+        "location_id": "sq-lakeside",
+        "created_at": "2026-10-30T19:44:00+00:00",
+        "currency": "USD",
+        "status": "COMPLETED",
+        "customer_id": "TEST-SQUARE-001",
+        "gross_minor": 1050,
+        "discount_minor": 0,
+        "refund_minor": 0,
+        "net_sales_minor": 1050,
+        "tax_minor": 89,
+        "tip_minor": 0,
+        "items": [
+          {
+            "item_id": "li-0022-1",
+            "name": "Miso garden salad",
+            "quantity": 1.0,
+            "gross_minor": 1050,
+            "discount_minor": 0
+          }
+        ],
+        "payments": [
+          {
+            "payment_id": "sq-payment-0022",
+            "amount_minor": 1139,
+            "status": "COMPLETED"
+          }
+        ],
+        "lineage": {
+          "order_file": "orders.json",
+          "payment_file": "payments.json",
+          "refund_file": "refunds.json"
+        },
+        "warnings": []
+      },
+      {
+        "provider": "square",
+        "source_order_id": "sq-order-0023",
+        "location_id": "sq-market",
+        "created_at": "2026-11-02T20:51:00+00:00",
+        "currency": "USD",
+        "status": "COMPLETED",
+        "customer_id": "TEST-SQUARE-002",
+        "gross_minor": 2340,
+        "discount_minor": 0,
+        "refund_minor": 0,
+        "net_sales_minor": 2340,
+        "tax_minor": 199,
+        "tip_minor": 0,
+        "items": [
+          {
+            "item_id": "li-0023-1",
+            "name": "Crispy tofu bowl",
+            "quantity": 1.0,
+            "gross_minor": 1290,
+            "discount_minor": 0
+          },
+          {
+            "item_id": "li-0023-2",
+            "name": "Miso garden salad",
+            "quantity": 1.0,
+            "gross_minor": 1050,
+            "discount_minor": 0
+          }
+        ],
+        "payments": [
+          {
+            "payment_id": "sq-payment-0023",
+            "amount_minor": 2539,
+            "status": "COMPLETED"
+          }
+        ],
+        "lineage": {
+          "order_file": "orders.json",
+          "payment_file": "payments.json",
+          "refund_file": "refunds.json"
+        },
+        "warnings": []
+      },
+      {
+        "provider": "square",
+        "source_order_id": "sq-order-0024",
+        "location_id": "sq-eastside",
+        "created_at": "2026-11-05T13:58:00+00:00",
+        "currency": "USD",
+        "status": "COMPLETED",
+        "customer_id": "TEST-SQUARE-003",
+        "gross_minor": 1690,
+        "discount_minor": 0,
+        "refund_minor": 0,
+        "net_sales_minor": 1690,
+        "tax_minor": 144,
+        "tip_minor": 0,
+        "items": [
+          {
+            "item_id": "li-0024-1",
+            "name": "Korean BBQ rice",
+            "quantity": 1.0,
+            "gross_minor": 1690,
+            "discount_minor": 0
+          }
+        ],
+        "payments": [
+          {
+            "payment_id": "sq-payment-0024",
+            "amount_minor": 1834,
+            "status": "COMPLETED"
+          }
+        ],
+        "lineage": {
+          "order_file": "orders.json",
+          "payment_file": "payments.json",
+          "refund_file": "refunds.json"
+        },
+        "warnings": []
+      },
+      {
+        "provider": "square",
+        "source_order_id": "sq-order-0025",
+        "location_id": "sq-downtown",
+        "created_at": "2026-11-08T15:05:00+00:00",
+        "currency": "USD",
+        "status": "COMPLETED",
+        "customer_id": null,
+        "gross_minor": 1700,
+        "discount_minor": 150,
+        "refund_minor": 0,
+        "net_sales_minor": 1550,
+        "tax_minor": 132,
+        "tip_minor": 0,
+        "items": [
+          {
+            "item_id": "li-0025-1",
+            "name": "Miso garden salad",
+            "quantity": 1.0,
+            "gross_minor": 1050,
+            "discount_minor": 150
+          },
+          {
+            "item_id": "li-0025-2",
+            "name": "Sweet potato fries",
+            "quantity": 1.0,
+            "gross_minor": 650,
+            "discount_minor": 0
+          }
+        ],
+        "payments": [
+          {
+            "payment_id": "sq-payment-0025",
+            "amount_minor": 1682,
+            "status": "COMPLETED"
+          }
+        ],
+        "lineage": {
+          "order_file": "orders.json",
+          "payment_file": "payments.json",
+          "refund_file": "refunds.json"
+        },
+        "warnings": []
+      },
+      {
+        "provider": "square",
+        "source_order_id": "sq-order-0026",
+        "location_id": "sq-lakeside",
+        "created_at": "2026-11-11T16:12:00+00:00",
+        "currency": "USD",
+        "status": "COMPLETED",
+        "customer_id": "TEST-SQUARE-004",
+        "gross_minor": 2540,
+        "discount_minor": 150,
+        "refund_minor": 300,
+        "net_sales_minor": 2090,
+        "tax_minor": 203,
+        "tip_minor": 0,
+        "items": [
+          {
+            "item_id": "li-0026-1",
+            "name": "Spicy chicken bowl",
+            "quantity": 1.0,
+            "gross_minor": 1490,
+            "discount_minor": 150
+          },
+          {
+            "item_id": "li-0026-2",
+            "name": "Miso garden salad",
+            "quantity": 1.0,
+            "gross_minor": 1050,
+            "discount_minor": 0
+          }
+        ],
+        "payments": [
+          {
+            "payment_id": "sq-payment-0026",
+            "amount_minor": 2593,
+            "status": "COMPLETED"
+          }
+        ],
+        "lineage": {
+          "order_file": "orders.json",
+          "payment_file": "payments.json",
+          "refund_file": "refunds.json"
+        },
+        "warnings": []
+      },
+      {
+        "provider": "square",
+        "source_order_id": "sq-order-0027",
+        "location_id": "sq-market",
+        "created_at": "2026-11-14T17:19:00+00:00",
+        "currency": "USD",
+        "status": "COMPLETED",
+        "customer_id": "TEST-SQUARE-005",
+        "gross_minor": 2780,
+        "discount_minor": 0,
+        "refund_minor": 0,
+        "net_sales_minor": 2780,
+        "tax_minor": 236,
+        "tip_minor": 0,
+        "items": [
+          {
+            "item_id": "li-0027-1",
+            "name": "Crispy tofu bowl",
+            "quantity": 1.0,
+            "gross_minor": 1290,
+            "discount_minor": 0
+          },
+          {
+            "item_id": "li-0027-2",
+            "name": "Spicy chicken bowl",
+            "quantity": 1.0,
+            "gross_minor": 1490,
+            "discount_minor": 0
+          }
+        ],
+        "payments": [
+          {
+            "payment_id": "sq-payment-0027",
+            "amount_minor": 3016,
+            "status": "COMPLETED"
+          }
+        ],
+        "lineage": {
+          "order_file": "orders.json",
+          "payment_file": "payments.json",
+          "refund_file": "refunds.json"
+        },
+        "warnings": []
+      },
+      {
+        "provider": "square",
+        "source_order_id": "sq-order-0028",
+        "location_id": "sq-eastside",
+        "created_at": "2026-10-27T18:26:00+00:00",
+        "currency": "USD",
+        "status": "COMPLETED",
+        "customer_id": "TEST-SQUARE-006",
+        "gross_minor": 490,
+        "discount_minor": 0,
+        "refund_minor": 0,
+        "net_sales_minor": 490,
+        "tax_minor": 42,
+        "tip_minor": 0,
+        "items": [
+          {
+            "item_id": "li-0028-1",
+            "name": "Citrus sparkling tea",
+            "quantity": 1.0,
+            "gross_minor": 490,
+            "discount_minor": 0
+          }
+        ],
+        "payments": [
+          {
+            "payment_id": "sq-payment-0028",
+            "amount_minor": 532,
+            "status": "COMPLETED"
+          }
+        ],
+        "lineage": {
+          "order_file": "orders.json",
+          "payment_file": "payments.json",
+          "refund_file": "refunds.json"
+        },
+        "warnings": []
+      }
+    ],
+    "summary": {
+      "orders": 28,
+      "items": 53,
+      "payments": 28,
+      "net_sales_minor": 65080,
+      "discounts_minor": 2500,
+      "refunds_minor": 900
+    },
+    "raw_file": "orders.json",
+    "raw_snippet": "{\n  \"orders\": [\n    {\n      \"id\": \"sq-order-0001\",\n      \"location_id\": \"sq-downtown\",\n      \"created_at\": \"2026-10-30T12:17:00+00:00\",\n      \"state\": \"COMPLETED\",\n      \"line_items\": [\n        {\n          \"uid\": \"li-0001-1\",\n          \"name\": \"Korean BBQ rice\",\n          \"quantity\": \"1\",\n          \"gross_sales_money\": {\n            \"amount\": 1690,\n            \"currency\": \"USD\"\n          },\n          \"total_discount_money\": {\n            \"amount\": 0,\n            \"currency\": \"USD\"\n          }\n        },\n        {\n          \"uid\": \"li-0001-2\",\n          \"name\": \"Sesame noodle cup\",\n          \"quantity\": \"1\",\n          \"gross_sales_money\": {\n            \"amount\": 890,\n            \"currency\": \"USD\"\n          },\n          \"total_discount_money\": {\n            \"amount\": 0,\n            \"currency\": \"USD\"\n          }\n        }\n      ],\n      \"total_discount_money\": {\n        \"amount\": 0,\n        \"currency\": \"USD\"\n      },\n      \"total_tax_money\": {\n        \"amount\": 219,\n        \"currency\": \"USD\"\n      },\n      \"total_tip_money\": {\n        \"amount\": 0,\n        \"currency\": \"USD\"\n      },\n      \"total_money\": {\n        \"amount\": 2799,\n        \"currency\": \"USD\"\n      }\n    },\n    {\n      \"id\": \"sq-order-0002\",\n      \"location_id\": \"sq-lakeside\",\n      \"created_at\": \"2026-11-02T13:24:00+00:00\",\n      \"state\": \"COMPLETED\",\n      \"line_items\": [\n        {\n          \"uid\": \"li-0002-1\",\n          \"name\": \"Spicy chicken bowl\",\n          \"quantity\": \"1\",\n          \"gross_sales_money\": {\n            \"amount\": 1490,\n            \"currency\": \"USD\"\n          },\n          \"total_discount_money\": {\n            \"amount\": 300,\n            \"currency\": \"USD\"\n          }\n        },\n        {\n          \"uid\": \"li-0002-2\",\n          \"name\": \"Sweet potato fries\",\n          \"quantity\": \"1\",\n          \"gross_sales_money\": {\n            \"amount\": 650,\n            \"currency\": \"USD\"\n          },\n          \"total_discount_money\": {\n            \"amount\": 0,\n            \"currency\": \"USD\"\n          }\n        },\n        {\n          \"uid\": \"li-0002-3\",\n          \"name\": \"Citrus sparkling tea\",\n          \"quantity\": \"1\",\n          \"gross_sales_money\": {\n            \"amount\": 490,\n            \"currency\": \"USD\"\n          },\n          \"total_discount_money\": {\n            \"amount\": 0,\n            \"currency\": \"USD\"\n          }\n        }\n      ],\n      \"total_discount_money\": {\n        \"amount\": 300,\n        \"currency\": \"USD\"\n      },\n      \"total_tax_money\": {\n        \"amount\": 198,\n        \"currency\": \"USD\"\n      },\n      \"total_tip_money\": {\n        \"amount\": 0,\n        \"currency\": \"USD\"\n      },\n      \"total_money\": {\n        \"amount\": 2528,\n        \"currency\": \"USD\"\n      }\n    },\n    {\n      \"id\": \"sq-order-0003\",\n      \"location_id\": \"sq-market\",\n      \"created_at\": \"2026-11-05T14:31:00+00:00\",\n      \"state\": \"COMPLETED\",\n      \"line_items\": [\n        {\n          \"uid\": \"li-0003-1\",\n          \"name\": \"Spicy chicken bowl\",\n          \"quantity\": \"1\",\n          \"gross_sales_money\": {\n            \"amount\": 1490,\n            \"currency\": \"USD\"\n          },\n          \"total_discount_money\": {\n            \"amount\": 0,\n            \"currency\": \"USD\"\n          }\n        },\n        {\n          \"uid\": \"li-0003-2\",\n          \"name\": \"Miso garden salad\",\n          \"quantity\": \"1\",\n          \"gross_sales_money\": {\n            \"amount\": 1050,\n            \"currency\": \"USD\"\n          },\n          \"total_discount_money\": {\n            \"amount\": 0,\n            \"currency\": \"USD\"\n          }\n        },\n        {\n          \"uid\": \"li-0003-3\",\n          \"name\": \"Sesame noodle cup\",\n          \"quantity\": \"1\",\n          \"gross_sales_money\": {\n            \"amount\": 890,\n            \"currency\": \"USD\"\n   "
+  }
+}

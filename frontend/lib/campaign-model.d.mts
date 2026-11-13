@@ -1,0 +1,7 @@
+import type {Order} from './types';
+export type CampaignOrderMatch={redemption_id:string;provider:string;source_order_id:string;location_id:string;customer_id:string|null;net_sales_minor:number;recorded_discount_minor:number;refund_minor:number;redeemed_at:string};
+export type CampaignReport={campaign_id:string;code:string;name:string;offer_type:string;description:string;start_date:string;end_date:string;redeemed_orders:number;attributed_net_sales_minor:number;recorded_discount_minor:number;recorded_refund_minor:number;variable_campaign_cost_minor:number;fixed_campaign_cost_minor:number;modeled_contribution_minor:number;identified_redeemers:number;repeat_redeemers:number;anonymous_redemptions:number;locations:Array<{provider:string;location_id:string;redeemed_orders:number;net_sales_minor:number;recorded_discount_minor:number}>;order_matches:CampaignOrderMatch[]};
+export type CustomerSummary={total_orders:number;identified_orders:number;identified_customers:number;repeat_customers:number;customer_coverage_percent:number;repeat_customer_rate_percent:number;anonymous_orders:number};
+export type CampaignAnalysis={campaigns:CampaignReport[];margin_assumption_percent:number;customer_summary:CustomerSummary;total_redemptions:number;rejected:number;issues:string[];disclaimer:string};
+export function repeatCustomerSummary(orders:Order[]):CustomerSummary;
+export function evaluateCampaigns(orders:Order[], campaignsCsv:string, redemptionsCsv:string,marginPercent?:number):CampaignAnalysis;
