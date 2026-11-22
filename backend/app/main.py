@@ -5,6 +5,7 @@ import json
 from fastapi import FastAPI, HTTPException, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from .adapters import parse, source_payload, parse_toast, parse_square
+from . import config
 from .database import init_db, reset_db, persist, metrics, recent_runs
 from .local_auth import router as local_auth_router
 from .saas import router as saas_router
@@ -20,7 +21,7 @@ async def lifespan(app: FastAPI):
 
 app=FastAPI(title='TableSignal Demo API',version='0.12.2',lifespan=lifespan,
     description='Local development preview: Square Sandbox, test payments, scoped read-only intelligence. Do not expose to the public internet or ingest production merchant data.')
-app.add_middleware(CORSMiddleware, allow_origins=['http://localhost:3000','http://127.0.0.1:3000'], allow_credentials=True, allow_methods=['GET','POST'], allow_headers=['*'])
+app.add_middleware(CORSMiddleware, allow_origins=config.allowed_origins(), allow_credentials=True, allow_methods=['GET','POST'], allow_headers=['*'])
 app.include_router(local_auth_router)
 app.include_router(saas_router)
 app.include_router(square_router)

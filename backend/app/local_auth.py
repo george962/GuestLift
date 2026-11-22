@@ -24,13 +24,13 @@ from sqlalchemy import ForeignKey, Integer, String, select, delete
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Mapped, Session, mapped_column
 
+from . import config
 from .database import Base, engine
 
 router = APIRouter(prefix='/api/local-auth', tags=['Local development authentication'])
 SESSION_COOKIE = 'tablesignal_dev_session'
 SESSION_TTL = 30 * 24 * 60 * 60
 PASSWORD_HASHER = PasswordHasher(time_cost=2, memory_cost=19456, parallelism=1, hash_len=32, salt_len=16)
-_ALLOWED_ORIGINS = {'http://localhost:3000', 'http://127.0.0.1:3000'}
 _EMAIL_RE = re.compile(r'^[^\s@]{1,64}@[^\s@]{1,190}\.[^\s@]{2,}$')
 _lock = threading.Lock()
 _attempts: dict[str, deque[float]] = defaultdict(deque)
@@ -76,7 +76,7 @@ def _normalized_email(value: str) -> str:
 
 def _require_local_origin(request: Request) -> None:
     origin = request.headers.get('origin', '')
-    if origin not in _ALLOWED_ORIGINS:
+    if origin not in config.allowed_origins():
         raise HTTPException(status_code=403, detail='Request must originate from the local TableSignal site.')
 
 
