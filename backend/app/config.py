@@ -26,3 +26,12 @@ def allowed_origins() -> list[str]:
     raw = os.getenv('GUESTLIFT_ALLOWED_ORIGINS', '')
     origins = [o.strip().rstrip('/') for o in raw.split(',') if o.strip()]
     return origins or list(_DEFAULT_ORIGINS)
+
+
+def demo_endpoints_enabled() -> bool:
+    """Shared-dataset demo endpoints (import, upload, metrics, campaigns).
+
+    These have no login and no per-workspace scoping, so they are OFF unless
+    GUESTLIFT_ENABLE_DEMO_ENDPOINTS=1. compose.yaml enables them for local use.
+    """
+    return os.getenv('GUESTLIFT_ENABLE_DEMO_ENDPOINTS') == '1'
