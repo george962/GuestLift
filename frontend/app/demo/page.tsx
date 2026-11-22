@@ -40,7 +40,7 @@ export default function Demo(){
   if(!local){setBackend(false);setBootChecked(true);return()=>{cancelled=true}};
   fetch(`${api}/api/health`,{signal:AbortSignal.timeout(2500)})
    .then(r=>r.ok?r.json():Promise.reject(new Error('API unavailable')))
-   .then(()=>{if(!cancelled)setBackend(true)})
+   .then((x)=>{if(!cancelled)setBackend(x?.demo_endpoints!==false)})
    .catch(()=>{if(!cancelled)setBackend(false)})
    .finally(()=>{if(!cancelled)setBootChecked(true)});
   return()=>{cancelled=true};

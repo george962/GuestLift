@@ -24,13 +24,20 @@ from sqlalchemy import ForeignKey, Integer, String, select, delete
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Mapped, Session, mapped_column
 
+from . import config
 from .database import Base, engine
 
-router = APIRouter(prefix='/api/local-auth', tags=['Local development authentication'])
+def _require_local_mode() -> None:
+    # With managed auth on, the built-in sign-up and login must not exist as a second door.
+    if config.auth_mode() != 'local':
+        raise HTTPException(status_code=404, detail='Not found')
+
+
+router = APIRouter(prefix='/api/local-auth', tags=['Local development authentication'],
+                   dependencies=[Depends(_require_local_mode)])
 SESSION_COOKIE = 'tablesignal_dev_session'
 SESSION_TTL = 30 * 24 * 60 * 60
 PASSWORD_HASHER = PasswordHasher(time_cost=2, memory_cost=19456, parallelism=1, hash_len=32, salt_len=16)
-_ALLOWED_ORIGINS = {'http://localhost:3000', 'http://127.0.0.1:3000'}
 _EMAIL_RE = re.compile(r'^[^\s@]{1,64}@[^\s@]{1,190}\.[^\s@]{2,}$')
 _lock = threading.Lock()
 _attempts: dict[str, deque[float]] = defaultdict(deque)
@@ -76,7 +83,7 @@ def _normalized_email(value: str) -> str:
 
 def _require_local_origin(request: Request) -> None:
     origin = request.headers.get('origin', '')
-    if origin not in _ALLOWED_ORIGINS:
+    if origin not in config.allowed_origins():
         raise HTTPException(status_code=403, detail='Request must originate from the local TableSignal site.')
 
 
@@ -129,6 +136,14 @@ def _require_csrf(request: Request, session: LocalSession) -> None:
 
 
 def authenticated_subject(request: Request) -> str:
+    """The single seam every private route depends on.
+
+    local: cookie session + CSRF (development accounts).
+    oidc:  bearer token from the managed identity provider (see docs/AUTH.md).
+    """
+    if config.auth_mode() == 'oidc':
+        from .oidc_auth import verify_bearer
+        return verify_bearer(request)
     with Session(engine) as db:
         active = _current(request, db)
         if active is None:

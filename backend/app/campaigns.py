@@ -83,7 +83,7 @@ def _redemption(raw: dict) -> dict:
     return item
 
 
-def import_campaign_csvs(campaign_bytes: bytes, redemption_bytes: bytes) -> dict:
+def import_campaign_csvs(campaign_bytes: bytes, redemption_bytes: bytes, workspace_id: str = database.DEMO_WORKSPACE_ID) -> dict:
     """Reject invalid rows with line-number reason; allow valid rows through. Replay is idempotent.
 
     This sample deliberately permits only ONE campaign redemption per order. Real
@@ -94,9 +94,9 @@ def import_campaign_csvs(campaign_bytes: bytes, redemption_bytes: bytes) -> dict
     added_campaigns=added=duplicates=0
     issues=[]
     with Session(database.engine) as db:
-        available={(o.provider,o.source_order_id):o for o in db.scalars(select(OrderRecord)).all()}
-        known_campaigns={x.campaign_id:x for x in db.scalars(select(CampaignRecord)).all()}
-        existing_redemptions={x.redemption_id:x for x in db.scalars(select(RedemptionRecord)).all()}
+        available={(o.provider,o.source_order_id):o for o in db.scalars(select(OrderRecord).where(OrderRecord.workspace_id==workspace_id)).all()}
+        known_campaigns={x.campaign_id:x for x in db.scalars(select(CampaignRecord).where(CampaignRecord.workspace_id==workspace_id)).all()}
+        existing_redemptions={x.redemption_id:x for x in db.scalars(select(RedemptionRecord).where(RedemptionRecord.workspace_id==workspace_id)).all()}
         occupied={(x.provider,x.source_order_id) for x in existing_redemptions.values()}
         for line,raw in enumerate(campaign_rows,2):
             try:
@@ -108,7 +108,7 @@ def import_campaign_csvs(campaign_bytes: bytes, redemption_bytes: bytes) -> dict
                         raise ValueError(f'campaign {cid} already exists with different settings; no silent overwrite')
                     duplicates+=1
                     continue
-                row=CampaignRecord(**item)
+                row=CampaignRecord(workspace_id=workspace_id,**item)
                 db.add(row)
                 known_campaigns[cid]=row
                 added_campaigns+=1
@@ -143,14 +143,14 @@ def import_campaign_csvs(campaign_bytes: bytes, redemption_bytes: bytes) -> dict
                     continue
                 if (item['provider'],item['source_order_id']) in occupied:
                     raise ValueError('order already has a campaign redemption; one per order in this demo')
-                row=RedemptionRecord(**item)
+                row=RedemptionRecord(workspace_id=workspace_id,**item)
                 db.add(row)
                 existing_redemptions[rid]=row
                 occupied.add((item['provider'],item['source_order_id']))
                 added+=1
             except ValueError as exc:
                 issues.append(f'Redemptions.csv row {line}: {exc}')
-        run=CampaignImportRun(processed_at=datetime.now(timezone.utc).isoformat(),campaigns_inserted=added_campaigns,
+        run=CampaignImportRun(workspace_id=workspace_id,processed_at=datetime.now(timezone.utc).isoformat(),campaigns_inserted=added_campaigns,
             redemptions_inserted=added,duplicates=duplicates,rejected=len(issues),issues_json=__import__('json').dumps(issues))
         db.add(run)
         db.commit()

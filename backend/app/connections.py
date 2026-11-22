@@ -23,6 +23,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import ForeignKey, Integer, String, Text, UniqueConstraint, select, delete
 from sqlalchemy.orm import Mapped, Session, mapped_column
 
+from . import config
 from .database import Base, engine
 from .local_auth import authenticated_subject
 from .location_entitlements import (SandboxMonitoredLocation, eligible_location,
@@ -529,7 +530,7 @@ def oauth_callback(code: str = '', state: str = '', error: str = ''):
     # Square redirects from its domain; no session cookie is used here.
     # A random single-use 10-minute state binds the callback to the initiating workspace.
     if error:
-        return RedirectResponse('http://localhost:3000/connections?square=denied', status_code=303)
+        return RedirectResponse(config.app_url() + '/connections?square=denied', status_code=303)
     if not code or not state or len(code) > 4096 or len(state) > 256:
         raise HTTPException(400, 'Missing or invalid Sandbox authorization response.')
     with Session(engine) as db:
@@ -561,7 +562,7 @@ def oauth_callback(code: str = '', state: str = '', error: str = ''):
         raise HTTPException(422, 'Square merchant identity was inconsistent.')
     with Session(engine) as db:
         _bind(db, wid, merchant, 'oauth', token, data.get('refresh_token'), data.get('expires_at'))
-    return RedirectResponse('http://localhost:3000/connections?square=connected', status_code=303)
+    return RedirectResponse(config.app_url() + '/connections?square=connected', status_code=303)
 
 
 @router.post('/sync')

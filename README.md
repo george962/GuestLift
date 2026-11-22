@@ -51,4 +51,4 @@ To opt into the new owner-selected monitored-location Sandbox flow, add `TABLESI
 - [Detailed v0.13→v1.0 release gates](docs/V013_TO_V1_PRODUCTION_GATES.md)
 - [Product and location billing specification](docs/V012_PRODUCT_AND_SELF_SERVICE_BILLING.md)
 
-Earlier `INSTALL_V0*`, `README_V011.md`, preview HTML files and tracked ZIP releases are **historical artifacts**. Do not unzip patches over the live working tree. Use version-controlled edits, branches, pull requests and CI.
+Earlier install guides, patch ZIPs and standalone preview files were removed from the tree (they remain in git history). Do not unzip patches over the live working tree. Use version-controlled edits, branches, pull requests and CI.

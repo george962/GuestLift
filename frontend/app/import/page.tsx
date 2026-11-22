@@ -40,7 +40,7 @@ export default function ImportLab(){
 
   useEffect(()=>{
     if(!['localhost','127.0.0.1'].includes(window.location.hostname))return;
-    fetch(`${api}/api/health`,{signal:AbortSignal.timeout(2000)}).then(r=>setApiAvailable(r.ok)).catch(()=>setApiAvailable(false));
+    fetch(`${api}/api/health`,{signal:AbortSignal.timeout(2000)}).then(r=>r.ok?r.json():null).then(x=>setApiAvailable(!!x&&x.demo_endpoints!==false)).catch(()=>setApiAvailable(false));
   },[]);
 
   const required=DEMO_FILES[provider];

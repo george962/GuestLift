@@ -2,10 +2,16 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from tempfile import TemporaryDirectory
 import json
-from fastapi import FastAPI, HTTPException, File, UploadFile
+from fastapi import Depends, FastAPI, HTTPException, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from .adapters import parse, source_payload, parse_toast, parse_square
-from .database import init_db, reset_db, persist, metrics, recent_runs
+import time
+from sqlalchemy import text
+from fastapi import Request
+from fastapi.responses import JSONResponse
+from . import config
+from .logging_config import logger, setup_logging
+from .database import engine, init_db, reset_db, persist, metrics, recent_runs
 from .local_auth import router as local_auth_router
 from .saas import router as saas_router
 from .connections import router as square_router
@@ -15,12 +21,14 @@ from .launch import router as launch_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    setup_logging()
+    config.validate_auth_config()
     init_db()
     yield
 
 app=FastAPI(title='TableSignal Demo API',version='0.13.0',lifespan=lifespan,
     description='Local development preview: Square Sandbox, test payments, scoped read-only intelligence. Do not expose to the public internet or ingest production merchant data.')
-app.add_middleware(CORSMiddleware, allow_origins=['http://localhost:3000','http://127.0.0.1:3000'], allow_credentials=True, allow_methods=['GET','POST'], allow_headers=['*'])
+app.add_middleware(CORSMiddleware, allow_origins=config.allowed_origins(), allow_credentials=True, allow_methods=['GET','POST'], allow_headers=['*'])
 app.include_router(local_auth_router)
 app.include_router(saas_router)
 app.include_router(square_router)
@@ -28,11 +36,42 @@ app.include_router(decisions_router)
 app.include_router(intelligence_router)
 app.include_router(launch_router)
 
+def require_demo_endpoints():
+    # Hosted builds must not expose the unauthenticated, shared-dataset demo API.
+    if not config.demo_endpoints_enabled():
+        raise HTTPException(status_code=404, detail='Not found')
+
+DEMO=[Depends(require_demo_endpoints)]
+
 def validate_provider(provider: str):
     if provider not in ('toast','square'):raise HTTPException(status_code=404,detail='Provider not supported')
 
+@app.middleware('http')
+async def log_requests(request: Request, call_next):
+    started = time.perf_counter()
+    try:
+        response = await call_next(request)
+    except Exception:
+        logger.exception('unhandled error %s %s', request.method, request.url.path)
+        raise
+    logger.info('%s %s -> %s (%.0f ms)', request.method, request.url.path, response.status_code, (time.perf_counter() - started) * 1000)
+    return response
+
 @app.get('/api/health')
-def health():return {'status':'ok','mode':'synthetic_demo'}
+def health():
+    """Liveness only (no database access). Use /api/ready for readiness."""
+    return {'status':'ok','mode':'synthetic_demo','demo_endpoints':config.demo_endpoints_enabled()}
+
+@app.get('/api/ready')
+def ready():
+    """Readiness: verifies the database accepts queries."""
+    try:
+        with engine.connect() as connection:
+            connection.execute(text('SELECT 1'))
+    except Exception:
+        logger.exception('readiness check failed')
+        return JSONResponse({'status':'unavailable'}, status_code=503)
+    return {'status':'ready'}
 
 @app.get('/api/providers')
 def providers():return [{'id':'toast','label':'Toast POS','mode':'fabricated CSV fixtures'},{'id':'square','label':'Square POS','mode':'Square-shaped JSON fixtures, not a live Sandbox session'}]
@@ -49,7 +88,7 @@ def preview(provider: str):
                            'discounts_minor':sum(x.discount_minor for x in rows),'refunds_minor':sum(x.refund_minor for x in rows)}}
     except (OSError,KeyError,ValueError) as e:raise HTTPException(status_code=422,detail=str(e))
 
-@app.post('/api/import/{provider}')
+@app.post('/api/import/{provider}',dependencies=DEMO)
 def import_sample(provider: str):
     validate_provider(provider)
     try:
@@ -59,12 +98,12 @@ def import_sample(provider: str):
                 'issues':[message for row in rows for message in row.warnings],'orders':[r.model_dump() for r in rows]}
     except (OSError,KeyError,ValueError) as e:raise HTTPException(status_code=422,detail=str(e))
 
-@app.get('/api/metrics')
+@app.get('/api/metrics',dependencies=DEMO)
 def get_metrics(provider: str | None=None):
     if provider:validate_provider(provider)
     return metrics(provider)
 
-@app.get('/api/imports')
+@app.get('/api/imports',dependencies=DEMO)
 def imports():return {'runs':recent_runs()}
 
 @app.post('/api/reset')
@@ -85,7 +124,7 @@ UPLOAD_FILES = {
 }
 MAX_UPLOAD_BYTES = 2 * 1024 * 1024  # Per file, small demonstration fixtures only.
 
-@app.post('/api/upload/{provider}')
+@app.post('/api/upload/{provider}',dependencies=DEMO)
 async def import_uploaded_files(provider: str, files: list[UploadFile] = File(...)):
     """Parse, validate, normalize and persist three synthetic demo fixture files."""
     validate_provider(provider)
@@ -133,18 +172,18 @@ from .database import campaign_reports, customer_summary
 
 CAMPAIGN_FIXTURE_DIR = Path(__file__).resolve().parent.parent / 'fixtures' / 'campaigns'
 
-@app.get('/api/campaigns/report')
+@app.get('/api/campaigns/report',dependencies=DEMO)
 def get_campaign_report(margin_percent: int = 35):
     try:
         return campaign_reports(margin_percent)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
-@app.get('/api/customers/summary')
+@app.get('/api/customers/summary',dependencies=DEMO)
 def get_customer_summary():
     return customer_summary()
 
-@app.post('/api/campaigns/upload')
+@app.post('/api/campaigns/upload',dependencies=DEMO)
 async def upload_campaigns(campaigns_file: UploadFile = File(...), redemptions_file: UploadFile = File(...)):
     if campaigns_file.filename != 'Campaigns.csv' or redemptions_file.filename != 'Redemptions.csv':
         raise HTTPException(status_code=422, detail='Upload Campaigns.csv and Redemptions.csv exactly')
@@ -156,7 +195,7 @@ async def upload_campaigns(campaigns_file: UploadFile = File(...), redemptions_f
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
-@app.post('/api/campaigns/demo/load')
+@app.post('/api/campaigns/demo/load',dependencies=DEMO)
 def load_fictional_campaigns():
     """Convenience: sample POS orders first, followed by sample coupon redemptions.
 

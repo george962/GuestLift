@@ -15,6 +15,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import String, Integer, Text, ForeignKey, UniqueConstraint, select, delete
 from sqlalchemy.orm import Mapped, mapped_column, Session
 
+from . import config
 from .database import Base, engine
 from .adapters import parse
 from .insights import analyze_orders, answer_question
@@ -397,7 +398,7 @@ def sandbox_location_quote(sub: str = Depends(authenticated_subject)):
 def checkout(sub: str = Depends(authenticated_subject)):
     stripe = _stripe_client()
     price = os.getenv('STRIPE_GROWTH_PRICE_ID', '')
-    base = os.getenv('GUESTLIFT_APP_URL', 'http://localhost:3000').rstrip('/')
+    base = config.app_url()
     if not price.startswith('price_'):
         raise HTTPException(status_code=503, detail='Stripe Growth test price is not configured.')
     with Session(engine) as db:
@@ -478,7 +479,7 @@ def portal(sub: str = Depends(authenticated_subject)):
         try:
             session = stripe.billing_portal.Session.create(
                 customer=w.stripe_customer_id,
-                return_url=os.getenv('GUESTLIFT_APP_URL', 'http://localhost:3000').rstrip('/') + '/billing')
+                return_url=config.app_url() + '/billing')
         except Exception as exc:
             raise HTTPException(status_code=502, detail='Could not open the Stripe customer portal.') from exc
     return {'url': session.url}

@@ -28,3 +28,4 @@ playwright-report/
 test-results/
 coverage/
 .pytest_cache/
+*.tsbuildinfo

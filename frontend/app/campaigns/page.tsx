@@ -50,7 +50,7 @@ export default function CampaignLab(){
      if(Array.isArray(arr)){const valid=arr.filter(o=>o && ['toast','square'].includes(o.provider)&&typeof o.source_order_id==='string'&&Number.isSafeInteger(o.net_sales_minor)&&Array.isArray(o.items));setImported(valid)}}}
    catch{/* Browser storage not available. */}
    const controller=new AbortController();
-   fetch(`${API}/api/health`,{signal:controller.signal}).then(r=>r.ok?r.json():null).then(x=>{if(x?.mode==='synthetic_demo')setApiReady(true)}).catch(()=>{});
+   fetch(`${API}/api/health`,{signal:controller.signal}).then(r=>r.ok?r.json():null).then(x=>{if(x?.mode==='synthetic_demo'&&x?.demo_endpoints!==false)setApiReady(true)}).catch(()=>{});
    return ()=>controller.abort();
  },[]);
  const orders=source==='imported'?imported:baseOrders;

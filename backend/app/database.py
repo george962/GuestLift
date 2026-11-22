@@ -14,9 +14,18 @@ engine = create_engine(DATABASE_URL, connect_args={'check_same_thread': False} i
 class Base(DeclarativeBase):
     pass
 
+# The shared, unauthenticated demo dataset lives in its own workspace. Private
+# merchant data belongs to rows in saas_workspaces and is never mixed with it.
+DEMO_WORKSPACE_ID = 'public-demo'
+
+
+def _workspace_column():
+    return mapped_column(String(36), index=True, default=DEMO_WORKSPACE_ID, server_default=DEMO_WORKSPACE_ID)
+
 class OrderRecord(Base):
     __tablename__ = 'canonical_orders'
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    workspace_id: Mapped[str] = _workspace_column()
     provider: Mapped[str] = mapped_column(String(20))
     source_order_id: Mapped[str] = mapped_column(String(120))
     location_id: Mapped[str] = mapped_column(String(120))
@@ -26,11 +35,12 @@ class OrderRecord(Base):
     discount_minor: Mapped[int] = mapped_column(Integer)
     refund_minor: Mapped[int] = mapped_column(Integer)
     payload_json: Mapped[str] = mapped_column(Text)
-    __table_args__ = (UniqueConstraint('provider', 'source_order_id', name='uq_provider_order'),)
+    __table_args__ = (UniqueConstraint('workspace_id', 'provider', 'source_order_id', name='uq_workspace_provider_order'),)
 
 class ImportRun(Base):
     __tablename__ = 'import_runs'
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    workspace_id: Mapped[str] = _workspace_column()
     provider: Mapped[str] = mapped_column(String(20))
     processed_at: Mapped[str] = mapped_column(String(40))
     inserted: Mapped[int] = mapped_column(Integer)
@@ -39,6 +49,7 @@ class ImportRun(Base):
 
 class CampaignRecord(Base):
     __tablename__ = 'campaigns'
+    workspace_id: Mapped[str] = mapped_column(String(36), primary_key=True, default=DEMO_WORKSPACE_ID, server_default=DEMO_WORKSPACE_ID)
     campaign_id: Mapped[str] = mapped_column(String(80), primary_key=True)
     code: Mapped[str] = mapped_column(String(80))
     name: Mapped[str] = mapped_column(String(160))
@@ -52,17 +63,20 @@ class CampaignRecord(Base):
 class RedemptionRecord(Base):
     __tablename__ = 'campaign_redemptions'
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    redemption_id: Mapped[str] = mapped_column(String(120), unique=True)
+    workspace_id: Mapped[str] = _workspace_column()
+    redemption_id: Mapped[str] = mapped_column(String(120))
     campaign_id: Mapped[str] = mapped_column(String(80), index=True)
     provider: Mapped[str] = mapped_column(String(20))
     source_order_id: Mapped[str] = mapped_column(String(120))
     redeemed_at: Mapped[str] = mapped_column(String(40))
     discount_minor: Mapped[int] = mapped_column(Integer)
-    __table_args__ = (UniqueConstraint('provider', 'source_order_id', name='uq_one_campaign_per_demo_order'),)
+    __table_args__ = (UniqueConstraint('workspace_id', 'redemption_id', name='uq_workspace_redemption'),
+                      UniqueConstraint('workspace_id', 'provider', 'source_order_id', name='uq_workspace_one_campaign_per_order'),)
 
 class CampaignImportRun(Base):
     __tablename__ = 'campaign_import_runs'
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    workspace_id: Mapped[str] = _workspace_column()
     processed_at: Mapped[str] = mapped_column(String(40))
     campaigns_inserted: Mapped[int] = mapped_column(Integer)
     redemptions_inserted: Mapped[int] = mapped_column(Integer)
@@ -71,10 +85,43 @@ class CampaignImportRun(Base):
     issues_json: Mapped[str] = mapped_column(Text)
 
 
+WORKSPACE_SCOPED_TABLES = ('canonical_orders', 'import_runs', 'campaigns', 'campaign_redemptions', 'campaign_import_runs')
+
+
+def _adopt_pre_scoping_schema(inspector) -> None:
+    """Upgrade a local database created before demo tables had workspace_id.
+
+    create_all() never alters existing tables, so such a database would fail on
+    its first query. Alembic's revisions are idempotent, so run them on this engine.
+    """
+    names = set(inspector.get_table_names())
+    stale = [t for t in WORKSPACE_SCOPED_TABLES
+             if t in names and 'workspace_id' not in {c['name'] for c in inspector.get_columns(t)}]
+    if not stale:
+        return
+    from pathlib import Path
+    from alembic import command
+    from alembic.config import Config
+    backend_dir = Path(__file__).resolve().parents[1]
+    cfg = Config(str(backend_dir / 'alembic.ini'))
+    cfg.set_main_option('script_location', str(backend_dir / 'alembic'))
+    with engine.begin() as connection:
+        cfg.attributes['connection'] = connection
+        command.upgrade(cfg, 'head')
+
+
 def init_db() -> None:
-    """Additive migration for people upgrading an existing v0.3 SQLite/Postgres database."""
+    """Create the schema on startup for local development.
+
+    Hosted deployments should set GUESTLIFT_AUTO_CREATE_SCHEMA=0 and run
+    `alembic upgrade head` as a release step instead (see docs/MIGRATIONS.md).
+    """
+    if os.getenv('GUESTLIFT_AUTO_CREATE_SCHEMA', '1') == '0':
+        return
     Base.metadata.create_all(engine)
     inspector = inspect(engine)
+    _adopt_pre_scoping_schema(inspector)
+    inspector = inspect(engine)  # fresh: the upgrade above may have changed the schema
     if 'canonical_orders' in inspector.get_table_names():
         columns = {x['name'] for x in inspector.get_columns('canonical_orders')}
         if 'customer_id' not in columns:
@@ -82,28 +129,28 @@ def init_db() -> None:
                 connection.exec_driver_sql('ALTER TABLE canonical_orders ADD COLUMN customer_id VARCHAR(120)')
 
 
-def reset_db() -> None:
+def reset_db(workspace_id: str = DEMO_WORKSPACE_ID) -> None:
     with Session(engine) as db:
-        # Delete children first. This endpoint is meant only for the local demo.
+        # Delete children first. Only the given workspace's rows are removed.
         for model in (CampaignImportRun, RedemptionRecord, CampaignRecord, ImportRun, OrderRecord):
-            db.execute(delete(model))
+            db.execute(delete(model).where(model.workspace_id == workspace_id))
         db.commit()
 
 
-def persist(orders: list) -> tuple[int, int, int, str]:
+def persist(orders: list, workspace_id: str = DEMO_WORKSPACE_ID) -> tuple[int, int, int, str]:
     inserted = duplicates = 0
     with Session(engine) as db:
         for order in orders:
-            exists = db.scalar(select(OrderRecord).where(OrderRecord.provider == order.provider, OrderRecord.source_order_id == order.source_order_id))
+            exists = db.scalar(select(OrderRecord).where(OrderRecord.workspace_id == workspace_id, OrderRecord.provider == order.provider, OrderRecord.source_order_id == order.source_order_id))
             if exists:
                 duplicates += 1
                 continue
-            db.add(OrderRecord(provider=order.provider, source_order_id=order.source_order_id,
+            db.add(OrderRecord(workspace_id=workspace_id, provider=order.provider, source_order_id=order.source_order_id,
                 location_id=order.location_id, created_at=order.created_at, customer_id=order.customer_id,
                 net_sales_minor=order.net_sales_minor, discount_minor=order.discount_minor,
                 refund_minor=order.refund_minor, payload_json=order.model_dump_json()))
             inserted += 1
-        run = ImportRun(provider=orders[0].provider if orders else 'unknown', processed_at=datetime.now(timezone.utc).isoformat(),
+        run = ImportRun(workspace_id=workspace_id, provider=orders[0].provider if orders else 'unknown', processed_at=datetime.now(timezone.utc).isoformat(),
             inserted=inserted, duplicates=duplicates, status='completed' if inserted else 'replayed')
         db.add(run)
         db.commit()
@@ -111,9 +158,9 @@ def persist(orders: list) -> tuple[int, int, int, str]:
         return inserted, duplicates, run.id, run.status
 
 
-def metrics(provider: str | None = None) -> dict:
+def metrics(provider: str | None = None, workspace_id: str = DEMO_WORKSPACE_ID) -> dict:
     with Session(engine) as db:
-        query = select(OrderRecord)
+        query = select(OrderRecord).where(OrderRecord.workspace_id == workspace_id)
         if provider:
             query = query.where(OrderRecord.provider == provider)
         rows = db.scalars(query.order_by(OrderRecord.id)).all()
@@ -134,16 +181,16 @@ def metrics(provider: str | None = None) -> dict:
             'orders':[json.loads(o.payload_json) for o in rows]}
 
 
-def recent_runs() -> list[dict]:
+def recent_runs(workspace_id: str = DEMO_WORKSPACE_ID) -> list[dict]:
     with Session(engine) as db:
-        return [{'id':r.id,'provider':r.provider,'processed_at':r.processed_at,'inserted':r.inserted,'duplicates':r.duplicates,'status':r.status} for r in db.scalars(select(ImportRun).order_by(ImportRun.id.desc()).limit(12))]
+        return [{'id':r.id,'provider':r.provider,'processed_at':r.processed_at,'inserted':r.inserted,'duplicates':r.duplicates,'status':r.status} for r in db.scalars(select(ImportRun).where(ImportRun.workspace_id == workspace_id).order_by(ImportRun.id.desc()).limit(12))]
 
 
-def customer_summary(orders: list[dict] | None = None) -> dict:
+def customer_summary(orders: list[dict] | None = None, workspace_id: str = DEMO_WORKSPACE_ID) -> dict:
     """Provider-scoped synthetic IDs only; no identity stitching across systems."""
     if orders is None:
         with Session(engine) as db:
-            orders = [json.loads(o.payload_json) for o in db.scalars(select(OrderRecord)).all()]
+            orders = [json.loads(o.payload_json) for o in db.scalars(select(OrderRecord).where(OrderRecord.workspace_id == workspace_id)).all()]
     known = defaultdict(list)
     for o in orders:
         if o.get('customer_id') and o.get('status') not in ('VOIDED', 'CANCELED'):
@@ -161,13 +208,13 @@ def customer_summary(orders: list[dict] | None = None) -> dict:
     }
 
 
-def campaign_reports(margin_percent: int = 35) -> dict:
+def campaign_reports(margin_percent: int = 35, workspace_id: str = DEMO_WORKSPACE_ID) -> dict:
     if not 0 <= margin_percent <= 95:
         raise ValueError('Margin assumption must be from 0 to 95')
     with Session(engine) as db:
-        campaigns = db.scalars(select(CampaignRecord).order_by(CampaignRecord.campaign_id)).all()
-        redemptions = db.scalars(select(RedemptionRecord).order_by(RedemptionRecord.id)).all()
-        orders = db.scalars(select(OrderRecord)).all()
+        campaigns = db.scalars(select(CampaignRecord).where(CampaignRecord.workspace_id == workspace_id).order_by(CampaignRecord.campaign_id)).all()
+        redemptions = db.scalars(select(RedemptionRecord).where(RedemptionRecord.workspace_id == workspace_id).order_by(RedemptionRecord.id)).all()
+        orders = db.scalars(select(OrderRecord).where(OrderRecord.workspace_id == workspace_id)).all()
         order_map = {(o.provider,o.source_order_id):o for o in orders}
         full_orders = [json.loads(o.payload_json) for o in orders]
         customer_counts = defaultdict(int)
@@ -217,7 +264,7 @@ def campaign_reports(margin_percent: int = 35) -> dict:
             results.append(result)
         return {
             'campaigns':results,'margin_assumption_percent':margin_percent,
-            'customer_summary':customer_summary(full_orders),
+            'customer_summary':customer_summary(full_orders, workspace_id),
             'total_redemptions':len(redemptions),
             'disclaimer':'Synthetic and descriptive. Attributed sales are not incremental sales; modeled contribution uses an assumed margin and is not causal ROI. POS discounts already reduce net sales.',
         }
