@@ -96,7 +96,9 @@ def test_sql_persistence_replay_and_metrics(tmp_path:Path,monkeypatch):
         assert sum(x['discount_minor'] for x in m['orders'])==m['discounts_minor']
         assert client.get('/api/metrics?provider=toast').json()['order_count']==28
         assert client.get('/api/imports').json()['runs'][0]['provider']=='square'
+        monkeypatch.setenv('TABLESIGNAL_ENABLE_DEMO_RESET', '1')
         assert client.post('/api/reset').json()['status']=='reset'
+        monkeypatch.delenv('TABLESIGNAL_ENABLE_DEMO_RESET', raising=False)
         assert client.get('/api/metrics').json()['order_count']==0
     engine.dispose()
 

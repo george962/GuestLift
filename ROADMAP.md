@@ -1,48 +1,37 @@
-# TableSignal — active development roadmap (v0.9, November 2026)
+# TableSignal roadmap — v0.12.2 integration baseline
 
-## Goal
+**Status: local developer preview, not production-ready.** Updated 2026-11-22.
 
-A restaurant owner securely connects their POS account once, receives a trustworthy private view of sales and known guest behavior, and uses evidence-backed questions to decide which marketing tests may be worthwhile. Subscription billing funds ongoing synchronization, analysis and onboarding support—*after real restaurant value has been validated*.
+## Product direction
 
-## Completed milestones
+**Connect → Discover → Investigate → Decide → Track.** A restaurant operator sees evidence-linked changes in orders, identified guests and promotion spending, investigates uncertainty, saves a decision and revisits the outcome. Do not promise causal lift without an appropriate experiment.
 
-- **v0.1–v0.4:** Synthetic Toast/Square adapters, common restaurant order contract, local SQL persistence, CSV import lab, campaign/redemption example and modeled promotion cost testing.
-- **v0.5–v0.7:** Public animated website, more intelligible navigation, account and Stripe test billing page scaffolds, read-only insights and hypothetical pricing.
-- **v0.8:** Local PostgreSQL email/password accounts, Argon2id hashes, revocable session cookies, CSRF protection, profile settings, private SQL workspace identity, Stripe test subscription gates.
-- **v0.9 (source delivered):** Explicit onboarding/plan selection, private **empty-by-default** dashboard, actual Square **Sandbox API** connection, developer token and Sandbox OAuth modes, encrypted OAuth credentials, per-workspace Square orders and sync runs, idempotent replays, page-limited payment/customer linkage, local assisted setup queue, source-specific financial limitations, mocked API/isolation tests. API calls to a user's actual Square Sandbox remain to be verified.
+## Current capabilities (source exists; external operation needs verification)
 
-## Current acceptance work (do this before another big UI build)
+- Next.js marketing site, synthetic sample workspace, animated walkthrough, sign-up/sign-in, onboarding, analyst, connection and billing screens.
+- FastAPI, PostgreSQL local account/session prototype, Square Sandbox integration code, Stripe TEST subscription scaffolding, and evidence-based analytical functions.
+- Pure provider-location billing quote rules and unit tests exist **but are NOT integrated** with authenticated location selection, entitlements, ingestion, or Stripe checkout.
+- Existing ZIP archives and dated milestone docs are historical artifacts, **not an installation method or evidence of release readiness**.
 
-- [ ] Confirm full Docker Next.js production build on Mac, TypeScript and mobile layout.
-- [ ] Connect the user's own Square Sandbox application; confirm ListLocations, ListPayments and SearchOrders return authorized test records.
-- [ ] Create completed fictional paid orders in the Square Sandbox and sync them into the user's individual account dashboard.
-- [ ] Repeat import and verify updates, zero cross-account leakage and disconnect/delete behavior.
-- [ ] Configure optional Stripe TEST checkout and webhook, verify subscription authorization; do **not** enable live charges.
-- [ ] Observe one nontechnical restaurant owner walking through the workflow. Record confusion and willingness to pay.
+## Current acceptance priorities (in order)
 
-## v0.10 — dependable ingestion & reporting
+1. Pass automated CI: Node tests, TypeScript, Next production build, Python tests, browser smoke, and secret scanning on the *same* commit.
+2. Test end-to-end: sign up → verify session/onboarding → authorize own Square Sandbox → sync synthetic orders → isolated analysis → Stripe TEST checkout → reconcile → cancel.
+3. Eliminate public/demo reset and untrusted-upload paths from any hosted configuration; move to a production identity and tenant isolation model.
+4. Build and test *server-derived* canonical location entitlements, scoped data access, and Stripe quantity/invoice reconciliation. No paid-location claims before this.
+5. Stage with HTTPS, migrations, managed secrets/DB/backups, monitoring, incident and support processes, terms and privacy consent.
+6. Pilot with one consenting Square merchant after the relevant security gates pass; measure whether the recurring workflow changes a real decision.
 
-- Proper source reconciliation: payments/returns/refunds/service charges and tax/tip/currency.
-- Durable, scheduled background ingestion with retry/queue/dead-letter/status alerts and proper date-window backfills.
-- Data quality and completeness checks against Square exports, tax methodology and historical corrections.
-- Integrations validated against at least one genuinely permissioned Sandbox test merchant.
+## Commercial assumptions (not active billing)
 
-## v0.11 — security and real customer pilot preparation
+- Growth **$99/selected monitored location/month**, provisional. This is **not** the Stripe TEST price: TEST amounts come from `STRIPE_GROWTH_PRICE_ID`.
+- A proposed 14-day no-card trial starts only after first verified healthy sync; **not implemented**.
+- Square production OAuth and Stripe LIVE are **disabled / unverified**. Toast production support is out of scope for the first launch.
 
-- Proper tenant organizations/team roles, formal database migrations, private managed Postgres hosting, encrypted secret manager, HTTPS, verified Square production OAuth access and revocation monitoring, privacy/legal/security review.
-- No real merchant data until a secure controlled pilot is authorized and operationally justified.
+## Launch gate references
 
-## v0.12 — AI and marketing decisions (only grounded in evidence)
+- [Production readiness status and evidence](docs/PRODUCTION_READINESS.md) — authoritative pass/fail checklist.
+- [Full v0.13→v1.0 acceptance criteria](docs/V013_TO_V1_PRODUCTION_GATES.md).
+- [Location, signup and pricing design](docs/V012_PRODUCT_AND_SELF_SERVICE_BILLING.md).
 
-- Cohort trends, actual campaign assignments/redemptions, experiment/holdout comparisons, natural-language analysis of verified aggregations with citations and uncertainties.
-- Account-specific usage quotas and cost limits, private user control and external model privacy decisions.
-
-## Business validation
-
-- Free public demo remains sample-only.
-- Proposed Growth plan ($149/location/month) includes standard connection onboarding and automatic sync **when implemented**, not currently available.
-- Complex custom connections may require quoted one-time setup fees, based on observed integration effort and operator demand—not arbitrary promised ROI.
-
-## Definition of production-ready
-
-Every blocker in [docs/PRODUCTION_READINESS.md](docs/PRODUCTION_READINESS.md) must be independently validated before real paying customers or merchant datasets.
+Do not enable real merchant data or payments until all applicable gates have independently verified evidence and owner approval.

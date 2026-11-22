@@ -3,7 +3,7 @@ import {ArrowRight,Check,HelpCircle,LockKeyhole,ShieldCheck,Sparkles,X} from 'lu
 
 const features=[
  ['Explore a complete fictional restaurant','Included','Included'],
- ['Your own connected POS data','No','One location; supported provider'],
+ ['Your own connected POS data','No','Authorized, selected locations after production launch'],
  ['Scheduled refresh and source health','No','Included after live launch'],
  ['Verified sales, guest and discount evidence','Sample only','Your business'],
  ['AI analyst: ask natural-language questions','Sample scripted responses','Model-powered answers from scoped aggregates'],
@@ -31,5 +31,5 @@ export default function Pricing(){return <main className="ts-public-page ts-pric
  <section className="ts11-feature-comparison"><div><span className="ts-kicker">WHAT YOU ACTUALLY RECEIVE</span><h2>A clear difference between free and paid.</h2><p>Paid access is about continuously finding opportunities in your own operational data—not access to a generic chat box.</p></div>
   <div className="ts11-table-wrap"><table><thead><tr><th>Capability</th><th>Explore · Free</th><th>Growth · $99/location</th></tr></thead><tbody>{features.map(([feature,free,paid])=><tr key={feature}><td>{feature}</td><td>{free==='No'?<><X size={16}/> Not included</>:free}</td><td>{paid==='Not included'?<><X size={16}/> Not included</>:<><Check size={16}/> {paid}</>}</td></tr>)}</tbody></table></div>
  </section>
- <div className="ts-caution"><ShieldCheck size={22}/><div><b>Important: pricing is not live yet.</b><p>Your current $149 Stripe Sandbox Growth checkout is a test subscription, not a real payment. A proposed $99 live price requires an actual commercial Stripe Price ID, merchant onboarding security review, data processing/legal terms, and successful live integration testing before we can start billing customers.</p></div></div>
+ <div className="ts-caution"><ShieldCheck size={22}/><div><b>Important: pricing is not live yet.</b><p>The local Stripe TEST checkout is not a real payment; its price is determined by the configured Stripe TEST Price ID, not by the proposed commercial price. A proposed $99 live price requires an actual commercial Stripe Price ID, merchant onboarding security review, data processing/legal terms, and successful live integration testing before we can start billing customers.</p></div></div>
  </main>}

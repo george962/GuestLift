@@ -11,7 +11,7 @@
 | v1.0 | Public self-service launch | Real authorized owners and approved supported integrations | Stripe LIVE in reviewed deployment | All commercial and operational gates green; end-to-end real signup→data→decision→purchase→cancel |
 
 ## Gate A — current source and architecture
-- [ ] Reconcile v0.11 Mac workspace with `george962/GuestLift` main, which as inspected on 2026-11-12 reports v0.10. Verify full file inventory, tests and migrations before applying website updates.
+- [ ] Reconcile the actual deployed source and local v0.12.2 working tree with GitHub main, including uncommitted homepage edits. Validate complete file inventory, automated checks, migrations and deployed commit identity before release.
 - [ ] Source has a protected release branch with review, CI, secret scanning, pinned dependency policy and rollback artifacts.
 - [ ] Full TypeScript compilation, Next.js production build, backend tests, browser E2E and security regression pass on the exact deployed commit.
 - [ ] Deployed dev/staging/prod use separate secrets, databases, Square apps, Stripe accounts and data.

@@ -14,3 +14,17 @@ __pycache__/
 .venv/
 venv/
 .DS_Store
+
+# Distributable packages are generated from Git, not committed to main.
+*.zip
+*.tar
+*.tar.gz
+# Sensitive local credentials and tooling output
+.env.*
+!.env.example
+!.env.sample
+.playwright/
+playwright-report/
+test-results/
+coverage/
+.pytest_cache/

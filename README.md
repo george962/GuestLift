@@ -1,38 +1,50 @@
-# TableSignal v0.12 — Public product experience & billing design (drop-in)
+# TableSignal — v0.12.2
 
-## What is included
+**Restaurant decision intelligence: Connect → Discover → Investigate → Decide → Track.**
 
-- `frontend/components/v012-experience.tsx` — complete Next.js client component for the new public landing experience and simulated location selector.
-- `frontend/app/page.tsx` — the `/` route with SEO metadata; imports the new experience.
-- `frontend/app/v012.css` — prefixed responsive stylesheet; coexists with existing `globals.css` and hides duplicate global public nav/footer on the new homepage in modern browsers.
-- `backend/app/location_billing_rules.py` and `backend/tests/test_location_billing_rules.py` — server-side, provider-verified location-quote domain rules and 6 passing pure unit tests (not connected to billing endpoints yet).
-- `docs/V012_PRODUCT_AND_SELF_SERVICE_BILLING.md` — account, OAuth, provider-verified location selection, trial, Stripe state and edge-case specification.
-- `docs/V013_TO_V1_PRODUCTION_GATES.md` — explicit release blockers/acceptance criteria.
-- A separate `tablesignal-v012-preview/index.html` provides a standalone local preview and does NOT access a real merchant account.
+TableSignal is a **local development preview**, not a commercially deployed restaurant analytics service. The public workspace uses fictional data. Private accounts are developer-only; the Square connector targets **Square Sandbox**; Stripe supports **TEST** billing only. Never use this build for real merchant data, public customer signups, or live payments.
 
-## Where to place files
+## Repository layout
 
-From the root of the actual latest TableSignal Next.js workspace, copy complete source files to their matching relative paths. This is a **non-destructive package** with two new route/component files plus a homepage replacement; review against your local v0.11 before copying because GitHub `main` was inspected as v0.10.
+- `frontend/` — Next.js public site, sample workspace, local-account UI, analyst, Square connection and billing screens.
+- `backend/` — FastAPI, synthetic order adapters, local auth, SQLite/PostgreSQL-friendly models, Square Sandbox and Stripe TEST logic.
+- `docs/` — current product/launch specifications and [production readiness](docs/PRODUCTION_READINESS.md).
+- `compose.yaml` — **localhost-only** developer services and retained Postgres volume.
 
-Do not overwrite local `.env` or databases. Do not replace `frontend/app/layout.tsx` or the authenticated product screens. Keep production frontend/backend test gates.
+## Local development
 
-## Test after integration
+1. Use Docker Desktop and keep `.env` local; never commit credentials.
+2. From repository root: `docker compose up -d --build`.
+3. Open `http://localhost:3000`; test API health at `http://localhost:8000/api/health`.
+4. Run `docker compose ps -a` and `docker compose logs --tail=100 frontend backend` if startup fails.
+5. Never run `docker compose down -v` unless intentionally destroying local database contents.
+
+## Tests
 
 ```bash
 cd frontend
+npm ci
+npm test
 npm run lint
 npm run build
-npm test
+# with localhost:3000 serving: npx playwright test e2e/v012-public.spec.ts
+cd ../backend
+python -m pip install -r requirements.txt
+python -m pytest -q
+PYTHONPATH=. python -m unittest discover -s tests -p 'test_location_billing_rules.py' -v
 ```
 
-Pure billing-rule tests included in this package (from the package root):
+CI on pull requests must run the same checks. A successful build or synthetic sample test **does not** certify security, real Square API behavior, or Stripe LIVE readiness.
 
-```bash
-PYTHONPATH=backend python -m unittest discover -s backend/tests -v
-```
+## Current commercial assumption
 
-Also run local Playwright E2E/mobile checks against a real Next server, then verify both `/` and authenticated dashboards. The synthetic sample and the pricing calculator work client-side; no payments or OAuth are wired by this package.
+Growth is **provisionally $99 per selected, eligible, provider-verified location per month**. This is a product proposal, **not active pricing**. Stripe TEST uses its independently configured `STRIPE_GROWTH_PRICE_ID` and its quantity is **currently fixed to one**. The standalone `backend/app/location_billing_rules.py` quote is **not wired** to checkout or entitlements; production billing is blocked until it is.
 
-## Distribution disclaimer
+## Source of truth
 
-GitHub write/branch creation was rejected by integration permissions (403). **This package was not pushed, merged or deployed.** Keep the product demo labeled fictional. V1.0 is reserved for independently tested real signup, live OAuth, verified location billing and payment acceptance.
+- [Active roadmap](ROADMAP.md)
+- [Production readiness gates and evidence log](docs/PRODUCTION_READINESS.md)
+- [Detailed v0.13→v1.0 release gates](docs/V013_TO_V1_PRODUCTION_GATES.md)
+- [Product and location billing specification](docs/V012_PRODUCT_AND_SELF_SERVICE_BILLING.md)
+
+Earlier `INSTALL_V0*`, `README_V011.md`, preview HTML files and tracked ZIP releases are **historical artifacts**. Do not unzip patches over the live working tree. Use version-controlled edits, branches, pull requests and CI.
