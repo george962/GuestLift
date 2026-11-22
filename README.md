@@ -28,6 +28,9 @@ npm test
 npm run lint
 npm run build
 # with localhost:3000 serving: npx playwright test e2e/v012-public.spec.ts
+
+# Signed-in customer journey (mock Square, own ports; runs alongside docker compose):
+# ../scripts/journey.sh
 cd ../backend
 python -m pip install -r requirements.txt
 python -m pytest -q

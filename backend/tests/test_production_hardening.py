@@ -19,6 +19,7 @@ SAFE = {
 def prod(monkeypatch):
     monkeypatch.delenv('GUESTLIFT_ENABLE_DEMO_ENDPOINTS', raising=False)
     monkeypatch.delenv('TABLESIGNAL_ENABLE_DEMO_RESET', raising=False)
+    monkeypatch.delenv('SQUARE_API_BASE_URL', raising=False)
     for k, v in SAFE.items():
         monkeypatch.setenv(k, v)
     return monkeypatch
@@ -42,6 +43,7 @@ def test_safe_production_config_passes(prod):
     ('TABLESIGNAL_ENABLE_DEMO_RESET', '1', 'TABLESIGNAL_ENABLE_DEMO_RESET'),
     ('GUESTLIFT_AUTO_CREATE_SCHEMA', '1', 'GUESTLIFT_AUTO_CREATE_SCHEMA'),
     ('TABLESIGNAL_CREDENTIAL_KEY', '', 'TABLESIGNAL_CREDENTIAL_KEY'),
+    ('SQUARE_API_BASE_URL', 'http://127.0.0.1:8100', 'SQUARE_API_BASE_URL'),
 ])
 def test_each_unsafe_setting_blocks_startup(prod, key, value, needle):
     prod.setenv(key, value)
