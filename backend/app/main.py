@@ -22,6 +22,7 @@ from .launch import router as launch_router
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     setup_logging()
+    config.validate_auth_config()
     init_db()
     yield
 
