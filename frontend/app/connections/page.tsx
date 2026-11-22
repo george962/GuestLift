@@ -13,6 +13,9 @@ type Connection={connected:boolean;environment:string;merchant_id:string|null;cr
   last_sync_at:string|null;last_error:string|null;developer_token_configured:boolean;oauth_configured:boolean;
   production_enabled:boolean;runs:Run[];assisted_requests:{provider:string;status:string;created_at:string}[]};
 
+// Only follow redirects to Square's authorize page. The journey test builds with the mock Square origin.
+const squareAuthorizeUrl=(process.env.NEXT_PUBLIC_SQUARE_AUTHORIZE_ORIGIN||'https://connect.squareupsandbox.com')+'/oauth2/authorize';
+
 export default function Connections(){
   const [token,setToken]=useState('');
   const [status,setStatus]=useState<Connection|null>(null);
@@ -46,7 +49,7 @@ export default function Connections(){
     try{
       const result=await accountApi('/api/integrations/square/'+path,token,'POST',payload);
       if(path==='oauth/start'){
-        if(typeof result.url==='string'&&result.url.startsWith('https://connect.squareupsandbox.com/oauth2/authorize'))window.location.assign(result.url);
+        if(typeof result.url==='string'&&result.url.startsWith(squareAuthorizeUrl))window.location.assign(result.url);
       }else if(path==='sync'){
         setSynced(result);
         setMessage(`Square sync complete: ${result.scanned} scanned, ${result.inserted} new, ${result.updated} refreshed, ${result.skipped} skipped.`);

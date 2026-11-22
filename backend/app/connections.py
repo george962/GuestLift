@@ -31,6 +31,11 @@ from .location_entitlements import (SandboxMonitoredLocation, eligible_location,
 
 router = APIRouter(prefix='/api/integrations/square', tags=['Square Sandbox local integration'])
 SQUARE_URL = 'https://connect.squareupsandbox.com'
+
+
+def _square_url() -> str:
+    # Tests and local dev point this at the mock Square service; production refuses an override.
+    return os.getenv('SQUARE_API_BASE_URL', SQUARE_URL).rstrip('/')
 API_VERSION = '2026-09-16'
 MAX_PAGES = 8
 PAGE_SIZE = 100
@@ -150,7 +155,7 @@ def _api(token: str, method: str, path: str, payload: dict | None = None) -> dic
         raise ValueError('Unknown Square API operation')
     try:
         with httpx.Client(timeout=18.0, follow_redirects=False) as client:
-            response = client.request(method, SQUARE_URL + path,
+            response = client.request(method, _square_url() + path,
                                       params=payload if method == 'GET' else None,
                                       json=payload if method == 'POST' else None, headers={
                 'Authorization': f'Bearer {token}', 'Square-Version': API_VERSION,
@@ -231,7 +236,7 @@ def _refresh_oauth(connection: SquareConnection, db: Session) -> str:
         raise HTTPException(503, 'Sandbox OAuth token expired. Reconnect Square.')
     try:
         with httpx.Client(timeout=15.0, follow_redirects=False) as client:
-            response = client.post(SQUARE_URL + '/oauth2/token', json={
+            response = client.post(_square_url() + '/oauth2/token', json={
                 'client_id': app_id, 'client_secret': app_secret,
                 'grant_type': 'refresh_token', 'refresh_token': refresh,
             })
@@ -518,7 +523,7 @@ def oauth_start(sub: str = Depends(authenticated_subject)):
         db.add(SquareOAuthState(state_hash=hashlib.sha256(state.encode()).hexdigest(),
                                 workspace_id=wid, expires_at=int(time.time()) + 600))
         db.commit()
-    url = SQUARE_URL + '/oauth2/authorize?' + urlencode({
+    url = _square_url() + '/oauth2/authorize?' + urlencode({
         'client_id': app_id, 'scope': 'ORDERS_READ PAYMENTS_READ MERCHANT_PROFILE_READ',
         'state': state, 'response_type': 'code', 'redirect_uri': redirect,
     })
@@ -543,7 +548,7 @@ def oauth_callback(code: str = '', state: str = '', error: str = ''):
         db.commit()  # Consume state before exchanging code (prevent replay).
     try:
         with httpx.Client(timeout=15.0, follow_redirects=False) as client:
-            response = client.post(SQUARE_URL + '/oauth2/token', json={
+            response = client.post(_square_url() + '/oauth2/token', json={
                 'client_id': os.getenv('SQUARE_SANDBOX_APP_ID'),
                 'client_secret': os.getenv('SQUARE_SANDBOX_APP_SECRET'),
                 'code': code, 'grant_type': 'authorization_code',

@@ -97,6 +97,37 @@ jobs:
           for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8000/api/health && exit 0; sleep 2; done
           docker logs api; exit 1
 
+  journey:
+    # docs/PRODUCT_PLAN.md M1: golden-path steps 2–7 in a real browser against the mock Square API.
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: backend/requirements.lock
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: python -m pip install -r backend/requirements.lock
+      - run: npm ci --no-audit --no-fund
+        working-directory: frontend
+      - run: npx playwright install --with-deps chromium
+        working-directory: frontend
+      - run: scripts/journey.sh
+        env:
+          PYTHON: python
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: journey-traces
+          path: frontend/test-results/
+          retention-days: 7
+
   secrets:
     runs-on: ubuntu-latest
     timeout-minutes: 10
