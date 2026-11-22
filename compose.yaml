@@ -17,6 +17,7 @@ services:
     build: ./backend
     environment:
       DATABASE_URL: postgresql+psycopg://guestlift:guestlift@database:5432/guestlift
+      TABLESIGNAL_SANDBOX_LOCATION_BILLING: ${TABLESIGNAL_SANDBOX_LOCATION_BILLING:-0}
       STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
       STRIPE_GROWTH_PRICE_ID: ${STRIPE_GROWTH_PRICE_ID:-}
       STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}

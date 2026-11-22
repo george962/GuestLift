@@ -18,7 +18,7 @@ async def lifespan(app: FastAPI):
     init_db()
     yield
 
-app=FastAPI(title='TableSignal Demo API',version='0.12.2',lifespan=lifespan,
+app=FastAPI(title='TableSignal Demo API',version='0.13.0',lifespan=lifespan,
     description='Local development preview: Square Sandbox, test payments, scoped read-only intelligence. Do not expose to the public internet or ingest production merchant data.')
 app.add_middleware(CORSMiddleware, allow_origins=['http://localhost:3000','http://127.0.0.1:3000'], allow_credentials=True, allow_methods=['GET','POST'], allow_headers=['*'])
 app.include_router(local_auth_router)

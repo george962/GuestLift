@@ -128,7 +128,13 @@ def _scoped_summary(db: Session, w: Workspace) -> dict:
     """Only orders imported from this account's own authenticated Square Sandbox connection."""
     from .connections import SquareOrder, SquareConnection
     connection = db.scalar(select(SquareConnection).where(SquareConnection.workspace_id == w.id))
-    rows = db.scalars(select(SquareOrder).where(SquareOrder.workspace_id == w.id)).all()
+    if os.getenv('TABLESIGNAL_SANDBOX_LOCATION_BILLING', '0') == '1':
+        from .location_entitlements import selected_rows
+        selected = [x.location_id for x in selected_rows(db, w.id, connection.merchant_id)] if connection else []
+        rows = db.scalars(select(SquareOrder).where(
+            SquareOrder.workspace_id == w.id, SquareOrder.location_id.in_(selected))).all() if selected else []
+    else:
+        rows = db.scalars(select(SquareOrder).where(SquareOrder.workspace_id == w.id)).all()
     data = [{'provider': 'square', 'location_id': o.location_id,
              'source_order_id': o.source_order_id, 'created_at': o.created_at,
              'status': o.status, 'customer_id': o.customer_id,
@@ -292,6 +298,23 @@ def _apply_verified_subscription(db: Session, w: Workspace, subscription, custom
         raise HTTPException(status_code=409, detail='The subscription does not belong to this workspace.')
     if not _subscription_has_growth_price(subscription):
         raise HTTPException(status_code=409, detail='Subscription is not for the configured Growth price.')
+    if os.getenv('TABLESIGNAL_SANDBOX_LOCATION_BILLING', '0') == '1':
+        from .connections import _connection
+        from .location_entitlements import snapshot
+        conn = _connection(db, w.id)
+        if not conn:
+            raise HTTPException(status_code=409, detail='A connected Sandbox merchant is required for billing verification.')
+        item = snapshot(db, w.id, conn.merchant_id)
+        meta = subscription.get('metadata') or {}
+        lines = (subscription.get('items') or {}).get('data') or []
+        expected_price = os.getenv('STRIPE_GROWTH_PRICE_ID', '')
+        verified_qty = sum(int(line.get('quantity') or 0) for line in lines
+                           if _object_id(line.get('price')) == expected_price)
+        if (not item['quantity'] or meta.get('sandbox_location_digest') != item['digest']
+                or str(item['quantity']) != str(meta.get('sandbox_location_quantity'))
+                or verified_qty != item['quantity']
+                or any(_object_id(line.get('price')) != expected_price for line in lines)):
+            raise HTTPException(status_code=409, detail='Stripe TEST quantity or selected locations do not match the server-verified Sandbox selection.')
     if not customer_id or _object_id(subscription.get('customer')) != customer_id:
         raise HTTPException(status_code=409, detail='Stripe customer does not match the subscription.')
     if w.stripe_customer_id and w.stripe_customer_id != customer_id:
@@ -352,6 +375,24 @@ def _recent_owner_checkouts(stripe, workspace_id: str):
             and entry.get('livemode') is False]
 
 
+@router.get('/billing/quote')
+def sandbox_location_quote(sub: str = Depends(authenticated_subject)):
+    """Read-only test selection preview; actual Stripe TEST price is configured separately."""
+    from .location_entitlements import selection_enabled, snapshot
+    from .location_billing_rules import MONTHLY_LOCATION_PRICE_MINOR
+    from .connections import _connection
+    with Session(engine) as db:
+        w = _get_workspace(db, sub)
+        conn = _connection(db, w.id)
+        item = snapshot(db, w.id, conn.merchant_id) if conn else {'quantity': 0, 'ids': []}
+        return {'enabled': selection_enabled(), 'environment': 'sandbox',
+                'selected_quantity': item['quantity'] if selection_enabled() else 0,
+                'selected_location_ids': item['ids'] if selection_enabled() else [],
+                'proposed_monthly_subtotal_minor': item['quantity'] * MONTHLY_LOCATION_PRICE_MINOR if selection_enabled() else 0,
+                'currency': 'USD', 'real_payments_enabled': False,
+                'notice': 'The $99 price is a proposal, not the Stripe TEST Price amount. No live charges are enabled.'}
+
+
 @router.post('/billing/checkout')
 def checkout(sub: str = Depends(authenticated_subject)):
     stripe = _stripe_client()
@@ -371,14 +412,33 @@ def checkout(sub: str = Depends(authenticated_subject)):
                 raise HTTPException(status_code=409,
                     detail='A previous Stripe Checkout already exists. Refresh Billing or use Find my completed test checkout instead of paying twice.')
             break  # The most recent completed test Checkout was canceled/ineligible.
+        quantity = 1
+        billing_meta = {'workspace_id': w.id}
+        if os.getenv('TABLESIGNAL_SANDBOX_LOCATION_BILLING', '0') == '1':
+            from .connections import _connection, _refresh_oauth, _merchant_from_locations
+            from .location_entitlements import snapshot, eligible_location
+            conn = _connection(db, w.id)
+            if conn is None:
+                raise HTTPException(409, 'Connect Square Sandbox and select locations before checkout.')
+            token = _refresh_oauth(conn, db)
+            merchant, provider_locations = _merchant_from_locations(token)
+            if merchant != conn.merchant_id:
+                raise HTTPException(409, 'Sandbox merchant changed. Reconnect before checkout.')
+            item = snapshot(db, w.id, merchant)
+            eligible_ids = {str(loc['id']) for loc in provider_locations if eligible_location(loc)}
+            if item['quantity'] == 0 or not set(item['ids']).issubset(eligible_ids):
+                raise HTTPException(409, 'Select eligible Sandbox locations before checkout.')
+            quantity = item['quantity']
+            billing_meta.update(sandbox_location_digest=item['digest'],
+                                sandbox_location_quantity=str(quantity))
         kwargs = {
             'mode': 'subscription',
-            'line_items': [{'price': price, 'quantity': 1}],
+            'line_items': [{'price': price, 'quantity': quantity}],
             # Stripe replaces this literal placeholder with its own session ID.
             'success_url': base + '/billing/success?session_id={CHECKOUT_SESSION_ID}',
             'cancel_url': base + '/billing?checkout=canceled',
             'client_reference_id': w.id,
-            'subscription_data': {'metadata': {'workspace_id': w.id}},
+            'subscription_data': {'metadata': billing_meta},
         }
         if w.stripe_customer_id:
             kwargs['customer'] = w.stripe_customer_id
