@@ -95,3 +95,47 @@ def test_scoping_migration_downgrade_round_trip(tmp_path):
     assert 'workspace_id' not in {col['name'] for col in inspect(engine).get_columns('canonical_orders')}
     assert _alembic(url, 'upgrade', 'head').returncode == 0
     assert _alembic(url, 'check').returncode == 0
+
+
+def test_v013_sandbox_location_migration_round_trip(tmp_path):
+    """The monitored-location table must survive normal release upgrades."""
+    url = f"sqlite:///{tmp_path / 'v013_locations.db'}"
+
+    before = _alembic(url, 'upgrade', '0002')
+    assert before.returncode == 0, before.stderr
+
+    engine = create_engine(url)
+    assert 'sandbox_monitored_locations' not in (
+        inspect(engine).get_table_names()
+    )
+
+    upgraded = _alembic(url, 'upgrade', 'head')
+    assert upgraded.returncode == 0, upgraded.stderr
+
+    columns = {
+        column['name']
+        for column in inspect(engine).get_columns(
+            'sandbox_monitored_locations'
+        )
+    }
+    assert columns == {
+        'workspace_id',
+        'location_id',
+        'merchant_id',
+        'name',
+        'selected_at',
+    }
+
+    assert _alembic(url, 'check').returncode == 0
+
+    downgraded = _alembic(url, 'downgrade', '0002')
+    assert downgraded.returncode == 0, downgraded.stderr
+
+    assert 'sandbox_monitored_locations' not in (
+        inspect(engine).get_table_names()
+    )
+
+    upgraded_again = _alembic(url, 'upgrade', 'head')
+    assert upgraded_again.returncode == 0, upgraded_again.stderr
+
+    engine.dispose()

@@ -1,4 +1,4 @@
-# TableSignal roadmap — v0.12.2 integration baseline
+# TableSignal roadmap — v0.13 Sandbox integration milestone
 
 **Status: local developer preview, not production-ready.** Updated 2026-11-22.
 
@@ -10,7 +10,7 @@
 
 - Next.js marketing site, synthetic sample workspace, animated walkthrough, sign-up/sign-in, onboarding, analyst, connection and billing screens.
 - FastAPI, PostgreSQL local account/session prototype, Square Sandbox integration code, Stripe TEST subscription scaffolding, and evidence-based analytical functions.
-- Pure provider-location billing quote rules and unit tests exist **but are NOT integrated** with authenticated location selection, entitlements, ingestion, or Stripe checkout.
+- Pure v0.12 provider-location quote rules remain a standalone reference. v0.13 introduces a separate **flagged Sandbox-only** monitored-location selection linked to order scoping and Stripe TEST quantity; this is not a production entitlement or live billing service.
 - Existing ZIP archives and dated milestone docs are historical artifacts, **not an installation method or evidence of release readiness**.
 
 ## Current acceptance priorities (in order)
@@ -35,3 +35,13 @@
 - [Location, signup and pricing design](docs/V012_PRODUCT_AND_SELF_SERVICE_BILLING.md).
 
 Do not enable real merchant data or payments until all applicable gates have independently verified evidence and owner approval.
+
+## v0.13 implementation milestone — Sandbox location selection → Stripe TEST quantity
+
+- **Implemented behind `TABLESIGNAL_SANDBOX_LOCATION_BILLING=1` (default OFF):** authenticated Square Sandbox location discovery, owner selection of eligible physical locations, persisted per-workspace selections, scoped order synchronization and analytics, and checkout quantity derived from server records.
+- Stripe TEST reconciliation checks the selected location digest and quantity reported by the verified subscription. Selection changes are blocked for active/trialing plans pending proration support.
+- `GET /api/saas/billing/quote` is a **proposed-price preview only**, not Stripe's actual charge amount or an invoice. The existing Stripe TEST Price ID controls actual TEST checkout values.
+- New backend tests must pass in CI; **a real Square Sandbox seller and Stripe TEST checkout/webhook/cancel flow still require live developer verification** before claiming v0.13 gate completion.
+- This does not enable real merchant OAuth, real subscriptions, secure hosted auth, automatic refresh, refunds reconciliation, migrations, production-grade locations or production deployment.
+
+**To test locally:** set `TABLESIGNAL_SANDBOX_LOCATION_BILLING=1` in local `.env`, run `docker compose up -d --build`, then visit `/connections` to select locations before sync and `/billing` to view and test the quantity. Do not set this flag in any public deployment; the entire stack remains local-dev-only.

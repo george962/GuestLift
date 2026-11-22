@@ -10,7 +10,9 @@ from sqlalchemy import text
 from fastapi import Request
 from fastapi.responses import JSONResponse
 from . import config
-from .logging_config import logger, setup_logging
+from .logging_config import logger, request_id_var, setup_logging
+import re
+import uuid
 from .database import engine, init_db, reset_db, persist, metrics, recent_runs
 from .local_auth import router as local_auth_router
 from .saas import router as saas_router
@@ -23,10 +25,12 @@ from .launch import router as launch_router
 async def lifespan(app: FastAPI):
     setup_logging()
     config.validate_auth_config()
+    config.validate_production_config()
     init_db()
     yield
 
-app=FastAPI(title='TableSignal Demo API',version='0.12.2',lifespan=lifespan,
+_docs = {} if not config.is_production() else {'docs_url': None, 'redoc_url': None, 'openapi_url': None}
+app=FastAPI(title='TableSignal Demo API',version='0.13.0',lifespan=lifespan,**_docs,
     description='Local development preview: Square Sandbox, test payments, scoped read-only intelligence. Do not expose to the public internet or ingest production merchant data.')
 app.add_middleware(CORSMiddleware, allow_origins=config.allowed_origins(), allow_credentials=True, allow_methods=['GET','POST'], allow_headers=['*'])
 app.include_router(local_auth_router)
@@ -46,15 +50,36 @@ DEMO=[Depends(require_demo_endpoints)]
 def validate_provider(provider: str):
     if provider not in ('toast','square'):raise HTTPException(status_code=404,detail='Provider not supported')
 
+_REQUEST_ID_OK = re.compile(r'^[A-Za-z0-9._-]{1,64}$')
+
 @app.middleware('http')
 async def log_requests(request: Request, call_next):
     started = time.perf_counter()
+    incoming = request.headers.get('x-request-id', '')
+    rid = incoming if _REQUEST_ID_OK.match(incoming) else uuid.uuid4().hex
+    token = request_id_var.set(rid)
     try:
-        response = await call_next(request)
-    except Exception:
-        logger.exception('unhandled error %s %s', request.method, request.url.path)
-        raise
-    logger.info('%s %s -> %s (%.0f ms)', request.method, request.url.path, response.status_code, (time.perf_counter() - started) * 1000)
+        try:
+            response = await call_next(request)
+        except Exception:
+            logger.exception('unhandled error %s %s', request.method, request.url.path)
+            raise
+        response.headers['X-Request-ID'] = rid
+        logger.info('%s %s -> %s (%.0f ms)', request.method, request.url.path, response.status_code, (time.perf_counter() - started) * 1000)
+        return response
+    finally:
+        request_id_var.reset(token)
+
+@app.middleware('http')
+async def security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers.setdefault('X-Content-Type-Options', 'nosniff')
+    response.headers.setdefault('X-Frame-Options', 'DENY')
+    response.headers.setdefault('Referrer-Policy', 'no-referrer')
+    if request.url.path.startswith('/api/'):
+        response.headers.setdefault('Cache-Control', 'no-store')
+    if config.is_production():
+        response.headers.setdefault('Strict-Transport-Security', 'max-age=31536000; includeSubDomains')
     return response
 
 @app.get('/api/health')

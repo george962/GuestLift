@@ -5,7 +5,7 @@ create_all() startup path) are left untouched, so `alembic upgrade head` is
 safe on both new and existing databases.
 
 Revision ID: 0001
-Revises: 
+Revises:
 Create Date: 2026-11-22 12:34:26.319722
 
 """

@@ -26,6 +26,8 @@ from sqlalchemy.orm import Mapped, Session, mapped_column
 from . import config
 from .database import Base, engine
 from .local_auth import authenticated_subject
+from .location_entitlements import (SandboxMonitoredLocation, eligible_location,
+    selection_enabled, selected_rows, snapshot, utc_now)
 
 router = APIRouter(prefix='/api/integrations/square', tags=['Square Sandbox local integration'])
 SQUARE_URL = 'https://connect.squareupsandbox.com'
@@ -96,6 +98,10 @@ class AssistedSetupRequest(Base):
     note: Mapped[str] = mapped_column(String(300), default='')
     status: Mapped[str] = mapped_column(String(30), default='requested')
     created_at: Mapped[str] = mapped_column(String(48), nullable=False)
+
+
+class MonitoredSelection(BaseModel):
+    location_ids: list[str] = Field(min_length=1, max_length=25)
 
 
 class SetupRequest(BaseModel):
@@ -312,9 +318,18 @@ def _synchronise(wid: str, db: Session, token: str) -> dict:
         merchant, locations = _merchant_from_locations(token)
         if merchant != connection.merchant_id:
             raise HTTPException(409, 'This Sandbox token belongs to a different merchant.')
-        location_ids = [loc['id'] for loc in locations if loc.get('status') != 'INACTIVE']
-        if not location_ids:
-            location_ids = [x['id'] for x in locations]
+        if selection_enabled():
+            chosen = selected_rows(db, wid, merchant)
+            authorized = {str(loc['id']) for loc in locations if eligible_location(loc)}
+            location_ids = sorted(x.location_id for x in chosen)
+            if not location_ids or not set(location_ids).issubset(authorized):
+                raise HTTPException(409, 'Choose currently eligible Square Sandbox locations before syncing.')
+            db.execute(delete(SquareOrder).where(
+                SquareOrder.workspace_id == wid, SquareOrder.location_id.not_in(location_ids)))
+        else:
+            location_ids = [loc['id'] for loc in locations if loc.get('status') != 'INACTIVE']
+            if not location_ids:
+                location_ids = [x['id'] for x in locations]
         scanned = inserted = updated = skipped = 0
         since = (datetime.now(timezone.utc) - timedelta(days=180)).isoformat(timespec='seconds').replace('+00:00', 'Z')
         payment_customers = _payment_customers(token, location_ids, since)
@@ -382,6 +397,71 @@ def _synchronise(wid: str, db: Session, token: str) -> dict:
         if isinstance(exc, HTTPException):
             raise
         raise HTTPException(502, 'Square synchronization did not complete. See developer logs without credentials.')
+
+
+@router.get('/locations')
+def available_sandbox_locations(sub: str = Depends(authenticated_subject)):
+    if not selection_enabled():
+        return {'enabled': False, 'locations': [], 'selected_location_ids': [],
+                'selected_count': 0, 'notice': 'The v0.13 Sandbox selection gate is disabled.'}
+    with Session(engine) as db:
+        wid = _workspace(db, sub)
+        conn = _connection(db, wid)
+        if not conn:
+            raise HTTPException(409, 'Connect a Square Sandbox account first.')
+        token = _refresh_oauth(conn, db)
+        merchant, locations = _merchant_from_locations(token)
+        if merchant != conn.merchant_id:
+            raise HTTPException(409, 'Sandbox merchant identity changed. Reconnect.')
+        selected = {x.location_id for x in selected_rows(db, wid, merchant)}
+        return {
+            'enabled': True, 'environment': 'sandbox', 'merchant_id': merchant,
+            'locations': [{'id': str(loc['id']), 'name': str(loc.get('name') or loc['id'])[:160],
+                           'type': str(loc.get('type') or 'UNKNOWN'),
+                           'status': str(loc.get('status') or 'UNKNOWN'),
+                           'eligible': eligible_location(loc),
+                           'selected': str(loc['id']) in selected} for loc in locations],
+            'selected_location_ids': sorted(selected), 'selected_count': len(selected),
+            'notice': 'Sandbox eligibility is provisional. Real order-access checks and production location mapping remain launch gates.'
+        }
+
+
+@router.post('/locations/selection')
+def save_sandbox_locations(payload: MonitoredSelection, sub: str = Depends(authenticated_subject)):
+    if not selection_enabled():
+        raise HTTPException(409, 'Enable the v0.13 local Sandbox location gate first.')
+    ids = payload.location_ids
+    if any(not isinstance(x, str) or not x.strip() or len(x) > 160 for x in ids) or len(ids) != len(set(ids)):
+        raise HTTPException(422, 'Select 1–25 distinct valid location IDs.')
+    with Session(engine) as db:
+        wid = _workspace(db, sub)
+        conn = _connection(db, wid)
+        if not conn:
+            raise HTTPException(409, 'Connect Square Sandbox before selecting locations.')
+        from .saas import Workspace
+        w = db.get(Workspace, wid)
+        if w and w.subscription_status in ('active', 'trialing'):
+            raise HTTPException(409, 'Existing subscription must be canceled and reconciled before changing monitored locations. Prorations are not implemented.')
+        token = _refresh_oauth(conn, db)
+        merchant, locations = _merchant_from_locations(token)
+        if merchant != conn.merchant_id:
+            raise HTTPException(409, 'Connected Sandbox merchant does not match.')
+        authorized = {str(x['id']): x for x in locations if eligible_location(x)}
+        if any(location_id not in authorized for location_id in ids):
+            raise HTTPException(422, 'Selection includes an unauthorized, inactive, nonphysical or unrecognized location.')
+        db.execute(delete(SandboxMonitoredLocation).where(SandboxMonitoredLocation.workspace_id == wid))
+        for loc_id in sorted(ids):
+            loc = authorized[loc_id]
+            db.add(SandboxMonitoredLocation(workspace_id=wid, location_id=loc_id,
+                merchant_id=merchant, name=str(loc.get('name') or loc_id)[:160], selected_at=utc_now()))
+        # Eliminate old Sandbox orders from previously monitored but now excluded locations.
+        db.execute(delete(SquareOrder).where(
+            SquareOrder.workspace_id == wid, SquareOrder.location_id.not_in(ids)))
+        db.commit()
+        result = snapshot(db, wid, merchant)
+        return {'saved': True, 'environment': 'sandbox', 'selected_count': result['quantity'],
+                'selected_location_ids': result['ids'],
+                'notice': 'Selection saved in the local test database. Stripe TEST will derive its quantity from these server records.'}
 
 
 @router.get('/status')
@@ -503,6 +583,7 @@ def disconnect(sub: str = Depends(authenticated_subject)):
     with Session(engine) as db:
         wid = _workspace(db, sub)
         db.execute(delete(SquareOrder).where(SquareOrder.workspace_id == wid))
+        db.execute(delete(SandboxMonitoredLocation).where(SandboxMonitoredLocation.workspace_id == wid))
         conn = _connection(db, wid)
         if conn:
             db.delete(conn)

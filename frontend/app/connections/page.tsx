@@ -6,6 +6,8 @@ import {ArrowRight, CheckCircle2, Database, ExternalLink, Info, PlugZap, Refresh
   ShieldCheck, Trash2, Store, LifeBuoy, Clock3} from 'lucide-react';
 import {accountApi,localAuthClient} from '@/lib/local-auth';
 
+type SandboxLocations={enabled:boolean;selected_count:number;selected_location_ids:string[];notice:string;
+  locations:{id:string;name:string;type:string;status:string;eligible:boolean;selected:boolean}[]};
 type Run={status:string;started_at:string;scanned:number;inserted:number;updated:number;skipped:number};
 type Connection={connected:boolean;environment:string;merchant_id:string|null;credential_mode:string|null;
   last_sync_at:string|null;last_error:string|null;developer_token_configured:boolean;oauth_configured:boolean;
@@ -20,12 +22,20 @@ export default function Connections(){
   const [assistProvider,setAssistProvider]=useState('square');
   const [assistNote,setAssistNote]=useState('');
   const [synced,setSynced]=useState<{scanned:number;inserted:number;updated:number;skipped:number}|null>(null);
+  const [locations,setLocations]=useState<SandboxLocations|null>(null);
+  const [selection,setSelection]=useState<string[]>([]);
   const reload=useCallback(async()=>{
     try{
       const s=await localAuthClient().auth.getSession();const t=s.data.session?.access_token||'';
       setToken(t);
-      if(t)setStatus(await accountApi('/api/integrations/square/status',t));
-      else setStatus(null);
+      if(t){
+        const s=await accountApi('/api/integrations/square/status',t) as Connection;
+        setStatus(s);
+        if(s.connected){
+          const loc=await accountApi('/api/integrations/square/locations',t) as SandboxLocations;
+          setLocations(loc);setSelection(loc.selected_location_ids);
+        }else{setLocations(null);setSelection([]);}
+      }else{setStatus(null);setLocations(null);setSelection([]);}
     }catch(e){setMessage(e instanceof Error?e.message:'Unable to read connection status.');}
     finally{setLoading(false);}
   },[]);
@@ -40,6 +50,8 @@ export default function Connections(){
       }else if(path==='sync'){
         setSynced(result);
         setMessage(`Square sync complete: ${result.scanned} scanned, ${result.inserted} new, ${result.updated} refreshed, ${result.skipped} skipped.`);
+      }else if(path==='locations/selection'){
+        setMessage('Monitored Sandbox location selection saved. Only these locations will sync when the v0.13 gate is enabled.');
       }else if(path==='assisted-setup'){
         setMessage('Request stored locally. No notification was sent; the project developer must review it.');
         setAssistNote('');
@@ -79,7 +91,7 @@ export default function Connections(){
         {connected?<>
           <div className="ts9-connection-meta"><div><small>Sandbox merchant</small><strong>{status?.merchant_id}</strong></div><div><small>Connection type</small><strong>{status?.credential_mode==='oauth'?'Sandbox OAuth':'Local developer token'}</strong></div><div><small>Last successful sync</small><strong>{status?.last_sync_at?new Date(status.last_sync_at).toLocaleString():'Not yet synced'}</strong></div></div>
           {status?.last_error&&<div className="ts9-notice danger">{status.last_error}</div>}
-          <div className="ts9-inline-actions"><button className="ts9-button primary" disabled={busy} onClick={()=>void action('sync')}><RefreshCcw size={17}/>{busy?'Working…':'Sync last 180 days'}</button>
+           <div className="ts9-inline-actions"><button className="ts9-button primary" disabled={busy||(Boolean(locations?.enabled)&&!locations?.selected_count)} onClick={()=>void action('sync')}><RefreshCcw size={17}/>{busy?'Working…':'Sync last 180 days'}</button>
           <button className="ts9-button secondary" disabled={busy} onClick={remove}><Trash2 size={16}/> Disconnect and delete imported orders</button></div>
           {synced&&<div className="ts9-notice success" role="status"><CheckCircle2 size={17}/> Sync complete: {synced.inserted} new · {synced.updated} refreshed · {synced.skipped} skipped · {synced.scanned} scanned. <Link href="/opportunities" style={{fontWeight:700}}>Review business opportunities <ArrowRight size={14}/></Link></div>}
         </>:<>
@@ -92,6 +104,53 @@ export default function Connections(){
           </div></div>
         </>}
       </section>
+          <section className="ts9-panel" aria-label="Monitored Square Sandbox locations">
+            <span className="ts9-kicker">V0.13 · VERIFIED SANDBOX LOCATION SELECTION</span>
+            <h3>Choose which restaurants TableSignal will monitor</h3>
+            <p>Square provides the location IDs. This prototype only permits active physical Sandbox locations. Selection controls which orders are synced and the Stripe TEST quantity; it does not initiate real charges.</p>
+            {locations?.enabled ? <>
+              <div className="ts9-run-list">
+                {locations.locations.map(loc=><label key={loc.id} style={{display:'flex',alignItems:'center',gap:10,padding:'10px 0'}}>
+                  <input type="checkbox" checked={selection.includes(loc.id)} disabled={!loc.eligible||busy}
+                    onChange={e=>setSelection(old=>e.target.checked?[...old,loc.id]:old.filter(id=>id!==loc.id))}/>
+                  <span><strong>{loc.name}</strong> · {loc.type} · {loc.status} {!loc.eligible&&' (review required)'}</span>
+                </label>)}
+              </div>
+              <p><strong>Saved: {locations.selected_count}</strong> · Currently chosen: {selection.length}</p>
+              <button className="ts9-button secondary" disabled={busy||!selection.length}
+                onClick={()=>void action('locations/selection',{location_ids:selection})}>
+                Save monitored Sandbox locations <ArrowRight size={16}/>
+              </button>
+            </> : !connected ? (
+              <div className="ts9-notice" role="status">
+                <strong>Connect Square Sandbox first.</strong>
+                <p>Use one of the Square Sandbox connection options above.
+                Once authorized, TableSignal will retrieve your restaurant
+                locations and let you choose which ones to monitor.</p>
+                <p>No live merchant data or real payments are involved.</p>
+              </div>
+            ) : locations === null ? (
+              <div className="ts9-notice" role="status">
+                <strong>Unable to load Square locations.</strong>
+                <p>Your Sandbox connection exists, but location discovery
+                has not completed. Check the connection status or credentials,
+                then retry.</p>
+                <button
+                  type="button"
+                  className="ts9-button secondary"
+                  disabled={busy}
+                  onClick={()=>void reload()}>
+                  Retry location discovery
+                </button>
+              </div>
+            ) : (
+              <div className="ts9-notice" role="status">
+                <strong>Sandbox selection is disabled in the backend.</strong>
+                <p>Verify TABLESIGNAL_SANDBOX_LOCATION_BILLING=1
+                is available inside the running backend container.</p>
+              </div>
+            )}
+          </section>
       <section className="ts9-panel"><span className="ts9-kicker">IMPORT ACTIVITY</span><h3>Sync history</h3>
         {!status?.runs?.length?<p className="ts9-muted">No sync attempts yet. Once connected, this shows when data was imported and how many records were created or refreshed.</p>:<div className="ts9-run-list">{status.runs.map((r,i)=><div key={i}><span><Clock3 size={15}/> {new Date(r.started_at).toLocaleString()}</span><strong>{r.status}</strong><small>{r.scanned} scanned · {r.inserted} new · {r.updated} updated</small></div>)}</div>}
       </section>

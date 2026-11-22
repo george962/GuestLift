@@ -80,3 +80,32 @@ def validate_auth_config() -> None:
             raise RuntimeError('GUESTLIFT_AUTH_MODE=oidc requires ' + ' and '.join(missing) + '.')
         if is_production() and not s['jwks_url'].startswith('https://'):
             raise RuntimeError('GUESTLIFT_OIDC_JWKS_URL must be https:// in production.')
+
+
+def production_config_problems() -> list[str]:
+    """Settings that would make a GUESTLIFT_ENV=production deployment unsafe. Empty outside production."""
+    if not is_production():
+        return []
+    env = os.getenv
+    problems = []
+    if env('DATABASE_URL', '').startswith('sqlite') or not env('DATABASE_URL'):
+        problems.append('DATABASE_URL must point at a managed PostgreSQL database, not SQLite.')
+    if not app_url().startswith('https://'):
+        problems.append('GUESTLIFT_APP_URL must be https://.')
+    if not env('GUESTLIFT_ALLOWED_ORIGINS', '').strip() or any(not o.startswith('https://') for o in allowed_origins()):
+        problems.append('GUESTLIFT_ALLOWED_ORIGINS must be set explicitly and every origin must be https://.')
+    if demo_endpoints_enabled():
+        problems.append('GUESTLIFT_ENABLE_DEMO_ENDPOINTS must be unset (unauthenticated shared demo API).')
+    if env('TABLESIGNAL_ENABLE_DEMO_RESET') == '1':
+        problems.append('TABLESIGNAL_ENABLE_DEMO_RESET must be unset (unauthenticated data reset).')
+    if env('GUESTLIFT_AUTO_CREATE_SCHEMA', '1') != '0':
+        problems.append('GUESTLIFT_AUTO_CREATE_SCHEMA=0 is required; run `alembic upgrade head` instead.')
+    if not env('TABLESIGNAL_CREDENTIAL_KEY'):
+        problems.append('TABLESIGNAL_CREDENTIAL_KEY is required to encrypt stored POS tokens.')
+    return problems
+
+
+def validate_production_config() -> None:
+    problems = production_config_problems()
+    if problems:
+        raise RuntimeError('Refusing to start in production:\n- ' + '\n- '.join(problems))

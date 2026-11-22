@@ -1,4 +1,4 @@
-# TableSignal — v0.12.2
+# TableSignal — v0.13.0 (Sandbox integration)
 
 **Restaurant decision intelligence: Connect → Discover → Investigate → Decide → Track.**
 
@@ -38,7 +38,11 @@ CI on pull requests must run the same checks. A successful build or synthetic sa
 
 ## Current commercial assumption
 
-Growth is **provisionally $99 per selected, eligible, provider-verified location per month**. This is a product proposal, **not active pricing**. Stripe TEST uses its independently configured `STRIPE_GROWTH_PRICE_ID` and its quantity is **currently fixed to one**. The standalone `backend/app/location_billing_rules.py` quote is **not wired** to checkout or entitlements; production billing is blocked until it is.
+Growth is **provisionally $99 per selected, eligible, provider-verified location per month**. This is a product proposal, **not active pricing**. Stripe TEST uses its independently configured `STRIPE_GROWTH_PRICE_ID`. Behind the OFF-by-default `TABLESIGNAL_SANDBOX_LOCATION_BILLING=1` local-dev flag, checkout quantity is derived from selected and server-refreshed Square Sandbox locations and verified against subscription metadata. The `$99/location` figure remains a proposal, not an actual Stripe TEST or LIVE price. Production entitlements, prorations and live billing remain blocked.
+
+## v0.13 local Sandbox integration test
+
+To opt into the new owner-selected monitored-location Sandbox flow, add `TABLESIGNAL_SANDBOX_LOCATION_BILLING=1` to your existing **local only** `.env` and rebuild Docker. Visit `/connections`, select active physical Sandbox locations, sync orders, and inspect `/billing`. Stripe TEST quantity is based on those selections; the configured TEST price is **not** necessarily $99. Never enable this local-only build for real merchants or real charges.
 
 ## Source of truth
 

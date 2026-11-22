@@ -12,6 +12,7 @@ type Workspace = {
   ai_enabled:boolean;
   has_billing_customer:boolean;
 };
+type LocationQuote={enabled:boolean;selected_quantity:number;proposed_monthly_subtotal_minor:number;notice:string};
 type Configuration = {
   auth_configured:boolean;
   test_checkout_configured:boolean;
@@ -31,6 +32,7 @@ export default function Billing() {
   const [token,setToken]=useState('');
   const [account,setAccount]=useState<Workspace|null>(null);
   const [config,setConfig]=useState<Configuration|null>(null);
+  const [quote,setQuote]=useState<LocationQuote|null>(null);
   const [loading,setLoading]=useState(true);
   const [busy,setBusy]=useState(false);
   const [repairing,setRepairing]=useState(false);
@@ -40,6 +42,8 @@ export default function Billing() {
   const refresh=useCallback(async (t:string)=>{
     const response=await accountApi('/api/saas/me',t);
     setAccount(response.workspace as Workspace);
+    const q=await accountApi('/api/saas/billing/quote',t) as LocationQuote;
+    setQuote(q);
     return response.workspace as Workspace;
   },[]);
 
@@ -121,7 +125,7 @@ export default function Billing() {
   }
 
   const active=account?.plan==='growth'&&['active','trialing'].includes(account.subscription_status);
-  const canCheckout=Boolean(config?.test_checkout_configured);
+  const canCheckout=Boolean(config?.test_checkout_configured)&&(!quote?.enabled||quote.selected_quantity>0);
   const hasCustomer=Boolean(account?.has_billing_customer);
 
   return <main className="ts-public-page v7-billing-page ts10-billing">
@@ -147,6 +151,9 @@ export default function Billing() {
           <div className="ts-plan-status"><span>Restaurant</span><strong>{account?.name||'Your workspace'}</strong></div>
           <div className="ts-plan-status"><span>Subscription</span><strong>{account?.subscription_status||'none'}</strong></div>
           <div className="ts-plan-status"><span>Account AI analyst</span><strong>{account?.ai_enabled?'Enabled (once data is connected)':'Not enabled'}</strong></div>
+           {quote?.enabled&&<div className="ts-plan-status"><span>Selected Sandbox locations</span><strong>{quote.selected_quantity}</strong></div>}
+           {quote?.enabled&&<p>Proposed monthly subtotal: ${(quote.proposed_monthly_subtotal_minor/100).toFixed(2)}. This is <strong>not</strong> the configured Stripe TEST amount or a live payment quote.</p>}
+           {quote?.enabled&&quote.selected_quantity===0&&<div className="ts-alert">Select at least one verified Sandbox location under <Link href="/connections">Connections</Link> before testing checkout.</div>}
           {active&&<div className="ts-alert good" role="status"><CheckCircle2 size={18}/> Your Stripe test subscription is verified. You can now connect a Square Sandbox data source and use the private analyst.</div>}
           {message&&<div className={'ts-alert'+(feedback==='success'?' good':feedback==='error'?' error':'')} role="status">
             {feedback==='success'?<CheckCircle2 size={18}/>:feedback==='error'?<AlertCircle size={18}/>:<Clock3 size={18}/>}
