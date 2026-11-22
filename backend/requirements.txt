@@ -10,3 +10,4 @@ stripe>=11,<16
 openai>=2,<5
 argon2-cffi>=23.1,<27
 cryptography>=43,<48
+alembic>=1.13,<2
