@@ -72,7 +72,13 @@ class CampaignImportRun(Base):
 
 
 def init_db() -> None:
-    """Additive migration for people upgrading an existing v0.3 SQLite/Postgres database."""
+    """Create the schema on startup for local development.
+
+    Hosted deployments should set GUESTLIFT_AUTO_CREATE_SCHEMA=0 and run
+    `alembic upgrade head` as a release step instead (see docs/MIGRATIONS.md).
+    """
+    if os.getenv('GUESTLIFT_AUTO_CREATE_SCHEMA', '1') == '0':
+        return
     Base.metadata.create_all(engine)
     inspector = inspect(engine)
     if 'canonical_orders' in inspector.get_table_names():
