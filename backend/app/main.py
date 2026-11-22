@@ -5,8 +5,13 @@ import json
 from fastapi import Depends, FastAPI, HTTPException, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from .adapters import parse, source_payload, parse_toast, parse_square
+import time
+from sqlalchemy import text
+from fastapi import Request
+from fastapi.responses import JSONResponse
 from . import config
-from .database import init_db, reset_db, persist, metrics, recent_runs
+from .logging_config import logger, setup_logging
+from .database import engine, init_db, reset_db, persist, metrics, recent_runs
 from .local_auth import router as local_auth_router
 from .saas import router as saas_router
 from .connections import router as square_router
@@ -16,6 +21,7 @@ from .launch import router as launch_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    setup_logging()
     init_db()
     yield
 
@@ -39,8 +45,32 @@ DEMO=[Depends(require_demo_endpoints)]
 def validate_provider(provider: str):
     if provider not in ('toast','square'):raise HTTPException(status_code=404,detail='Provider not supported')
 
+@app.middleware('http')
+async def log_requests(request: Request, call_next):
+    started = time.perf_counter()
+    try:
+        response = await call_next(request)
+    except Exception:
+        logger.exception('unhandled error %s %s', request.method, request.url.path)
+        raise
+    logger.info('%s %s -> %s (%.0f ms)', request.method, request.url.path, response.status_code, (time.perf_counter() - started) * 1000)
+    return response
+
 @app.get('/api/health')
-def health():return {'status':'ok','mode':'synthetic_demo'}
+def health():
+    """Liveness only (no database access). Use /api/ready for readiness."""
+    return {'status':'ok','mode':'synthetic_demo','demo_endpoints':config.demo_endpoints_enabled()}
+
+@app.get('/api/ready')
+def ready():
+    """Readiness: verifies the database accepts queries."""
+    try:
+        with engine.connect() as connection:
+            connection.execute(text('SELECT 1'))
+    except Exception:
+        logger.exception('readiness check failed')
+        return JSONResponse({'status':'unavailable'}, status_code=503)
+    return {'status':'ready'}
 
 @app.get('/api/providers')
 def providers():return [{'id':'toast','label':'Toast POS','mode':'fabricated CSV fixtures'},{'id':'square','label':'Square POS','mode':'Square-shaped JSON fixtures, not a live Sandbox session'}]
