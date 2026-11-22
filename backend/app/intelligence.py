@@ -19,6 +19,7 @@ from sqlalchemy.orm import Session
 
 from .database import engine
 from .local_auth import authenticated_subject
+from .rate_limit import ai_question_subject
 from .saas import _get_workspace, _scoped_summary
 from .connections import SquareConnection
 from .decisions import DecisionPlan, opportunity_summary
@@ -175,7 +176,7 @@ def brief(sub: str = Depends(authenticated_subject)):
 
 
 @router.post('/ask')
-def ask(payload: AskRequest, sub: str = Depends(authenticated_subject)):
+def ask(payload: AskRequest, sub: str = Depends(ai_question_subject)):
     with Session(engine) as db:
         result = build_brief(db, _get_workspace(db, sub))
     if not result['subscription_active']:

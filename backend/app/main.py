@@ -10,7 +10,9 @@ from sqlalchemy import text
 from fastapi import Request
 from fastapi.responses import JSONResponse
 from . import config
-from .logging_config import logger, setup_logging
+from .logging_config import logger, request_id_var, setup_logging
+import re
+import uuid
 from .database import engine, init_db, reset_db, persist, metrics, recent_runs
 from .local_auth import router as local_auth_router
 from .saas import router as saas_router
@@ -48,16 +50,25 @@ DEMO=[Depends(require_demo_endpoints)]
 def validate_provider(provider: str):
     if provider not in ('toast','square'):raise HTTPException(status_code=404,detail='Provider not supported')
 
+_REQUEST_ID_OK = re.compile(r'^[A-Za-z0-9._-]{1,64}$')
+
 @app.middleware('http')
 async def log_requests(request: Request, call_next):
     started = time.perf_counter()
+    incoming = request.headers.get('x-request-id', '')
+    rid = incoming if _REQUEST_ID_OK.match(incoming) else uuid.uuid4().hex
+    token = request_id_var.set(rid)
     try:
-        response = await call_next(request)
-    except Exception:
-        logger.exception('unhandled error %s %s', request.method, request.url.path)
-        raise
-    logger.info('%s %s -> %s (%.0f ms)', request.method, request.url.path, response.status_code, (time.perf_counter() - started) * 1000)
-    return response
+        try:
+            response = await call_next(request)
+        except Exception:
+            logger.exception('unhandled error %s %s', request.method, request.url.path)
+            raise
+        response.headers['X-Request-ID'] = rid
+        logger.info('%s %s -> %s (%.0f ms)', request.method, request.url.path, response.status_code, (time.perf_counter() - started) * 1000)
+        return response
+    finally:
+        request_id_var.reset(token)
 
 @app.middleware('http')
 async def security_headers(request: Request, call_next):

@@ -20,6 +20,7 @@ from .database import Base, engine
 from .adapters import parse
 from .insights import analyze_orders, answer_question
 from .local_auth import authenticated_subject
+from .rate_limit import ai_question_subject
 
 router=APIRouter(prefix='/api/saas',tags=['SaaS foundation (test mode)'])
 
@@ -222,7 +223,7 @@ def reset_demo(sub: str = Depends(authenticated_subject)):
                         detail='Private workspaces no longer contain demo fixtures. Use the public free demo at /workspace.')
 
 @router.post('/analyst')
-def analyst(data:AnalystRequest,sub:str=Depends(authenticated_subject)):
+def analyst(data:AnalystRequest,sub:str=Depends(ai_question_subject)):
     with Session(engine) as db:
         w=_get_workspace(db,sub)
         if not (w.subscription_plan=='growth' and w.subscription_status in ('active','trialing')):
