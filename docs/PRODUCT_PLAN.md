@@ -2,7 +2,7 @@
 
 **This is the working plan for the customer-facing product. Every change PR cites the milestone it advances and updates the status table below in the same PR.**
 
-Owner: product owner (repo admin). Last updated: 2026-11-22 (M2).
+Owner: product owner (repo admin). Last updated: 2026-11-22 (M3).
 
 ## The promise we are building toward
 
@@ -100,8 +100,8 @@ Ordered by dependency. Each milestone is one or more PRs; it's "done" only when 
 |---|---|---|---|
 | Infra checkpoints 0–4 | Done | #4 | CI, audits, prod config guard, webhook tests, rate limit |
 | M1 Journey harness | Done | #23 | Mock Square, pipeline + contract tests, browser journey steps 2–7 in CI. Steps 8–10 arrive with M4/M5 |
-| M2 Identity | Done (pending merge) | M2 PR | Clerk mode, owner/manager roles, invites, workspace deletion, route-inventory isolation test; journey passes against the real Clerk dev instance. CI needs the Clerk test secrets added |
-| M3 Pipeline | Not started | | Needs a Square Sandbox seller to verify on staging |
+| M2 Identity | Done | #26 | Clerk mode, owner/manager roles, invites, workspace deletion, route-inventory isolation test; journey passes against the real Clerk dev instance. CI needs the Clerk test secrets added |
+| M3 Pipeline | Done (pending merge) | M3 PR | Checkpointed worker, no order cap, refunds, local days, reconnect/revocation, data health, Check against Square. Remaining: verify with a real Square Sandbox seller on staging (needs hosting) |
 | M4 Insight loop | Not started | | Needs email provider account |
 | M5 Billing | Not started | | Stripe TEST keys needed in CI secrets |
 | M6 UI/UX and readiness | Not started | | Needs legal review of drafts |

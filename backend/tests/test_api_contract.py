@@ -103,3 +103,17 @@ def test_opportunities_and_plans_contract(synced):
 def test_parser_reads_nested_and_optional_fields():
     assert set(ts_fields('app/connections/page.tsx', 'SandboxLocations')) == {
         'enabled', 'selected_count', 'selected_location_ids', 'notice', 'locations'}
+
+
+def test_data_health_and_reconciliation_contract(synced):
+    f = 'components/data-health.tsx'
+    health = synced.get('/api/integrations/square/health').json()
+    assert_matches(health, f, 'Health', '/api/integrations/square/health')
+    assert_matches(health['backfill'], f, 'Backfill', 'health.backfill')
+    r = 'components/reconciliation.tsx'
+    from datetime import date, timedelta
+    end = date.today()
+    rec = synced.get(f'/api/integrations/square/reconciliation?start={end - timedelta(days=30)}&end={end}').json()
+    assert_matches(rec, r, 'Reconciliation', '/api/integrations/square/reconciliation')
+    assert_matches(first(rec['days'], 'days'), r, 'ReconRow', 'reconciliation.days[]')
+    assert_matches(first(rec['totals'], 'totals'), r, 'ReconTotal', 'reconciliation.totals[]')

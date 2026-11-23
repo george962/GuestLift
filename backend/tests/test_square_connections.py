@@ -35,14 +35,20 @@ def post(c,path,payload=None):
 
 def fake_square(token,method,path,payload=None):
     assert token=='SANDBOX_TEST_TOKEN'
+    if path=='/v2/refunds':
+        return {'refunds':[]}
     if path=='/v2/payments':
         return {'payments':[{'order_id':'order-b','customer_id':'guest-a','status':'COMPLETED'}]}
     if path=='/v2/locations':
         return {'locations':[{'id':'loc-01','merchant_id':'sandbox-merchant-1','status':'ACTIVE'}]}
     assert path=='/v2/orders/search' and method=='POST'
     assert payload['location_ids']==['loc-01']
-    assert payload['query']['filter']['date_time_filter']['created_at']['start_at']
-    return {'orders':[
+    window=payload['query']['filter']['date_time_filter']['created_at']
+    assert window['start_at'] and window['end_at']
+    return {'orders':[o for o in _ORDERS if window['start_at'] <= o.get('created_at','2026-11-10T09:00:00Z') < window['end_at']]}
+
+
+_ORDERS=[
         {'id':'order-a','location_id':'loc-01','state':'COMPLETED','created_at':'2026-11-10T10:00:00Z',
          'updated_at':'2026-11-10T10:00:00Z','customer_id':'guest-a','total_money':{'amount':2700,'currency':'USD'},
          'total_discount_money':{'amount':300},'total_tax_money':{'amount':200},'total_tip_money':{'amount':100}},
@@ -52,7 +58,7 @@ def fake_square(token,method,path,payload=None):
         {'id':'order-c','location_id':'loc-01','state':'OPEN','total_money':{'amount':600,'currency':'USD'}},
         {'id':'order-d','location_id':'loc-01','state':'CANCELED','created_at':'2026-11-11T10:00:00Z',
          'total_money':{'amount':400,'currency':'USD'}},
-    ]}
+]
 
 
 def test_sandbox_connect_sync_is_idempotent_and_isolated(tmp_path, monkeypatch):
@@ -73,13 +79,14 @@ def test_sandbox_connect_sync_is_idempotent_and_isolated(tmp_path, monkeypatch):
         assert first.json()['inserted']==3
         assert first.json()['skipped']==1
         second=post(a,'/api/integrations/square/sync')
-        assert second.status_code==200 and second.json()['updated']==3 and second.json()['inserted']==0
+        # Incremental: re-reads only the last few days, so nothing older is touched or duplicated.
+        assert second.status_code==200 and second.json()['inserted']==0
         mine=a.get('/api/saas/me').json()['summary']
         theirs=b.get('/api/saas/me').json()['summary']
         assert mine['orders']==2 and theirs['orders']==0
         assert mine['net_sales_minor']==3900  # (2700-200-100)+(1600-100)
         assert mine['repeat_customers']==1
-        assert mine['data_origin']=='square_sandbox_api'
+        assert mine['data_origin']=='square_api'
         assert a.get('/api/integrations/square/status').json()['runs'][0]['scanned']==4
         assert b.get('/api/integrations/square/status').json()['runs']==[]
         assert 'SANDBOX_TEST_TOKEN' not in a.get('/api/integrations/square/status').text

@@ -15,7 +15,7 @@ services:
       retries: 15
   backend:
     build: ./backend
-    environment:
+    environment: &backend-env
       DATABASE_URL: postgresql+psycopg://guestlift:guestlift@database:5432/guestlift
       TABLESIGNAL_SANDBOX_LOCATION_BILLING: ${TABLESIGNAL_SANDBOX_LOCATION_BILLING:-0}
       STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
@@ -38,6 +38,17 @@ services:
         condition: service_healthy
     ports:
       - '127.0.0.1:8000:8000'
+  worker:
+    # Background Square sync (docs/PRODUCT_PLAN.md M3): history import, scheduled updates, retries.
+    build: ./backend
+    command: ["python", "-m", "app.worker"]
+    environment: *backend-env
+    restart: unless-stopped  # retries if it starts before the API has created the schema
+    depends_on:
+      database:
+        condition: service_healthy
+      backend:
+        condition: service_started
   frontend:
     build:
       context: ./frontend

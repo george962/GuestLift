@@ -18,7 +18,8 @@ def test_oauth_connect_select_and_sync_match_square_truth(harness):
     s = _summary(h)
     assert s['has_connected_source'] is True
     assert s['orders'] == truth['completed_orders']
-    assert s['net_sales_minor'] == truth['completed_net_sales_minor']
+    assert s['net_sales_minor'] == truth['net_sales_after_refunds_minor']
+    assert s['refunds_minor'] == truth['refunds_minor']
     assert s['identified_orders'] == truth['identified_completed_orders']
     assert s['identified_customers'] == truth['distinct_customers']
 

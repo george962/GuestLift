@@ -3,12 +3,14 @@ import {useCallback,useEffect,useMemo,useState} from 'react';
 import Link from 'next/link';
 import {ArrowRight,AlertCircle,CheckCircle2,Lightbulb,RefreshCcw,ShieldCheck,TicketPercent} from 'lucide-react';
 import {accountApi,localAuthClient} from '@/lib/local-auth';
+import {DataHealthBanner,useDataHealth} from '@/components/data-health';
 
 type Opportunity={id:string;title:string;status:string;value:number|null;description:string;evidence:string;action:string};
 type Data={workspace:string;has_connected_source:boolean;observed_orders:number;identified_customers:number;reference_basket_minor:number;opportunities:Opportunity[];limitations:string[]};
 type OfferType='percent'|'fixed'|'no_offer';
 const money=(n:number)=>new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'}).format(n/100);
 export default function Opportunities(){
+ const {health:dataHealth}=useDataHealth();
  const [token,setToken]=useState('');
  const [data,setData]=useState<Data|null>(null);
  const [loading,setLoading]=useState(true);
@@ -45,7 +47,7 @@ export default function Opportunities(){
   }catch(e){setError(e instanceof Error?e.message:'Unable to save decision.');}
   finally{setSaving(false)}
  }
- return <main className="ts10-app">
+ return <main className="ts10-app"><DataHealthBanner health={dataHealth}/>
   <div className="ts10-heading"><span className="ts9-kicker">RESTAURANT INTELLIGENCE · DECIDE</span><h1>Know what to act on next.</h1><p>Start with observed guest behavior, evaluate the cost of a possible offer, and save a decision to revisit. All data stays inside your restaurant workspace.</p></div>
   {loading&&<div className="ts10-notice">Checking your connected restaurant data…</div>}
   {error&&<div className="ts10-notice ts10-danger" role="alert"><AlertCircle size={18}/>{error} <button onClick={()=>void reload()}>Retry</button></div>}

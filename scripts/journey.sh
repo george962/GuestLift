@@ -34,15 +34,21 @@ if [ "$MODE" = clerk ]; then
 fi
 
 cd "$ROOT/backend"
+CRED_KEY="$("$PY" -c 'from cryptography.fernet import Fernet;print(Fernet.generate_key().decode())')"
 "$PY" -m uvicorn mock_square.app:app --port "$MOCK_PORT" > "$WORK/mock.log" 2>&1 & pids+=($!)
 env ${api_auth[@]+"${api_auth[@]}"} DATABASE_URL="sqlite:///$WORK/journey.db" \
   GUESTLIFT_APP_URL="http://localhost:$WEB_PORT" GUESTLIFT_ALLOWED_ORIGINS="http://localhost:$WEB_PORT" \
   SQUARE_API_BASE_URL="http://localhost:$MOCK_PORT" \
   SQUARE_SANDBOX_APP_ID=mock-app-id SQUARE_SANDBOX_APP_SECRET=mock-app-secret \
   SQUARE_SANDBOX_REDIRECT_URI="http://localhost:$API_PORT/api/integrations/square/oauth/callback" \
-  TABLESIGNAL_CREDENTIAL_KEY="$("$PY" -c 'from cryptography.fernet import Fernet;print(Fernet.generate_key().decode())')" \
+  TABLESIGNAL_CREDENTIAL_KEY="$CRED_KEY" \
   TABLESIGNAL_SANDBOX_LOCATION_BILLING=1 \
   "$PY" -m uvicorn app.main:app --port "$API_PORT" > "$WORK/api.log" 2>&1 & pids+=($!)
+# The background sync worker shares the API's settings (M3).
+env ${api_auth[@]+"${api_auth[@]}"} DATABASE_URL="sqlite:///$WORK/journey.db" SQUARE_API_BASE_URL="http://localhost:$MOCK_PORT" \
+  SQUARE_SANDBOX_APP_ID=mock-app-id SQUARE_SANDBOX_APP_SECRET=mock-app-secret TABLESIGNAL_SANDBOX_LOCATION_BILLING=1 \
+  TABLESIGNAL_CREDENTIAL_KEY="$CRED_KEY" GUESTLIFT_WORKER_IDLE_SECONDS=1 \
+  "$PY" -m app.worker > "$WORK/worker.log" 2>&1 & pids+=($!)
 
 cd "$ROOT/frontend"
 env ${web_auth[@]+"${web_auth[@]}"} NEXT_PUBLIC_GUESTLIFT_API_URL="http://localhost:$API_PORT" NEXT_PUBLIC_SQUARE_AUTHORIZE_ORIGIN="http://localhost:$MOCK_PORT" \
@@ -53,4 +59,5 @@ wait_for "http://localhost:$MOCK_PORT/__mock/truth"
 wait_for "http://localhost:$API_PORT/api/ready"
 wait_for "http://localhost:$WEB_PORT/"
 JOURNEY_AUTH_MODE="$MODE" JOURNEY_BASE_URL="http://localhost:$WEB_PORT" MOCK_SQUARE_URL="http://localhost:$MOCK_PORT" \
-  npx playwright test e2e/journey.spec.ts "$@" || { echo '--- api.log ---'; tail -40 "$WORK/api.log"; exit 1; }
+  npx playwright test e2e/journey.spec.ts "$@" || { echo '--- api.log ---'; tail -40 "$WORK/api.log"; echo '--- worker.log ---'; tail -20 "$WORK/worker.log"; exit 1; }
+kill -0 "${pids[2]}" 2>/dev/null || { echo 'The sync worker exited during the journey:'; cat "$WORK/worker.log"; exit 1; }

@@ -65,8 +65,21 @@ test('owner signs up, connects Square, syncs, reads the brief and saves a decisi
   });
 
   await test.step('4 · sync and see the import result', async () => {
-    await page.getByRole('button', {name: /Sync last 180 days/}).click();
+    await page.getByRole('button', {name: /Sync now/}).click();
     await expect(page.getByText(`Sync complete: ${truth.importable_orders} new`)).toBeVisible({timeout: 30_000});
+  });
+
+  await test.step('M3 · "Check against Square" matches Square for each location', async () => {
+    // Same default range as the page: the 7 days ending yesterday (UTC calendar).
+    const now = new Date();
+    const end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 1));
+    const days = [...Array(7)].map((_, i) => new Date(end.getTime() - i * 864e5).toISOString().slice(0, 10));
+    const money = (n: number) => new Intl.NumberFormat('en-US', {style: 'currency', currency: 'USD'}).format(n / 100);
+    for (const loc of truth.eligible_location_ids as string[]) {
+      const net = days.reduce((sum, d) => sum + (truth.daily[loc]?.[d]?.net_sales_minor ?? 0), 0);
+      await expect(page.locator(`tr[data-location="${loc}"] td[data-col="net_sales_minor"]`)).toHaveText(money(net));
+    }
+    await expect(page.getByText('Up to date')).toBeVisible();
   });
 
   await test.step('5 · the dashboard shows numbers that match Square', async () => {

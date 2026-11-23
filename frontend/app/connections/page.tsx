@@ -5,12 +5,14 @@ import Link from 'next/link';
 import {ArrowRight, CheckCircle2, Database, ExternalLink, Info, PlugZap, RefreshCcw,
   ShieldCheck, Trash2, Store, LifeBuoy, Clock3} from 'lucide-react';
 import {accountApi,localAuthClient} from '@/lib/local-auth';
+import {DataHealthBanner,HealthSummary,useDataHealth} from '@/components/data-health';
+import {ReconciliationPanel} from '@/components/reconciliation';
 
 type SandboxLocations={enabled:boolean;selected_count:number;selected_location_ids:string[];notice:string;
   locations:{id:string;name:string;type:string;status:string;eligible:boolean;selected:boolean}[]};
 type Run={status:string;started_at:string;scanned:number;inserted:number;updated:number;skipped:number};
 type Connection={connected:boolean;environment:string;merchant_id:string|null;credential_mode:string|null;
-  last_sync_at:string|null;last_error:string|null;developer_token_configured:boolean;oauth_configured:boolean;
+  last_sync_at:string|null;last_error:string|null;connection_status:string|null;developer_token_configured:boolean;oauth_configured:boolean;
   production_enabled:boolean;runs:Run[];assisted_requests:{provider:string;status:string;created_at:string}[]};
 
 // Only follow redirects to Square's authorize page. The journey test builds with the mock Square origin.
@@ -27,6 +29,7 @@ export default function Connections(){
   const [synced,setSynced]=useState<{scanned:number;inserted:number;updated:number;skipped:number}|null>(null);
   const [locations,setLocations]=useState<SandboxLocations|null>(null);
   const [selection,setSelection]=useState<string[]>([]);
+  const {health,reload:reloadHealth}=useDataHealth();
   const reload=useCallback(async()=>{
     try{
       const s=await localAuthClient().auth.getSession();const t=s.data.session?.access_token||'';
@@ -51,8 +54,8 @@ export default function Connections(){
       if(path==='oauth/start'){
         if(typeof result.url==='string'&&result.url.startsWith(squareAuthorizeUrl))window.location.assign(result.url);
       }else if(path==='sync'){
-        setSynced(result);
-        setMessage(`Square sync complete: ${result.scanned} scanned, ${result.inserted} new, ${result.updated} refreshed, ${result.skipped} skipped.`);
+        if(result.status==='completed'){setSynced(result);setMessage('')}
+        else{setSynced(null);setMessage(result.message||'Importing your history in the background. This page updates as it goes.')}
       }else if(path==='locations/selection'){
         setMessage('Monitored Sandbox location selection saved. Only these locations will sync when the v0.13 gate is enabled.');
       }else if(path==='assisted-setup'){
@@ -61,8 +64,8 @@ export default function Connections(){
       }else{
         setMessage(path==='disconnect'?'Sandbox connection and imported orders deleted locally.':'Square Sandbox connected. Sync your orders next.');
       }
-      await reload();
-    }catch(e){setMessage(e instanceof Error?e.message:'Connection action failed.');}
+      await reload();await reloadHealth();
+    }catch(e){setMessage(e instanceof Error?e.message:'Connection action failed.');await reloadHealth();}
     finally{setBusy(false);}
   }
   function remove(){
@@ -93,8 +96,12 @@ export default function Connections(){
           <span className={'ts9-pill '+(connected?'ok':'')}>{connected?'Connected':'Not connected'}</span></div>
         {connected?<>
           <div className="ts9-connection-meta"><div><small>Sandbox merchant</small><strong>{status?.merchant_id}</strong></div><div><small>Connection type</small><strong>{status?.credential_mode==='oauth'?'Sandbox OAuth':'Local developer token'}</strong></div><div><small>Last successful sync</small><strong>{status?.last_sync_at?new Date(status.last_sync_at).toLocaleString():'Not yet synced'}</strong></div></div>
-          {status?.last_error&&<div className="ts9-notice danger">{status.last_error}</div>}
-           <div className="ts9-inline-actions"><button className="ts9-button primary" disabled={busy||(Boolean(locations?.enabled)&&!locations?.selected_count)} onClick={()=>void action('sync')}><RefreshCcw size={17}/>{busy?'Working…':'Sync last 180 days'}</button>
+          <DataHealthBanner health={health}/>
+          <HealthSummary health={health}/>
+          {status?.last_error&&health?.status!=='needs_reconnect'&&health?.status!=='revoked'&&<div className="ts9-notice danger">{status.last_error}</div>}
+          {(status?.connection_status==='needs_reconnect'||status?.connection_status==='revoked')&&
+            <button className="ts9-button primary" disabled={busy} onClick={()=>void action('oauth/start')}><PlugZap size={17}/> Reconnect Square</button>}
+           <div className="ts9-inline-actions"><button className="ts9-button primary" disabled={busy||(Boolean(locations?.enabled)&&!locations?.selected_count)} onClick={()=>void action('sync')}><RefreshCcw size={17}/>{busy?'Syncing…':'Sync now'}</button>
           <button className="ts9-button secondary" disabled={busy} onClick={remove}><Trash2 size={16}/> Disconnect and delete imported orders</button></div>
           {synced&&<div className="ts9-notice success" role="status"><CheckCircle2 size={17}/> Sync complete: {synced.inserted} new · {synced.updated} refreshed · {synced.skipped} skipped · {synced.scanned} scanned. <Link href="/opportunities" style={{fontWeight:700}}>Review business opportunities <ArrowRight size={14}/></Link></div>}
         </>:<>
@@ -154,6 +161,7 @@ export default function Connections(){
               </div>
             )}
           </section>
+      {connected&&token&&<ReconciliationPanel token={token} refreshKey={status?.last_sync_at}/>}
       <section className="ts9-panel"><span className="ts9-kicker">IMPORT ACTIVITY</span><h3>Sync history</h3>
         {!status?.runs?.length?<p className="ts9-muted">No sync attempts yet. Once connected, this shows when data was imported and how many records were created or refreshed.</p>:<div className="ts9-run-list">{status.runs.map((r,i)=><div key={i}><span><Clock3 size={15}/> {new Date(r.started_at).toLocaleString()}</span><strong>{r.status}</strong><small>{r.scanned} scanned · {r.inserted} new · {r.updated} updated</small></div>)}</div>}
       </section>

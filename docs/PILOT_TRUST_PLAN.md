@@ -39,9 +39,9 @@ Each level must succeed before asking for the next. Level 1 tests usefulness wit
 - [ ] Consider cyber-liability insurance before connecting more than one restaurant.
 
 ### Accuracy — engineering fixes found while writing this plan (go into PRODUCT_PLAN M3)
-- [ ] **Order volume limit:** sync currently stops after 800 orders per batch of locations (8 pages × 100). A busy restaurant exceeds that in a week. Replace with a checkpointed backfill worker.
-- [ ] **Local time:** daily metrics bucket by UTC date (`insights.py`). Square reports use the location's time zone. Bucket by each location's `timezone`.
-- [ ] **Refunds:** not reconciled today, so revenue can be overstated. Import refunds and report net-of-refunds sales.
+- [x] **Order volume limit** (fixed in M3, `docs/PIPELINE.md`): sync currently stops after 800 orders per batch of locations (8 pages × 100). A busy restaurant exceeds that in a week. Replace with a checkpointed backfill worker.
+- [x] **Local time** (fixed in M3): daily metrics bucket by UTC date (`insights.py`). Square reports use the location's time zone. Bucket by each location's `timezone`.
+- [x] **Refunds** (fixed in M3): not reconciled today, so revenue can be overstated. Import refunds and report net-of-refunds sales.
 - [ ] **Service charges, voids, split tenders and gift cards:** handled explicitly or shown as a known gap, never silently miscounted.
 - [ ] **Production Square environment** switch (still gated), hosted pilot environment on HTTPS, separate from staging.
 
