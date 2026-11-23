@@ -11,6 +11,8 @@ __pycache__/
 *.db
 *.sqlite
 *.sqlite3
+# SQLite migration lock (backend/app/migrate.py)
+*.migrate.lock
 .venv/
 venv/
 .DS_Store

@@ -24,7 +24,7 @@ from typing import Any
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from fastapi import HTTPException
-from sqlalchemy import DDL, Boolean, ForeignKey, Integer, String, Text, UniqueConstraint, event, select, update
+from sqlalchemy import Boolean, ForeignKey, Index, Integer, String, Text, UniqueConstraint, select, text, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Mapped, Session, mapped_column
 
@@ -91,19 +91,12 @@ class SquareSyncJob(Base):
     last_error: Mapped[str] = mapped_column(String(220), default='')
     created_at: Mapped[str] = mapped_column(String(48))
     updated_at: Mapped[str] = mapped_column(String(48))
-
-
-# At most one open job per workspace, enforced by the database: two syncs of the same workspace
-# at once would write the same orders twice. A partial unique index, created idempotently here and
-# by migration 0008 (SQLAlchemy re-checks partial indexes unreliably, so it isn't in the metadata).
-ONE_OPEN_JOB_INDEX = DDL("CREATE UNIQUE INDEX IF NOT EXISTS uq_square_sync_jobs_one_open ON square_sync_jobs "
-                         "(workspace_id) WHERE status IN ('queued', 'running')")
-event.listen(SquareSyncJob.__table__, 'after_create', ONE_OPEN_JOB_INDEX)
-
-
-def ensure_indexes(bind) -> None:
-    with bind.begin() as conn:
-        conn.execute(ONE_OPEN_JOB_INDEX)
+    # At most one open job per workspace, enforced by the database: two syncs of the same workspace
+    # at once would write the same orders twice. Declared here (the models are the schema's source of
+    # truth) and created only by migration 0008, after it closes duplicates left by the old race.
+    __table_args__ = (Index('uq_square_sync_jobs_one_open', 'workspace_id', unique=True,
+                            sqlite_where=text("status IN ('queued', 'running')"),
+                            postgresql_where=text("status IN ('queued', 'running')")),)
 
 
 def _iso(dt: datetime) -> str:

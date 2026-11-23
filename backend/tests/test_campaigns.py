@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, inspect, text
-from app import database
+from app import database, migrate
 from app.adapters import parse
 from app.campaigns import import_campaign_csvs
 from app.main import app
@@ -18,6 +18,7 @@ ROOT=Path(__file__).resolve().parents[1] / 'fixtures' / 'campaigns'
 def _client(tmp_path, monkeypatch):
     engine=create_engine(f'sqlite:///{tmp_path / "campaign-test.sqlite"}',connect_args={'check_same_thread':False})
     monkeypatch.setattr(database, 'engine', engine)
+    migrate.upgrade(engine)  # deployments migrate first; the API never creates tables
     return TestClient(app),engine
 
 

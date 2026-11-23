@@ -38,6 +38,8 @@ def _create_index(name, table, *args, **kwargs):
 
 def upgrade() -> None:
     """Upgrade schema."""
+    # Reset per run: one process can migrate several databases (tests, the app's migrate step).
+    _existing.clear()
     _existing.update(sa.inspect(op.get_bind()).get_table_names())
     _created.clear()
     _create_table('campaign_import_runs',

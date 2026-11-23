@@ -9,7 +9,7 @@ import pytest
 from sqlalchemy import create_engine
 from fastapi.testclient import TestClient
 from app.adapters import FIXTURE_DIR, cents, parse, parse_toast, parse_square
-from app import database
+from app import database, migrate
 from app.main import app
 
 
@@ -76,6 +76,7 @@ def test_square_bad_currency_rejected(tmp_path:Path):
 def test_sql_persistence_replay_and_metrics(tmp_path:Path,monkeypatch):
     engine=create_engine(f'sqlite:///{tmp_path/"test.db"}',connect_args={'check_same_thread':False})
     monkeypatch.setattr(database,'engine',engine)
+    migrate.upgrade(engine)  # deployments migrate first; the API never creates tables
     with TestClient(app) as client:
         assert client.get('/api/health').json()['status']=='ok'
         p=client.get('/api/preview/toast')
@@ -107,6 +108,7 @@ def test_sql_persistence_replay_and_metrics(tmp_path:Path,monkeypatch):
 def test_upload_toast_and_replay_in_local_sql(tmp_path: Path, monkeypatch):
     local_engine = create_engine(f'sqlite:///{tmp_path/"uploaded.db"}', connect_args={'check_same_thread': False})
     monkeypatch.setattr(database, 'engine', local_engine)
+    migrate.upgrade(local_engine)  # deployments migrate first; the API never creates tables
     with TestClient(app) as client:
         sources = [("files", (p.name, p.read_bytes(), 'text/csv')) for p in sorted((FIXTURE_DIR/'toast').glob('*.csv'))]
         result = client.post('/api/upload/toast', files=sources)
@@ -125,6 +127,7 @@ def test_upload_toast_and_replay_in_local_sql(tmp_path: Path, monkeypatch):
 def test_upload_bad_csv_rejected_without_persistence(tmp_path: Path, monkeypatch):
     local_engine = create_engine(f'sqlite:///{tmp_path/"bad.db"}', connect_args={'check_same_thread': False})
     monkeypatch.setattr(database, 'engine', local_engine)
+    migrate.upgrade(local_engine)  # deployments migrate first; the API never creates tables
     with TestClient(app) as client:
         sources = [("files", (p.name, (p.read_bytes().replace(b'Order Id', b'Bad Header') if p.name=='OrderDetails.csv' else p.read_bytes()), 'text/csv')) for p in sorted((FIXTURE_DIR/'toast').glob('*.csv'))]
         bad = client.post('/api/upload/toast', files=sources)
@@ -139,6 +142,7 @@ def test_upload_bad_csv_rejected_without_persistence(tmp_path: Path, monkeypatch
 def test_upload_square_and_financial_totals(tmp_path: Path, monkeypatch):
     local_engine = create_engine(f'sqlite:///{tmp_path/"square.db"}', connect_args={'check_same_thread': False})
     monkeypatch.setattr(database, 'engine', local_engine)
+    migrate.upgrade(local_engine)  # deployments migrate first; the API never creates tables
     with TestClient(app) as client:
         sources = [('files', (p.name, p.read_bytes(), 'application/json')) for p in sorted((FIXTURE_DIR/'square').glob('*.json'))]
         result = client.post('/api/upload/square', files=sources)

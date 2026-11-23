@@ -5,6 +5,8 @@
   makes steady progress and several workers can share the queue safely.
 - Retries 429s, Square outages and network errors with exponential backoff; stops and asks the
   owner to reconnect when Square rejects the token.
+- Never changes the schema: it waits until `python -m app.migrate` has brought it up to date.
+- Touches GUESTLIFT_WORKER_HEARTBEAT_FILE every loop so a container health check can see it's alive.
 """
 from __future__ import annotations
 
@@ -12,13 +14,14 @@ import logging
 import os
 import signal
 import time
+from pathlib import Path
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from . import config, square_sync
+from . import config, migrate, square_sync
 from . import main as _main  # noqa: F401  (registers every model, as alembic/env.py does)
-from .database import engine, init_db
+from .database import engine
 from .logging_config import setup_logging
 
 logger = logging.getLogger('guestlift.worker')
@@ -97,26 +100,48 @@ def run_once(slice_seconds: float | None = None) -> bool:
     return False
 
 
-def main() -> None:
+HEARTBEAT = Path(os.getenv('GUESTLIFT_WORKER_HEARTBEAT_FILE', '/tmp/tablesignal-worker-heartbeat'))
+
+
+def _beat() -> None:
+    try:
+        HEARTBEAT.touch()
+    except OSError:  # a read-only filesystem shouldn't stop syncing
+        pass
+
+
+def main() -> int:
+    try:  # a restarted container keeps /tmp: don't look alive until the loop runs again
+        HEARTBEAT.unlink(missing_ok=True)
+    except OSError:
+        pass
     setup_logging()
     config.validate_auth_config()
     config.validate_production_config()
     from .connections import validate_square_config
     validate_square_config()
-    init_db()
 
     def stop(*_):
         global _running
         _running = False
     signal.signal(signal.SIGTERM, stop)
     signal.signal(signal.SIGINT, stop)
+    try:
+        ready = migrate.wait_until_ready(engine, timeout=float(os.getenv('GUESTLIFT_SCHEMA_WAIT_SECONDS', '120')),
+                                         should_continue=lambda: _running)
+    except migrate.SchemaNotReady as exc:
+        logger.error('%s', exc)
+        return 3
     idle = float(os.getenv('GUESTLIFT_WORKER_IDLE_SECONDS', '5'))
-    logger.info('worker started')
+    if ready is not None:
+        logger.info('worker started')
     while _running:
+        _beat()
         if not run_once():
             time.sleep(idle)
     logger.info('worker stopped')
+    return 0
 
 
 if __name__ == '__main__':
-    main()
+    raise SystemExit(main())
