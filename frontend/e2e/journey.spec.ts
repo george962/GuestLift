@@ -44,10 +44,18 @@ test('owner signs up, connects Square, syncs, reads the brief and saves a decisi
   await test.step('2 · sign up and land in onboarding', async () => {
     await signUp(page, email);
     await expect(page.getByRole('heading', {name: 'Your TableSignal account is ready.'})).toBeVisible({timeout: 20_000});
+    // Regression (CI, PR #29): the first account load finishing after the save sent the owner back to step 1.
+    await page.route('**/api/saas/me', async route => {
+      if (route.request().method() === 'GET') await new Promise(r => setTimeout(r, 2500));
+      await route.continue().catch(() => {});  // the page may have moved on while we waited
+    });
+    const slowProgress = page.waitForResponse(r => r.url().includes('/api/saas/me') && r.request().method() === 'GET');
     await page.getByRole('link', {name: /Set up my restaurant/}).click();
     await page.getByLabel('Restaurant name').fill('Harbor Café');
     await page.getByRole('button', {name: /Save and continue/}).click();
+    await slowProgress;  // the stale load lands after the save, as it did in CI
     await page.getByRole('button', {name: /Continue free/}).click();
+    await page.unroute('**/api/saas/me');
     await expect(page.getByText('Next: connect your orders.')).toBeVisible();
   });
 

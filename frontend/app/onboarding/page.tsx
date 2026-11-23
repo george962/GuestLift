@@ -1,5 +1,5 @@
 'use client';
-import {useCallback,useEffect,useState} from 'react';
+import {useCallback,useEffect,useRef,useState} from 'react';
 import Link from 'next/link';
 import {useRouter} from 'next/navigation';
 import {ArrowRight,CheckCircle2,CreditCard,Database,ShieldCheck,Store} from 'lucide-react';
@@ -13,6 +13,8 @@ export default function Onboarding(){
  const [kind,setKind]=useState('fast_casual');const [goal,setGoal]=useState('customer_retention');
  const [choice,setChoice]=useState<Choice>('not_chosen');
  const [busy,setBusy]=useState(false);const [notice,setNotice]=useState('');
+ // Once the owner acts, a slower initial load must not move them back a step.
+ const acted=useRef(false);
  const load=useCallback(async()=>{
   try{
    const session=await localAuthClient().auth.getSession();
@@ -22,22 +24,25 @@ export default function Onboarding(){
     if(account.workspace.name!=='My Restaurant')setName(account.workspace.name);
     if(account.workspace.restaurant_type)setKind(account.workspace.restaurant_type);
     if(account.workspace.goal)setGoal(account.workspace.goal);
-    setChoice(progress.plan_choice);
-    setStep(progress.stage as Step);
-    if(account.summary?.has_connected_source)setStep(3);
+    if(!acted.current){
+     setChoice(progress.plan_choice);
+     setStep(progress.stage as Step);
+     if(account.summary?.has_connected_source)setStep(3);
+    }
    }
   }catch(e){setNotice(e instanceof Error?`Unable to check your account: ${e.message}`:'Unable to load onboarding.');}
   finally{setChecked(true)}
  },[]);
  useEffect(()=>{void load()},[load]);
- async function saveProfile(){if(!token)return;setBusy(true);setNotice('');
+ async function saveProfile(){if(!token)return;acted.current=true;setBusy(true);setNotice('');
   try{await accountApi('/api/saas/profile',token,'POST',{name:name.trim(),restaurant_type:kind,goal});
+    await accountApi('/api/saas/onboarding',token,'POST',{stage:2,plan_choice:choice});
     setStep(2);setNotice('Restaurant profile saved. Choose your development plan next.');}
   catch(e){setNotice(e instanceof Error?e.message:'Unable to save your restaurant.');}
   finally{setBusy(false)}
  }
  async function selectPlan(which:'sandbox'|'growth'){
-  if(!token)return;setBusy(true);setNotice('');
+  if(!token)return;acted.current=true;setBusy(true);setNotice('');
   try{await accountApi('/api/saas/onboarding',token,'POST',{stage:3,plan_choice:which});
    setChoice(which);setStep(3);
    if(which==='growth')router.push('/billing');
