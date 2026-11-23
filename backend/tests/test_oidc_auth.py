@@ -19,6 +19,7 @@ from sqlalchemy import create_engine
 from app import config, oidc_auth, saas
 from app.database import Base
 from app.main import app
+from app import membership
 
 ISSUER = 'https://idp.example.test'
 AUDIENCE = 'guestlift-api'
@@ -79,6 +80,7 @@ def idp(monkeypatch, tmp_path):
     monkeypatch.setenv('GUESTLIFT_OIDC_AUDIENCE', AUDIENCE)
     engine = create_engine(f"sqlite:///{tmp_path / 'oidc.sqlite'}", connect_args={'check_same_thread': False})
     monkeypatch.setattr(saas, 'engine', engine)
+    monkeypatch.setattr(membership, 'engine', engine)
     Base.metadata.create_all(engine)
     oidc_auth.reset_cache()
     yield provider

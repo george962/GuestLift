@@ -2,22 +2,48 @@
  * M1 golden-path journey (docs/PRODUCT_PLAN.md, steps 2–7) against the mock Square API.
  * Run locally with scripts/journey.sh; CI runs it in the `journey` job.
  */
-import {expect, test} from '@playwright/test';
+import {expect, test, type Page} from '@playwright/test';
+import {setupClerkTestingToken} from '@clerk/testing/playwright';
 
 const MOCK = process.env.MOCK_SQUARE_URL || 'http://localhost:8100';
+const CLERK = process.env.JOURNEY_AUTH_MODE === 'clerk';
+const PASSWORD = 'journey-Pw-' + Math.random().toString(36).slice(2, 10) + '-7Qz!';
+
+async function signUp(page: Page, email: string) {
+  if (!CLERK) {
+    await page.goto('/sign-up');
+    await page.getByLabel('Email address').fill(email);
+    await page.getByLabel('Password', {exact: true}).fill(PASSWORD);
+    await page.getByLabel('Confirm password').fill(PASSWORD);
+    await page.getByRole('button', {name: /Create account/}).click();
+    return;
+  }
+  // Real Clerk development instance. "+clerk_test" emails accept the fixed code 424242 and send no mail.
+  await setupClerkTestingToken({page});
+  await page.goto('/sign-up');
+  await page.getByLabel(/Email address/i).fill(email);
+  await page.getByLabel(/^Password/i).fill(PASSWORD);
+  await page.getByRole('button', {name: /^Continue$/}).click();
+  await page.getByLabel(/Enter verification code|Verification code/i).first().waitFor();
+  await page.keyboard.type('424242');
+  // If the Clerk instance still requires organizations, get past that screen (owner should turn it off).
+  const orgTask = page.getByRole('heading', {name: /Setup your organization/i});
+  const welcome = page.getByRole('heading', {name: 'Your TableSignal account is ready.'});
+  await expect(orgTask.or(welcome)).toBeVisible({timeout: 20_000});
+  if (await orgTask.isVisible()) {
+    console.warn('Clerk instance requires organizations; disable "membership required" in the Clerk dashboard.');
+    await page.getByRole('button', {name: /^Continue$/}).click();
+  }
+}
 
 test('owner signs up, connects Square, syncs, reads the brief and saves a decision', async ({page, request}) => {
   test.setTimeout(120_000);
   const truth = await (await request.get(`${MOCK}/__mock/truth`)).json();
-  const email = `owner+${Date.now()}@harbor.test`;
+  const email = CLERK ? `journey${Date.now()}+clerk_test@example.com` : `owner+${Date.now()}@harbor.test`;
 
   await test.step('2 · sign up and land in onboarding', async () => {
-    await page.goto('/sign-up');
-    await page.getByLabel('Email address').fill(email);
-    await page.getByLabel('Password', {exact: true}).fill('a-long-journey-password');
-    await page.getByLabel('Confirm password').fill('a-long-journey-password');
-    await page.getByRole('button', {name: /Create account/}).click();
-    await expect(page.getByRole('heading', {name: 'Your TableSignal account is ready.'})).toBeVisible();
+    await signUp(page, email);
+    await expect(page.getByRole('heading', {name: 'Your TableSignal account is ready.'})).toBeVisible({timeout: 20_000});
     await page.getByRole('link', {name: /Set up my restaurant/}).click();
     await page.getByLabel('Restaurant name').fill('Harbor Café');
     await page.getByRole('button', {name: /Save and continue/}).click();
@@ -61,5 +87,14 @@ test('owner signs up, connects Square, syncs, reads the brief and saves a decisi
     await expect(page.getByText('Draft saved.')).toBeVisible();
     await page.getByRole('link', {name: /Review your saved decisions/}).click();
     await expect(page.getByText('Win back lapsed regulars')).toBeVisible();
+  });
+
+  await test.step('M2 · the owner deletes the workspace and the account', async () => {
+    await page.goto('/settings');
+    await page.getByLabel(/Type .* to confirm/).fill('Harbor Café');
+    await page.getByRole('button', {name: 'Delete workspace and account'}).click();
+    await page.waitForURL(/\/\?deleted=1/);
+    await page.goto('/dashboard');
+    await expect(page.getByRole('link', {name: /Sign in/}).first()).toBeVisible();
   });
 });

@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 from app import saas
 from app.database import Base
 from app.main import app
+from app import membership
 
 SECRET = 'whsec_test_guarantees'
 
@@ -33,6 +34,7 @@ def client(tmp_path, monkeypatch):
     engine = create_engine('sqlite:///' + str(tmp_path / 'wh.sqlite'), connect_args={'check_same_thread': False})
     Base.metadata.create_all(engine)
     monkeypatch.setattr(saas, 'engine', engine)
+    monkeypatch.setattr(membership, 'engine', engine)
     monkeypatch.setenv('STRIPE_SECRET_KEY', 'sk_test_dummy')
     monkeypatch.setenv('STRIPE_WEBHOOK_SECRET', SECRET)
     yield TestClient(app), engine

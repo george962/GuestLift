@@ -10,11 +10,13 @@ from app.database import Base
 from app.main import app
 from app import saas, decisions, intelligence
 from app.connections import SquareConnection, SquareOrder
+from app import membership
 
 
 def fixture(tmp_path, monkeypatch, *, growth=False):
     engine = create_engine('sqlite:///'+str(tmp_path/'ai.sqlite'), connect_args={'check_same_thread':False})
     monkeypatch.setattr(saas, 'engine', engine)
+    monkeypatch.setattr(membership, 'engine', engine)
     monkeypatch.setattr(decisions, 'engine', engine)
     monkeypatch.setattr(intelligence, 'engine', engine)
     Base.metadata.create_all(engine)

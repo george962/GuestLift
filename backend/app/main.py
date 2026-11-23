@@ -20,6 +20,7 @@ from .connections import router as square_router
 from .decisions import router as decisions_router
 from .intelligence import router as intelligence_router
 from .launch import router as launch_router
+from .membership import router as team_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -39,6 +40,7 @@ app.include_router(square_router)
 app.include_router(decisions_router)
 app.include_router(intelligence_router)
 app.include_router(launch_router)
+app.include_router(team_router)
 
 def require_demo_endpoints():
     # Hosted builds must not expose the unauthenticated, shared-dataset demo API.

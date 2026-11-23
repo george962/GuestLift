@@ -2,7 +2,7 @@
 
 **This is the working plan for the customer-facing product. Every change PR cites the milestone it advances and updates the status table below in the same PR.**
 
-Owner: product owner (repo admin). Last updated: 2026-11-22 (M1).
+Owner: product owner (repo admin). Last updated: 2026-11-22 (M2).
 
 ## The promise we are building toward
 
@@ -99,8 +99,8 @@ Ordered by dependency. Each milestone is one or more PRs; it's "done" only when 
 | Milestone | Status | PRs | Notes |
 |---|---|---|---|
 | Infra checkpoints 0–4 | Done | #4 | CI, audits, prod config guard, webhook tests, rate limit |
-| M1 Journey harness | Done (pending merge) | M1 PR | Mock Square, pipeline + contract tests, browser journey steps 2–7 in CI. Steps 8–10 arrive with M4/M5 |
-| M2 Identity | Not started | | Needs identity provider account |
+| M1 Journey harness | Done | #23 | Mock Square, pipeline + contract tests, browser journey steps 2–7 in CI. Steps 8–10 arrive with M4/M5 |
+| M2 Identity | Done (pending merge) | M2 PR | Clerk mode, owner/manager roles, invites, workspace deletion, route-inventory isolation test; journey passes against the real Clerk dev instance. CI needs the Clerk test secrets added |
 | M3 Pipeline | Not started | | Needs a Square Sandbox seller to verify on staging |
 | M4 Insight loop | Not started | | Needs email provider account |
 | M5 Billing | Not started | | Stripe TEST keys needed in CI secrets |
@@ -116,6 +116,7 @@ Ordered by dependency. Each milestone is one or more PRs; it's "done" only when 
 | 2026-11-22 | Stack: Clerk (identity), Resend (email), Render + Neon Postgres (hosting), Sentry (errors) | Owner accepted recommendations; Clerk already supported by the backend OIDC path |
 | 2026-11-22 | Customer validation runs alongside M4 (owner interviews + concierge pilot), see `docs/PILOT_TRUST_PLAN.md` | Prove the insights change real decisions before investing in billing polish |
 | 2026-11-22 | Journey test signs up via the UI rather than seeding accounts | Tests the real signup path; no test-only backdoor endpoints |
+| 2026-11-22 | Teams live in TableSignal (owner/manager), not Clerk Organizations | Keeps roles next to the data they protect and works with any OIDC provider |
 
 ## Working agreement
 - Every PR names its milestone, keeps the golden-path journey green, and updates the Status table.

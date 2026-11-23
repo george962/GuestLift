@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 # M1 golden-path journey: mock Square + backend + frontend + Playwright, all on localhost.
-# Usage: scripts/journey.sh   (needs backend/.venv with requirements and frontend/node_modules)
+# Usage: scripts/journey.sh                     local development accounts
+#        JOURNEY_AUTH_MODE=clerk scripts/journey.sh   real Clerk development instance (M2)
+# Needs backend/.venv with requirements and frontend/node_modules. Clerk mode reads
+# NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY, CLERK_SECRET_KEY and GUESTLIFT_OIDC_ISSUER from the
+# environment, or from the repo's .env when unset.
 # Ports default away from docker compose (3000/8000) so both can run at once.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -13,9 +17,25 @@ trap cleanup EXIT
 
 wait_for() { for _ in $(seq 1 60); do curl -fsS "$1" >/dev/null 2>&1 && return 0; sleep 1; done; echo "Timed out waiting for $1"; cat "$WORK"/*.log; exit 1; }
 
+MODE="${JOURNEY_AUTH_MODE:-local}"
+api_auth=() web_auth=()
+if [ "$MODE" = clerk ]; then
+  for k in NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY CLERK_SECRET_KEY GUESTLIFT_OIDC_ISSUER; do
+    if [ -z "${!k:-}" ] && [ -f "$ROOT/.env" ]; then
+      v="$(grep -E "^$k=" "$ROOT/.env" | head -1 | cut -d= -f2-)"; export "$k=$v"
+    fi
+    [ -n "${!k:-}" ] || { echo "Clerk mode needs $k (environment or .env)."; exit 1; }
+  done
+  export CLERK_PUBLISHABLE_KEY="$NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY"
+  api_auth=(GUESTLIFT_AUTH_MODE=oidc GUESTLIFT_OIDC_ISSUER="$GUESTLIFT_OIDC_ISSUER"
+            GUESTLIFT_OIDC_JWKS_URL="${GUESTLIFT_OIDC_ISSUER%/}/.well-known/jwks.json"
+            GUESTLIFT_OIDC_AUTHORIZED_PARTIES="http://localhost:$WEB_PORT")
+  web_auth=(NEXT_PUBLIC_AUTH_MODE=clerk NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY="$NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY")
+fi
+
 cd "$ROOT/backend"
 "$PY" -m uvicorn mock_square.app:app --port "$MOCK_PORT" > "$WORK/mock.log" 2>&1 & pids+=($!)
-env DATABASE_URL="sqlite:///$WORK/journey.db" \
+env ${api_auth[@]+"${api_auth[@]}"} DATABASE_URL="sqlite:///$WORK/journey.db" \
   GUESTLIFT_APP_URL="http://localhost:$WEB_PORT" GUESTLIFT_ALLOWED_ORIGINS="http://localhost:$WEB_PORT" \
   SQUARE_API_BASE_URL="http://localhost:$MOCK_PORT" \
   SQUARE_SANDBOX_APP_ID=mock-app-id SQUARE_SANDBOX_APP_SECRET=mock-app-secret \
@@ -25,12 +45,12 @@ env DATABASE_URL="sqlite:///$WORK/journey.db" \
   "$PY" -m uvicorn app.main:app --port "$API_PORT" > "$WORK/api.log" 2>&1 & pids+=($!)
 
 cd "$ROOT/frontend"
-NEXT_PUBLIC_GUESTLIFT_API_URL="http://localhost:$API_PORT" NEXT_PUBLIC_SQUARE_AUTHORIZE_ORIGIN="http://localhost:$MOCK_PORT" \
+env ${web_auth[@]+"${web_auth[@]}"} NEXT_PUBLIC_GUESTLIFT_API_URL="http://localhost:$API_PORT" NEXT_PUBLIC_SQUARE_AUTHORIZE_ORIGIN="http://localhost:$MOCK_PORT" \
   npx next build > "$WORK/build.log" 2>&1 || { cat "$WORK/build.log"; exit 1; }
 npx next start --port "$WEB_PORT" > "$WORK/web.log" 2>&1 & pids+=($!)
 
 wait_for "http://localhost:$MOCK_PORT/__mock/truth"
 wait_for "http://localhost:$API_PORT/api/ready"
 wait_for "http://localhost:$WEB_PORT/"
-JOURNEY_BASE_URL="http://localhost:$WEB_PORT" MOCK_SQUARE_URL="http://localhost:$MOCK_PORT" \
+JOURNEY_AUTH_MODE="$MODE" JOURNEY_BASE_URL="http://localhost:$WEB_PORT" MOCK_SQUARE_URL="http://localhost:$MOCK_PORT" \
   npx playwright test e2e/journey.spec.ts "$@" || { echo '--- api.log ---'; tail -40 "$WORK/api.log"; exit 1; }

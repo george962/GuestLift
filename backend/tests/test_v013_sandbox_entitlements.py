@@ -10,6 +10,7 @@ from app import connections, local_auth, saas
 from app.database import Base
 from app.location_entitlements import SandboxMonitoredLocation, snapshot
 from app.main import app
+from app import membership
 
 ORIGIN = {'Origin': 'http://localhost:3000'}
 
@@ -49,7 +50,7 @@ def fake_square(token, method, path, payload=None):
 
 def test_server_selected_locations_and_scoped_sync(tmp_path, monkeypatch):
     db_engine = create_engine('sqlite:///'+str(tmp_path/'v13.db'), connect_args={'check_same_thread':False})
-    for module in (saas, connections, local_auth):
+    for module in (saas, connections, local_auth, membership):
         monkeypatch.setattr(module, 'engine', db_engine)
     monkeypatch.setenv('TABLESIGNAL_SANDBOX_LOCATION_BILLING', '1')
     monkeypatch.setenv('SQUARE_SANDBOX_ACCESS_TOKEN', 'V013_SANDBOX_TOKEN')

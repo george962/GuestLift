@@ -103,3 +103,16 @@ the auth surface used by the UI is `localAuthClient()`. That is the seam.
    and the demo is synthetic), so there is nothing to migrate. If that stops being
    true, write a one-off script mapping `local_users.id` to the new `oidc:<sub>`.
 5. Only then set `GUESTLIFT_ENV=production` on the live deployment.
+
+## Frontend in Clerk mode (M2)
+
+Build the frontend with `NEXT_PUBLIC_AUTH_MODE=clerk` and `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, and run the backend with `GUESTLIFT_AUTH_MODE=oidc` plus the issuer/JWKS settings above. Sign-up, email verification, password reset and the security page are Clerk's own screens (`/sign-up`, `/sign-in`, `/reset-password`). Every API call sends a fresh Clerk session token as `Authorization: Bearer`; a 401 shows a "session ended" banner.
+
+Clerk dashboard settings:
+- **Email + password** sign-in, with **email verification required**.
+- **Organizations: off**, or at least "membership optional". TableSignal manages teams itself (owner and manager roles in `app/membership.py`); with organizations required, Clerk adds an extra "Set up your organization" screen after sign-up.
+- **Allow users to delete their account: on**. "Delete workspace and account" in Settings deletes the Clerk user after the workspace.
+
+Teams: owners invite managers from Settings. The invite link works once and expires after 7 days. Managers can view, sync and save decisions; only owners can connect Square, manage billing, invite or remove people, or delete the workspace.
+
+Testing: `JOURNEY_AUTH_MODE=clerk scripts/journey.sh` runs the full journey against the development instance using `+clerk_test` emails, which accept the code 424242 and send no mail. CI runs it in the `journey-clerk` job when the `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY` and `GUESTLIFT_OIDC_ISSUER` repository secrets exist.

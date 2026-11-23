@@ -5,7 +5,12 @@ import {ArrowRight,CheckCircle2,ShieldCheck,Store} from 'lucide-react';
 import {localAuthClient} from '@/lib/local-auth';
 export default function Welcome(){
  const [status,setStatus]=useState<'checking'|'ready'|'signed-out'|'offline'>('checking');
- useEffect(()=>{void localAuthClient().auth.getSession().then(({data,error})=>setStatus(error?'offline':data.session?'ready':'signed-out'))},[]);
+ useEffect(()=>{
+  const auth=localAuthClient().auth;
+  void auth.getSession().then(({data,error})=>setStatus(error?'offline':data.session?'ready':'signed-out'));
+  const {data:listener}=auth.onAuthStateChange((event)=>{if(event==='SIGNED_IN')setStatus('ready')});
+  return()=>listener.subscription.unsubscribe();
+ },[]);
  return <main className="ts10-app"><div className="ts10-card ts10-empty"><CheckCircle2 size={42} color="#16866a"/><span className="ts10-eyebrow">ACCOUNT CREATED · LOCAL DEVELOPMENT</span>
   <h1>{status==='ready'?'Your TableSignal account is ready.':status==='checking'?'Checking your new account…':status==='offline'?'Account connection unavailable':'Welcome to TableSignal'}</h1>
   <p>{status==='ready'?'Your sign-in is saved in a secure browser cookie. Next, tell us about your restaurant and connect your Square Sandbox test data.':status==='offline'?'Try refreshing this page. A temporary connection failure does not mean you were signed out.':'Your restaurant workspace is protected by your account.'}</p>
