@@ -4,7 +4,7 @@ from __future__ import annotations
 import json
 import os
 import uuid
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, time as day_time, timedelta, timezone
 from zoneinfo import ZoneInfo
 
 import httpx
@@ -29,7 +29,7 @@ class WeeklyBrief(Base):
     __table_args__ = (UniqueConstraint('workspace_id', 'week_start', name='uq_weekly_brief_week'),)
 
 
-def _workspace_data(db: Session, wid: str):
+def _workspace_data(db: Session, wid: str, now: datetime | None = None):
     """Completed orders and refunds for the monitored locations, plus location names and time zone."""
     from .connections import SquareConnection, SquareOrder
     from .location_entitlements import selected_rows, selection_enabled
@@ -45,7 +45,7 @@ def _workspace_data(db: Session, wid: str):
                for f in db.scalars(select(SquareRefund).where(SquareRefund.workspace_id == wid))
                if allowed is None or f.location_id in allowed]
     names = {loc: s.name for loc, s in states.items() if allowed is None or loc in allowed}
-    tz = workspace_timezone(s.timezone for loc, s in states.items() if allowed is None or loc in allowed)
+    tz = workspace_timezone((s.timezone for loc, s in states.items() if allowed is None or loc in allowed), now=now)
     earliest = min((date.fromisoformat(o['local_date']) for o in orders), default=None)
     return orders, refunds, names, tz, earliest
 
@@ -72,11 +72,87 @@ def workspace_timezone(zones, now: datetime | None = None) -> str:
     return min(sorted(set(z for z in zones if z)), key=offset, default='UTC')
 
 
-def brief_for(db: Session, wid: str, today: date | None = None) -> dict:
-    orders, refunds, names, tz, _ = _workspace_data(db, wid)
-    today = today or local_today(tz)
+def _report_quality(db: Session, wid: str, start: date, end: date,
+                    now: datetime | None = None) -> tuple[bool, str]:
+    """Verify every monitored location covers [start, end), before making business claims.
+
+    Order presence cannot prove that a day was fully imported. Only a completed,
+    recent provider sync and each location's durable checkpoint can do that.
+    """
+    from .connections import SquareConnection
+    from .location_entitlements import selected_rows, selection_enabled
+    from .square_sync import SquareLocationState, STALE_AFTER, _parse
+
+    now = now or datetime.now(timezone.utc)
+    conn = db.scalar(select(SquareConnection).where(SquareConnection.workspace_id == wid))
+    if conn is None or conn.status != 'active':
+        return False, 'Square is disconnected or needs to be reconnected.'
+    if not conn.last_sync_at:
+        return False, 'The first successful Square sync is not finished.'
+    try:
+        last = _parse(conn.last_sync_at)
+        if last.tzinfo is None:
+            last = last.replace(tzinfo=timezone.utc)
+    except (ValueError, TypeError):
+        return False, 'The last successful sync time is invalid.'
+    if now - last > STALE_AFTER or last - now > timedelta(minutes=5):
+        return False, 'Square data is stale; complete a new sync before interpreting changes.'
+    if conn.last_error:
+        return False, 'The most recent Square sync reported an error.'
+
+    all_states = list(db.scalars(select(SquareLocationState).where(SquareLocationState.workspace_id == wid)))
+    if selection_enabled():
+        monitored = {r.location_id for r in selected_rows(db, wid, conn.merchant_id)}
+        if not monitored:
+            return False, 'No monitored Square locations are selected.'
+        known = {s.location_id for s in all_states}
+        if not monitored <= known:
+            return False, 'A selected location has not completed its initial import.'
+        states = [s for s in all_states if s.location_id in monitored]
+    else:
+        states = all_states
+    if not states:
+        return False, 'No locations have completed an initial Square sync.'
+
+    for state in states:
+        if not state.backfill_complete:
+            return False, f'{state.name or state.location_id} is still importing sales history.'
+        try:
+            zone = ZoneInfo(state.timezone or 'UTC')
+            start_utc = datetime.combine(start, day_time.min, tzinfo=zone).astimezone(timezone.utc)
+            end_utc = datetime.combine(end, day_time.min, tzinfo=zone).astimezone(timezone.utc)
+            first = _parse(state.backfill_start)
+            through = _parse(state.synced_through) if state.synced_through else None
+        except (ValueError, TypeError, KeyError):
+            return False, f'{state.name or state.location_id} has an invalid sync checkpoint or time zone.'
+        if first.tzinfo is None:
+            first = first.replace(tzinfo=timezone.utc)
+        if through is not None and through.tzinfo is None:
+            through = through.replace(tzinfo=timezone.utc)
+        if first > start_utc:
+            return False, f'{state.name or state.location_id} has not imported the full comparison baseline.'
+        if through is None or through < end_utc:
+            return False, f'{state.name or state.location_id} has not synced through the complete reporting period.'
+    return True, ''
+
+
+def brief_for(db: Session, wid: str, today: date | None = None,
+              now: datetime | None = None) -> dict:
+    orders, refunds, names, tz, _ = _workspace_data(db, wid, now=now)
+    today = today or local_today(tz, now)
+    start = weekly.last_complete_week(today)
+    ready, reason = _report_quality(db, wid, start - timedelta(days=28),
+                                    start + timedelta(days=7), now=now)
+    if not ready:
+        return {'week_start': start.isoformat(), 'week_end': (start + timedelta(days=6)).isoformat(),
+                'headline': 'Weekly findings paused until Square data is complete.',
+                'findings': [], 'totals': None, 'caveats': [reason],
+                'method': 'Incomplete or stale data is not treated as a real sales decline or as evidence of no change.',
+                'has_data': bool(orders), 'data_status': 'incomplete'}
     result = weekly.build_brief(orders, refunds, names, today)
     result['has_data'] = bool(orders)
+    result['data_status'] = 'ready'
+    result['caveats'].append('Late Square corrections can change past totals; verify material changes against Square reports.')
     return result
 
 
@@ -89,20 +165,28 @@ def store_brief(db: Session, wid: str, brief: dict) -> None:
     db.commit()
 
 
-def plan_outcome(db: Session, plan, today: date | None = None) -> dict | None:
-    """Readout for a decision whose follow-up date has passed (stored once computed)."""
+def plan_outcome(db: Session, plan, today: date | None = None,
+                 now: datetime | None = None) -> dict | None:
+    """Compute readouts only from fully synchronized comparison periods."""
     if not plan.start_date or not plan.follow_up_date:
         return None
-    orders, refunds, _, tz, earliest = _workspace_data(db, plan.workspace_id)
-    today = today or local_today(tz)
+    orders, refunds, _, tz, earliest = _workspace_data(db, plan.workspace_id, now=now)
+    today = today or local_today(tz, now)
     follow = date.fromisoformat(plan.follow_up_date)
     if today < follow:
         return {'available': False, 'due': plan.follow_up_date,
                 'message': f'Readout on {follow:%b %d}, when there is enough data after the change.'}
     if plan.outcome:
         return json.loads(plan.outcome)
-    result = weekly.outcome(orders, refunds, plan.metric or 'net_sales', plan.location_id, date.fromisoformat(plan.start_date),
-                            follow, earliest)
+    started = date.fromisoformat(plan.start_date)
+    span = max(7, ((follow - started).days // 7) * 7)
+    ready, reason = _report_quality(db, plan.workspace_id, started - timedelta(days=span),
+                                    started + timedelta(days=span), now=now)
+    if not ready:
+        return {'available': False, 'due': plan.follow_up_date,
+                'message': 'Outcome delayed: ' + reason}
+    result = weekly.outcome(orders, refunds, plan.metric or 'net_sales', plan.location_id,
+                            started, follow, earliest)
     if result.get('available'):
         plan.outcome, plan.outcome_at = json.dumps(result), datetime.now(timezone.utc).isoformat()
         db.commit()
@@ -172,19 +256,20 @@ def run_due(db: Session, now: datetime | None = None) -> dict:
                     continue  # sent under the old per-workspace key
                 queue(w, 'trial_ending', emailer.trial_key(w.id, m.id, e['days_left']), to,
                       emailer.render_trial_ending(e['days_left'], w.name, emailer.unsubscribe_url(m.id, 'trial_ending')))
-        orders, _, _, tz, _ = _workspace_data(db, w.id)
+        orders, _, _, tz, _ = _workspace_data(db, w.id, now=now)
         local = now.astimezone(ZoneInfo(tz) if tz else ZoneInfo('UTC'))
         if orders and local.weekday() == 0 and local.hour >= 7:
-            brief = brief_for(db, w.id, local.date())
-            store_brief(db, w.id, brief)
-            for m in members:
-                if not m.weekly_digest or not (to := member_email(db, m)):
-                    continue
-                queue(w, 'weekly_digest', emailer.digest_key(m.id, brief['week_start']), to,
-                      emailer.render_weekly(brief, w.name, emailer.unsubscribe_url(m.id, 'weekly_digest')))
+            brief = brief_for(db, w.id, local.date(), now=now)
+            if brief['data_status'] == 'ready':
+                store_brief(db, w.id, brief)
+                for m in members:
+                    if not m.weekly_digest or not (to := member_email(db, m)):
+                        continue
+                    queue(w, 'weekly_digest', emailer.digest_key(m.id, brief['week_start']), to,
+                          emailer.render_weekly(brief, w.name, emailer.unsubscribe_url(m.id, 'weekly_digest')))
         for plan in db.scalars(select(DecisionPlan).where(DecisionPlan.workspace_id == w.id,
                                                           DecisionPlan.follow_up_date <= local.date().isoformat())).all():
-            result = plan_outcome(db, plan, local.date())
+            result = plan_outcome(db, plan, local.date(), now=now)
             if not result or not result.get('available'):
                 continue
             for m in owners:

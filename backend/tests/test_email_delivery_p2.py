@@ -4,13 +4,14 @@ from __future__ import annotations
 
 import uuid
 from datetime import date, datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 
 import httpx
 import pytest
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app import emailer, insight_loop, membership, saas
+from app import connections, emailer, insight_loop, membership, saas, square_sync
 from journey_support import harness  # noqa: F401
 
 # The journey harness swaps httpx.Client for the mock Square client; keep the real class for the fake.
@@ -77,7 +78,26 @@ def _monday_8am_pacific():
 
 
 def _run(now):
+    # These P2 tests time-travel the worker to exercise email delivery. The mock
+    # data was otherwise synced at real wall-clock time, which can be *before*
+    # the last local Sunday has ended at the simulated Monday. P1 must reject
+    # that incomplete reporting window. For an email-only test, explicitly
+    # simulate a successful complete provider sync at the worker's test time.
     with Session(saas.engine) as db:
+        states = db.scalars(select(square_sync.SquareLocationState)).all()
+        if states:
+            zone = insight_loop.workspace_timezone((s.timezone for s in states), now=now)
+            local = now.astimezone(ZoneInfo(zone))
+            if local.weekday() == 0 and local.hour >= 7:
+                conn = db.scalar(select(connections.SquareConnection))
+                if conn:
+                    through = now.astimezone(timezone.utc).isoformat()
+                    conn.last_sync_at = through
+                    conn.last_error = None
+                    for state in states:
+                        state.backfill_complete = True
+                        state.synced_through = through
+                    db.commit()
         return insight_loop.run_due(db, now=now)
 
 
