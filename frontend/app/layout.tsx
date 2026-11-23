@@ -1,6 +1,7 @@
 import type {Metadata} from 'next';
 import './globals.css';
 import './m6-onboarding.css';
+import './m6-readiness.css';
 import {ClerkProvider} from '@clerk/nextjs';
 import {Nav,Footer} from '@/components/site';
 import {SessionExpiredBanner} from '@/components/session-expired-banner';

@@ -65,10 +65,10 @@ export function PrivateDashboard({initialTab='overview'}:{initialTab?:Tab}){
 
   const w=data?.workspace;
   const s=data?.summary;
-  const hasOrders=Boolean(s?.has_connected_source&&s.orders>0);
+  const hasOrders=Boolean(s?.has_connected_source&&s.orders>0&&dataHealth?.status==='healthy');
   const maxDay=Math.max(1,...(s?.daily||[]).map(x=>x.net_sales_minor));
 
-  return <main className="ts9-app"><DataHealthBanner health={dataHealth}/><PlanBanner plan={planState}/>
+  return <main id="main-content" className="ts9-app"><DataHealthBanner health={dataHealth}/><PlanBanner plan={planState}/>
     <header className="ts9-app-top">
       <div><span className="ts9-kicker">YOUR RESTAURANT · PRIVATE WORKSPACE</span>
         <h1>{w?.name||'Your restaurant'}</h1>
@@ -96,7 +96,7 @@ export function PrivateDashboard({initialTab='overview'}:{initialTab?:Tab}){
         </div>
       </section>}
       {s.has_connected_source&&!hasOrders&&<section className="ts9-onboarding-hero"><div className="ts9-onboarding-symbol"><Info size={28}/></div><div>
-        <h2>Connected, but no completed orders were found.</h2><p>Square Sandbox may not contain completed USD orders in the last 180 days. Create example orders in the Square Sandbox Dashboard or API Explorer, then synchronize again.</p>
+        <h2>{dataHealth?.status==='healthy'?'Connected, but no completed orders were found.':'Square data is not ready for a reliable conclusion.'}</h2><p>{dataHealth?.status==='healthy'?'This Sandbox seller has no completed orders in the imported window. Create test orders, then synchronize again.':'Wait for all monitored locations to complete their imports or run a fresh Square sync. Partial or stale data must not be interpreted as a decline.'}</p>
         <Link href="/connections" className="ts9-button primary">Review connection <ArrowRight size={16}/></Link>
       </div></section>}
       {hasOrders&&<section className="ts10-card" style={{marginBottom:24,background:'#edf7f1'}}>

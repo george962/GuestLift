@@ -4,6 +4,7 @@
  */
 import {expect, test, type Page} from '@playwright/test';
 import {setupClerkTestingToken} from '@clerk/testing/playwright';
+import AxeBuilder from '@axe-core/playwright';
 
 const MOCK = process.env.MOCK_SQUARE_URL || 'http://localhost:8100';
 const CLERK = process.env.JOURNEY_AUTH_MODE === 'clerk';
@@ -37,7 +38,7 @@ async function signUp(page: Page, email: string) {
 }
 
 test('owner signs up, connects Square, syncs, reads the brief and saves a decision', async ({page, request}) => {
-  test.setTimeout(120_000);
+  test.setTimeout(240_000);
   const truth = await (await request.get(`${MOCK}/__mock/truth`)).json();
   const email = CLERK ? `journey${Date.now()}+clerk_test@example.com` : `owner+${Date.now()}@harbor.test`;
 
@@ -50,7 +51,8 @@ test('owner signs up, connects Square, syncs, reads the brief and saves a decisi
       await route.continue().catch(() => {});  // the page may have moved on while we waited
     });
     const slowProgress = page.waitForResponse(r => r.url().includes('/api/saas/me') && r.request().method() === 'GET');
-    await page.getByRole('link', {name: /Set up my restaurant/}).click();
+    await page.getByLabel('I understand these developer-preview limits.').check();
+    await page.getByRole('button', {name: /Set up my restaurant/}).click();
     await page.getByLabel('Restaurant name').fill('Harbor Café');
     await page.getByRole('button', {name: /Save and continue/}).click();
     await slowProgress;  // the stale load lands after the save, as it did in CI
@@ -152,6 +154,44 @@ test('owner signs up, connects Square, syncs, reads the brief and saves a decisi
     const readout = page.locator('[data-outcome="clear"], [data-outcome="possible"]').first();
     await expect(readout).toContainText('after the change');
     await expect(readout).toContainText('not proof that it caused');
+  });
+
+  await test.step('M6 · narrow mobile shell, keyboard navigation and accessibility', async () => {
+    await page.setViewportSize({width:390, height:844});
+    const accessibilityIssues: {route:string;violations:unknown[]}[] = [];
+    for (const route of ['/dashboard','/analyst','/connections','/opportunities','/experiments','/settings']) {
+      await page.goto(route);
+      await expect(page.locator('main').first()).toBeVisible();
+      const overflow = await page.evaluate(() =>
+        Math.max(0, document.documentElement.scrollWidth - document.documentElement.clientWidth));
+      expect(overflow, `Horizontal overflow at ${route}`).toBeLessThanOrEqual(12);
+      if (!CLERK) {
+        const report = await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa']).analyze();
+        const serious = report.violations.filter(v => v.impact === 'serious' || v.impact === 'critical');
+        if (serious.length) {
+          accessibilityIssues.push({route, violations:serious.map(v=>({
+            id:v.id,
+            nodes:v.nodes.map(n=>({
+              target:n.target,
+              checks:[...n.any,...n.all,...n.none]
+                .filter(c=>Boolean(c.data?.fgColor)&&Boolean(c.data?.bgColor))
+                .map(c=>({fgColor:c.data?.fgColor,bgColor:c.data?.bgColor}))
+            }))
+          }))});
+        }
+      }
+    }
+    if (accessibilityIssues.length) {
+      console.log('M6_AXE_VIOLATIONS_JSON='+JSON.stringify(accessibilityIssues));
+    }
+    expect(accessibilityIssues, 'Serious or critical mobile axe violations').toEqual([]);
+    await page.goto('/dashboard');
+    const toggle = page.getByRole('button', {name:'Open navigation'});
+    await toggle.click();
+    await expect(page.getByRole('navigation', {name:'Restaurant navigation'})).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('button', {name:'Open navigation'})).toBeVisible();
+    await page.setViewportSize({width:1280, height:720});
   });
 
   await test.step('M2 · the owner deletes the workspace and the account', async () => {

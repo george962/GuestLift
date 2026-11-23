@@ -51,6 +51,11 @@ ISOLATION = {
     'POST /api/team/invites/{invite_id}/revoke': None,
     'POST /api/team/invites/accept': {'token': 'not-a-real-invite-token-000000'},
     'POST /api/team/members/{member_id}/remove': None,
+    'GET /api/readiness/preview': None,
+    'POST /api/readiness/preview': {'version': 'sandbox-preview-2026-11', 'acknowledged': True},
+    'POST /api/readiness/support': {'category': 'other', 'description': 'Beta workspace connection problem'},
+    'POST /api/readiness/event': {'event': 'client_error'},
+    'GET /api/readiness/export': None,
     'POST /api/team/account/delete': {'confirm': 'Beta Diner'},
 }
 

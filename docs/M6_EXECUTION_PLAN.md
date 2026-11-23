@@ -1,6 +1,6 @@
 # M6 customer-readiness execution plan
 
-Status: step 1 in progress. M4 implementation and P0–P3 engineering hardening were merged through PRs #29–#32. Hosted pilot/production verification is separate.
+Status: step 1 merged (PR #33); steps 2–4 implemented in a follow-up PR; external launch gates remain open. M4 hardening merged in #29–#32. Hosted pilot/production verification is separate.
 
 The sequence below follows `docs/PRODUCT_PLAN.md`. Each stage gets its own PR, preserves the golden-path Playwright journey and updates the product status table.
 

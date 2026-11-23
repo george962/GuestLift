@@ -52,7 +52,7 @@ export default function Analyst(){
   finally{setBusy(false)}
  }
  const node=brief?.nodes.find(x=>x.id===selected);
- return <main className="ts10-app ts11-analyst"><DataHealthBanner health={dataHealth}/><PlanBanner plan={planState}/>
+ return <main id="main-content" className="ts10-app ts11-analyst"><DataHealthBanner health={dataHealth}/><PlanBanner plan={planState}/>
   <header className="ts10-heading"><span className="ts9-kicker">YOUR RESTAURANT · EVIDENCE INTELLIGENCE</span>
    <h1>Connect the dots. Then decide.</h1>
    <p>Explore relationships between purchases, guest recognition, repeat behavior, and discount costs. Ask an AI analyst to explain what the evidence supports—and what it doesn't.</p>
@@ -65,7 +65,8 @@ export default function Analyst(){
     <button type="button" onClick={()=>void reload()}><RefreshCw size={15}/> Refresh evidence</button>
    </div>
    {!brief.data_connected&&<div className="ts10-card ts11-gate"><Database size={27}/><h2>First, connect and synchronize orders</h2><p>This private workspace deliberately starts empty. We won't show invented guest behavior or use a different restaurant's transactions.</p><Link href="/connections" className="ts10-primary">Connect data <ArrowRight size={15}/></Link><Link href="/workspace" className="ts10-secondary">Explore the fictional demo</Link></div>}
-   {brief.data_connected&&<>
+   {brief.data_connected&&dataHealth?.status!=='healthy'&&<section className="ts-m6-critical" role="status" data-m6-evidence-paused><h2>Evidence is not ready</h2><p>Square sync is incomplete, stale or unavailable. Historical counts may be partial; new trend findings and AI recommendations are paused.</p><Link href="/connections" className="ts10-primary">Review Square sync <ArrowRight size={16}/></Link></section>}
+   {brief.data_connected&&dataHealth?.status==='healthy'&&<>
     <div className="ts11-section-heading"><div><span className="ts9-kicker">EVIDENCE GRAPH</span><h2>How your restaurant's metrics relate</h2><p>Select a metric to see its definition and connections. Every link is defined by the server, not invented by AI.</p></div><GitBranch size={26}/></div>
     <div className="ts11-graph-layout">
      <div className="ts11-evidence-nodes">{brief.nodes.map((n)=><button type="button" className={'ts11-node '+(selected===n.id?'selected':'')} key={n.id} onClick={()=>setSelected(n.id)}><span>{n.label}</span><strong>{n.value}</strong><small>{n.unit}</small></button>)}</div>
@@ -81,7 +82,7 @@ export default function Analyst(){
     {brief.subscription_active&&brief.model_configured&&!brief.orders_available&&<div className="ts10-notice">Connect and synchronize orders to unlock grounded AI responses.</div>}
     <div className="ts11-question-chips">{brief.suggested_questions.map(q=><button type="button" key={q} onClick={()=>setQuestion(q)}>{q}</button>)}</div>
     <div className="ts11-chat-log" aria-live="polite">{history.length===0?<div className="ts11-chat-empty"><BookOpen size={24}/><strong>Start with a question above</strong><p>You'll get an explanation grounded in the metrics shown on this page, plus practical next steps.</p></div>:history.map((m,i)=><div key={i} className={'ts11-message '+m.role}><strong>{m.role==='assistant'?'TableSignal analyst':'You'}</strong><p>{m.content}</p></div>)}{busy&&<p className="ts11-typing">Analyzing verified evidence…</p>}</div>
-    <form className="ts11-question-form" onSubmit={e=>{e.preventDefault();void ask()}}><label htmlFor="ts11-question">Your question</label><div><input id="ts11-question" value={question} onChange={e=>setQuestion(e.target.value)} maxLength={500} placeholder="What should I investigate before offering a discount?"/><button type="submit" disabled={!brief.ai_ready||busy||question.trim().length<3}><Send size={17}/>{busy?'Analyzing…':'Ask analyst'}</button></div></form>
+    <form className="ts11-question-form" onSubmit={e=>{e.preventDefault();void ask()}}><label htmlFor="ts11-question">Your question</label><div><input id="ts11-question" value={question} onChange={e=>setQuestion(e.target.value)} maxLength={500} placeholder="What should I investigate before offering a discount?"/><button type="submit" disabled={!brief.ai_ready||dataHealth?.status!=='healthy'||busy||question.trim().length<3}><Send size={17}/>{busy?'Analyzing…':'Ask analyst'}</button></div></form>
     <p className="ts11-privacy"><ShieldCheck size={15}/>Model requests include verified aggregates plus questions you type, with response storage disabled. Do not paste guest information. Answers may still be imperfect. Do not treat them as verified causal impact.</p>
    </section>
    <div className="ts11-action-rail"><div><CheckCircle2 size={19}/><strong>Turn an answer into a decision.</strong><span>Compare the cost of possible incentives and save an experiment you can revisit.</span></div><Link href="/opportunities" className="ts10-primary">Plan an experiment <ArrowRight size={16}/></Link></div>

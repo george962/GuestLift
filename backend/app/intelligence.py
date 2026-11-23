@@ -180,13 +180,19 @@ def brief(sub: str = Depends(authenticated_subject)):
 @router.post('/ask')
 def ask(payload: AskRequest, _paid: str = Depends(paid_subject), sub: str = Depends(ai_question_subject)):
     with Session(engine) as db:
-        result = build_brief(db, _get_workspace(db, sub))
+        workspace = _get_workspace(db, sub)
+        result = build_brief(db, workspace)
+        from .square_sync import health as square_health
+        verified_data = square_health(db, workspace.id)['status'] == 'healthy'
     if not result['subscription_active']:
         raise HTTPException(402, 'The AI analyst needs an active trial or subscription.')
     if not result['data_connected'] or not result['orders_available']:
         raise HTTPException(409, 'Connect and synchronize Square Sandbox orders before asking the AI analyst.')
     if not result['model_configured']:
         raise HTTPException(503, 'The server-side AI model has not been configured. Set OPENAI_API_KEY, OPENAI_MODEL and GUESTLIFT_ENABLE_LLM=1 on the backend.')
+
+    if not verified_data:
+        raise HTTPException(409, 'Square data is not verified as current; complete the sync before asking the analyst.')
 
     # No raw names, order IDs, source IDs or arbitrary SQL enter the model context.
     history = [{'role':m.role,'content':m.content} for m in payload.history]

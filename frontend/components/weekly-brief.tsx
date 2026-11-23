@@ -15,6 +15,10 @@ export function WeeklyBrief({token}:{token:string}){
  const [brief,setBrief]=useState<WeeklyBriefData|null>(null);
  const [error,setError]=useState('');
  useEffect(()=>{void accountApi('/api/briefs/latest',token).then(b=>setBrief(b as WeeklyBriefData)).catch(e=>setError(e instanceof Error?e.message:'Could not load the weekly brief.'))},[token]);
+ useEffect(()=>{if(brief?.data_status==='ready'&&brief.has_data){
+   void accountApi('/api/readiness/event',token,'POST',{event:'weekly_brief_view'}).catch(()=>{});
+   void accountApi('/api/readiness/event',token,'POST',{event:'first_insight_view'}).catch(()=>{});
+ }},[brief,token]);
  if(error)return <div className="ts10-notice ts10-danger" role="alert">{error}</div>;
  if(!brief)return <div className="ts10-notice">Loading this week's brief…</div>;
  if(!brief.has_data&&brief.data_status==='ready')return null;

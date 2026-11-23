@@ -25,6 +25,7 @@ from .membership import router as team_router
 from . import square_sync  # noqa: F401  (registers the sync tables)
 from . import emailer  # noqa: F401  (registers the outbox table)
 from .insight_loop import router as insight_router
+from .readiness import router as readiness_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -50,6 +51,7 @@ app.include_router(intelligence_router)
 app.include_router(launch_router)
 app.include_router(team_router)
 app.include_router(insight_router)
+app.include_router(readiness_router)
 
 def require_demo_endpoints():
     # Hosted builds must not expose the unauthenticated, shared-dataset demo API.

@@ -43,12 +43,12 @@ export function ReconciliationPanel({token,refreshKey}:{token:string;refreshKey?
   </div>
   {error&&<div className="ts9-notice danger" role="alert">{error}</div>}
   {data&&(data.totals.length===0?<p>No completed orders in these dates.</p>:
-  <div style={{overflowX:'auto'}}><table className="ts9-table" aria-label="Totals by location">
+  <div role="region" aria-label="Square totals by location (scroll horizontally)" tabIndex={0} style={{overflowX:'auto'}}><table className="ts9-table" aria-label="Totals by location">
    <thead><tr><th scope="col">Location</th>{COLS.map(([,l])=><th key={l} scope="col" style={{textAlign:'right'}}>{l}</th>)}</tr></thead>
    <tbody>{data.totals.map(t=><tr key={t.location_id} data-location={t.location_id}><th scope="row">{t.location}</th>
     {COLS.map(([k])=><td key={k} data-col={k} style={{textAlign:'right',fontVariantNumeric:'tabular-nums'}}>{cell(k,Number(t[k]))}</td>)}</tr>)}</tbody>
   </table></div>)}
-  {data&&data.days.length>0&&<details><summary>Show each day</summary><div style={{overflowX:'auto'}}><table className="ts9-table">
+  {data&&data.days.length>0&&<details><summary>Show each day</summary><div role="region" aria-label="Square daily totals (scroll horizontally)" tabIndex={0} style={{overflowX:'auto'}}><table className="ts9-table">
    <thead><tr><th scope="col">Location</th><th scope="col">Date</th>{COLS.map(([,l])=><th key={l} scope="col" style={{textAlign:'right'}}>{l}</th>)}</tr></thead>
    <tbody>{data.days.map(r=><tr key={r.location_id+r.date}><td>{r.location}</td><td>{r.date}</td>
     {COLS.map(([k])=><td key={k} style={{textAlign:'right',fontVariantNumeric:'tabular-nums'}}>{cell(k,Number(r[k as keyof ReconRow]))}</td>)}</tr>)}</tbody>
