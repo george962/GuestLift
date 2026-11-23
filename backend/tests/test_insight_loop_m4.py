@@ -106,7 +106,7 @@ def test_weekly_digest_sends_once_and_unsubscribe_works(harness):
     token = mail.text_body.split('token=')[1].split()[0]
     assert harness.api.get(f'/api/email/unsubscribe?token={token}').status_code == 200
     assert harness.get('/api/team/me/email').json()['weekly_digest'] is False
-    assert harness.api.get('/api/email/unsubscribe?token=forged.weekly_digest.0000').status_code == 404
+    assert harness.api.get('/api/email/unsubscribe?token=forged.weekly_digest.0000').status_code == 404  # gitleaks:allow (deliberately forged test token)
 
 
 def test_outcome_email_goes_to_the_owner_once(harness):
