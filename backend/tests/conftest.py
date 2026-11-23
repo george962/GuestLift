@@ -1,4 +1,18 @@
+import os
+import tempfile
+
 import pytest
+
+# Tests get their own database, never a developer's ./guestlift_demo.db. Set before any `app` import.
+os.environ['DATABASE_URL'] = 'sqlite:///' + os.path.join(tempfile.mkdtemp(prefix='tablesignal-tests-'), 'session.sqlite')
+
+
+@pytest.fixture(scope='session', autouse=True)
+def _migrated_session_database():
+    """Migrate the session database the way deployments do, so the API's startup check passes."""
+    from app import database, migrate
+    migrate.upgrade(database.engine)
+    yield
 
 
 @pytest.fixture(autouse=True)

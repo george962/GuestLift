@@ -184,16 +184,20 @@ def test_square_production_is_locked_until_go_live(monkeypatch):
 
 
 def test_worker_process_starts_and_stops_cleanly(tmp_path):
-    """The real `python -m app.worker` boots against a fresh database and exits on SIGTERM."""
+    """The real `python -m app.worker` boots against a migrated database and exits on SIGTERM."""
     import os, signal, subprocess, sys, time
-    env = {**os.environ, 'DATABASE_URL': f"sqlite:///{tmp_path / 'worker.db'}", 'GUESTLIFT_WORKER_IDLE_SECONDS': '0.2'}
+    env = {**os.environ, 'DATABASE_URL': f"sqlite:///{tmp_path / 'worker.db'}", 'GUESTLIFT_WORKER_IDLE_SECONDS': '0.2',
+           'GUESTLIFT_WORKER_HEARTBEAT_FILE': str(tmp_path / 'beat')}
+    backend = os.path.dirname(os.path.dirname(__file__))
+    assert subprocess.run([sys.executable, '-m', 'app.migrate'], cwd=backend, env=env).returncode == 0
     proc = subprocess.Popen([sys.executable, '-m', 'app.worker'], cwd=os.path.dirname(os.path.dirname(__file__)),
                             env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     time.sleep(3)
     assert proc.poll() is None, proc.stdout.read()
     proc.send_signal(signal.SIGTERM)
     out, _ = proc.communicate(timeout=15)
-    assert proc.returncode == 0 and 'worker stopped' in out, out
+    assert proc.returncode == 0 and 'worker started' in out and 'worker stopped' in out, out
+    assert (tmp_path / 'beat').exists()  # the heartbeat a container health check reads
 
 
 def test_worker_cannot_steal_a_sync_now_job(harness, monkeypatch):

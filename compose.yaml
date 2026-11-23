@@ -1,5 +1,33 @@
 # Developer-only deployment: local accounts and demo API remain LOCALHOST-BOUND.
 # Do not expose these containers to the internet. Account/billing endpoints are foundations, not a security certification.
+#
+# Startup order (docs/MIGRATIONS.md): database (healthy) -> migrate (one-shot, exits 0)
+# -> backend + worker (healthy) -> frontend. Only `migrate` changes the schema.
+# Host ports are configurable so a second, isolated project can run beside this one:
+#   TABLESIGNAL_API_PORT=8300 TABLESIGNAL_WEB_PORT=3300 docker compose -p tablesignal-p0 up -d --build
+# Never `docker compose down -v`: it deletes the database volume.
+
+x-backend-env: &backend-env
+  DATABASE_URL: postgresql+psycopg://guestlift:guestlift@database:5432/guestlift
+  TABLESIGNAL_SANDBOX_LOCATION_BILLING: ${TABLESIGNAL_SANDBOX_LOCATION_BILLING:-0}
+  STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+  STRIPE_GROWTH_PRICE_ID: ${STRIPE_GROWTH_PRICE_ID:-}
+  STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
+  GUESTLIFT_APP_URL: ${GUESTLIFT_APP_URL:-http://localhost:${TABLESIGNAL_WEB_PORT:-3000}}
+  GUESTLIFT_ALLOWED_ORIGINS: ${GUESTLIFT_ALLOWED_ORIGINS:-http://localhost:${TABLESIGNAL_WEB_PORT:-3000},http://127.0.0.1:${TABLESIGNAL_WEB_PORT:-3000}}
+  GUESTLIFT_COOKIE_SECURE: "0"
+  GUESTLIFT_ENABLE_DEMO_ENDPOINTS: "1"  # local preview only; leave unset on any hosted build
+  SQUARE_SANDBOX_ACCESS_TOKEN: ${SQUARE_SANDBOX_ACCESS_TOKEN:-}
+  SQUARE_SANDBOX_APP_ID: ${SQUARE_SANDBOX_APP_ID:-}
+  SQUARE_SANDBOX_APP_SECRET: ${SQUARE_SANDBOX_APP_SECRET:-}
+  SQUARE_SANDBOX_REDIRECT_URI: ${SQUARE_SANDBOX_REDIRECT_URI:-http://localhost:${TABLESIGNAL_API_PORT:-8000}/api/integrations/square/oauth/callback}
+  TABLESIGNAL_CREDENTIAL_KEY: ${TABLESIGNAL_CREDENTIAL_KEY:-}
+  GUESTLIFT_ENABLE_LLM: ${GUESTLIFT_ENABLE_LLM:-0}
+  OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+  OPENAI_MODEL: ${OPENAI_MODEL:-}
+  GUESTLIFT_SCHEMA_WAIT_SECONDS: ${GUESTLIFT_SCHEMA_WAIT_SECONDS:-120}
+  GUESTLIFT_WORKER_HEARTBEAT_FILE: /tmp/tablesignal-worker-heartbeat
+
 services:
   database:
     image: postgres:16-alpine
@@ -13,51 +41,67 @@ services:
       test: ["CMD-SHELL", "pg_isready -U guestlift -d guestlift"]
       interval: 3s
       retries: 15
-  backend:
+  migrate:
+    # The only service that changes the schema: Alembic upgrade to head under a lock, adopting
+    # databases created by older versions in place. Exits 0 when the schema is current.
     build: ./backend
-    environment: &backend-env
-      DATABASE_URL: postgresql+psycopg://guestlift:guestlift@database:5432/guestlift
-      TABLESIGNAL_SANDBOX_LOCATION_BILLING: ${TABLESIGNAL_SANDBOX_LOCATION_BILLING:-0}
-      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
-      STRIPE_GROWTH_PRICE_ID: ${STRIPE_GROWTH_PRICE_ID:-}
-      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
-      GUESTLIFT_APP_URL: ${GUESTLIFT_APP_URL:-http://localhost:3000}
-      GUESTLIFT_ALLOWED_ORIGINS: ${GUESTLIFT_ALLOWED_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
-      GUESTLIFT_COOKIE_SECURE: "0"
-      GUESTLIFT_ENABLE_DEMO_ENDPOINTS: "1"  # local preview only; leave unset on any hosted build
-      SQUARE_SANDBOX_ACCESS_TOKEN: ${SQUARE_SANDBOX_ACCESS_TOKEN:-}
-      SQUARE_SANDBOX_APP_ID: ${SQUARE_SANDBOX_APP_ID:-}
-      SQUARE_SANDBOX_APP_SECRET: ${SQUARE_SANDBOX_APP_SECRET:-}
-      SQUARE_SANDBOX_REDIRECT_URI: ${SQUARE_SANDBOX_REDIRECT_URI:-http://localhost:8000/api/integrations/square/oauth/callback}
-      TABLESIGNAL_CREDENTIAL_KEY: ${TABLESIGNAL_CREDENTIAL_KEY:-}
-      GUESTLIFT_ENABLE_LLM: ${GUESTLIFT_ENABLE_LLM:-0}
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
-      OPENAI_MODEL: ${OPENAI_MODEL:-}
+    command: ["python", "-m", "app.migrate"]
+    environment: *backend-env
+    restart: "no"
     depends_on:
       database:
         condition: service_healthy
+  backend:
+    build: ./backend
+    environment: *backend-env
+    depends_on:
+      database:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      # /api/ready = database reachable and schema at head. The slim image has no curl.
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/ready', timeout=4)"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
     ports:
-      - '127.0.0.1:8000:8000'
+      - '127.0.0.1:${TABLESIGNAL_API_PORT:-8000}:8000'
   worker:
     # Background Square sync (docs/PRODUCT_PLAN.md M3): history import, scheduled updates, retries.
     build: ./backend
     command: ["python", "-m", "app.worker"]
     environment: *backend-env
-    restart: unless-stopped  # retries if it starts before the API has created the schema
+    restart: unless-stopped
     depends_on:
       database:
         condition: service_healthy
-      backend:
-        condition: service_started
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      # The worker touches its heartbeat file every loop; stale for 5 minutes = stuck.
+      test: ["CMD", "python", "-c", "import os, sys, time; sys.exit(time.time() - os.path.getmtime('/tmp/tablesignal-worker-heartbeat') > 300)"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
   frontend:
     build:
       context: ./frontend
       args:
-        NEXT_PUBLIC_GUESTLIFT_API_URL: http://localhost:8000
+        NEXT_PUBLIC_GUESTLIFT_API_URL: http://localhost:${TABLESIGNAL_API_PORT:-8000}
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:3000/"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
     ports:
-      - '127.0.0.1:3000:3000'
+      - '127.0.0.1:${TABLESIGNAL_WEB_PORT:-3000}:3000'
     volumes:
       - ./backend/fixtures:/backend/fixtures:ro
 volumes:

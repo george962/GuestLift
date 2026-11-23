@@ -13,7 +13,8 @@ from . import config
 from .logging_config import logger, request_id_var, setup_logging
 import re
 import uuid
-from .database import engine, init_db, reset_db, persist, metrics, recent_runs
+from .database import engine, reset_db, persist, metrics, recent_runs
+from . import migrate
 from .local_auth import router as local_auth_router
 from .saas import router as saas_router
 from .connections import router as square_router
@@ -32,7 +33,9 @@ async def lifespan(app: FastAPI):
     config.validate_production_config()
     from .connections import validate_square_config
     validate_square_config()
-    init_db()
+    # The API never changes the schema: `python -m app.migrate` (Docker: the migrate service) runs first.
+    import os
+    migrate.wait_until_ready(engine, timeout=float(os.getenv('GUESTLIFT_SCHEMA_WAIT_SECONDS', '120')))
     yield
 
 _docs = {} if not config.is_production() else {'docs_url': None, 'redoc_url': None, 'openapi_url': None}
@@ -97,13 +100,16 @@ def health():
 
 @app.get('/api/ready')
 def ready():
-    """Readiness: verifies the database accepts queries."""
+    """Readiness: the database accepts queries and its schema is the version this code expects."""
     try:
         with engine.connect() as connection:
             connection.execute(text('SELECT 1'))
+        schema = migrate.status(engine)
     except Exception:
         logger.exception('readiness check failed')
         return JSONResponse({'status':'unavailable'}, status_code=503)
+    if not schema['ready']:
+        return JSONResponse({'status':'unavailable','reason':schema['reason']}, status_code=503)
     return {'status':'ready'}
 
 @app.get('/api/providers')

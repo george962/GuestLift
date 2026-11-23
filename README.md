@@ -14,9 +14,9 @@ TableSignal is a **local development preview**, not a commercially deployed rest
 ## Local development
 
 1. Use Docker Desktop and keep `.env` local; never commit credentials.
-2. From repository root: `docker compose up -d --build`.
+2. From repository root: `docker compose up -d --build`. A one-shot `migrate` service brings the database schema up to date before the API and worker start ([docs/MIGRATIONS.md](docs/MIGRATIONS.md)). Without Docker, run `python -m app.migrate` in `backend/` before starting the API or worker.
 3. Open `http://localhost:3000`; test API health at `http://localhost:8000/api/health`.
-4. Run `docker compose ps -a` and `docker compose logs --tail=100 frontend backend` if startup fails.
+4. Run `docker compose ps -a` and `docker compose logs --tail=100 migrate backend worker frontend` if startup fails.
 5. Never run `docker compose down -v` unless intentionally destroying local database contents.
 
 ## Tests
@@ -31,6 +31,8 @@ npm run build
 
 # Signed-in customer journey (mock Square, own ports; runs alongside docker compose):
 # ../scripts/journey.sh
+# Full compose stack in its own project and ports (PostgreSQL, migrate, API, worker, frontend):
+# ../scripts/compose-smoke.sh
 cd ../backend
 python -m pip install -r requirements.txt
 python -m pytest -q
