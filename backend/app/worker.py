@@ -56,7 +56,7 @@ _last_insights = 0.0
 
 
 def run_insights(force: bool = False) -> dict | None:
-    """Weekly digests and outcome emails, at most every 10 minutes."""
+    """Queue due emails and deliver pending ones (retries included), at most every 10 minutes."""
     global _last_insights
     if not force and time.time() - _last_insights < 600:
         return None
@@ -64,10 +64,14 @@ def run_insights(force: bool = False) -> dict | None:
     from .insight_loop import run_due
     with Session(engine) as db:
         try:
-            return run_due(db)
+            report = run_due(db)
         except Exception:  # never let email stop syncing
             logger.exception('weekly brief / outcome run failed')
             return None
+    if any(report['queued'].values()) or any(report[k] for k in ('sent', 'failed', 'expired', 'skipped', 'pending')):
+        logger.info('email: queued %s; sent %d, failed %d, expired %d, skipped %d; %d pending', report['queued'],
+                    report['sent'], report['failed'], report['expired'], report['skipped'], report['pending'])
+    return report
 
 
 def run_once(slice_seconds: float | None = None) -> bool:

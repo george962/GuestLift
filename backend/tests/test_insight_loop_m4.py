@@ -100,9 +100,10 @@ def test_weekly_digest_sends_once_and_unsubscribe_works(harness):
         first = insight_loop.run_due(db, now=_monday_8am_local())
         again = insight_loop.run_due(db, now=_monday_8am_local())
         outbox = db.scalars(select(emailer.EmailOutbox).where(emailer.EmailOutbox.kind == 'weekly_digest')).all()
-    assert first['digests'] == 1 and again['digests'] == 1 and len(outbox) == 1  # deduplicated
+    assert first['queued']['weekly_digest'] == 1 and again['queued']['weekly_digest'] == 0 and len(outbox) == 1  # deduplicated
+    assert first['sent'] == 0 and again['sent'] == 0 and again['pending'] == 1  # no provider configured: waiting, not sent
     mail = outbox[0]
-    assert mail.to_address == 'owner@harbor.test' and mail.status == 'not_sent'  # no provider configured
+    assert mail.to_address == 'owner@harbor.test' and mail.status == 'pending'
     token = mail.text_body.split('token=')[1].split()[0]
     assert harness.api.get(f'/api/email/unsubscribe?token={token}').status_code == 200
     assert harness.get('/api/team/me/email').json()['weekly_digest'] is False

@@ -1,39 +1,61 @@
-"""Transactional email: weekly digest and decision outcomes (docs/PRODUCT_PLAN.md M4).
+"""Transactional email: weekly digest, decision outcomes and trial reminders (docs/PRODUCT_PLAN.md M4).
 
-Sends through Resend when RESEND_API_KEY and EMAIL_FROM are set. Otherwise each message is
-recorded in `email_outbox` with status `not_sent` so it can be previewed and nothing is lost.
-Every message has a one-click unsubscribe link (signed, no login needed).
+Every message goes through the `email_outbox` table:
+
+1. `enqueue()` records the rendered message once per dedupe key (the unique constraint means two
+   workers can't both claim the same message). Nothing is sent yet.
+2. `deliver_pending()` (each worker pass) sends whatever is still `pending`, through Resend when
+   RESEND_API_KEY and EMAIL_FROM are set. Without them messages wait, so they go out once the
+   provider is configured, as long as they're still within their delivery window.
+
+Sending is idempotent: each row is sent with a Resend `Idempotency-Key` derived from its id, so a
+retry after a timeout or a worker restart can't deliver a second copy (Resend keeps keys 24h).
+Before each attempt the recipient's current preferences are checked again, so unsubscribing
+stops messages that were already queued. Every message has a signed one-click unsubscribe link.
+
+Statuses: pending (legacy rows: not_sent) -> sent | failed | expired | skipped.
 """
 from __future__ import annotations
 
 import hashlib
 import hmac
 import html
+import logging
 import os
+import time
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import httpx
-from sqlalchemy import ForeignKey, String, Text
+from sqlalchemy import ForeignKey, String, Text, func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Mapped, Session, mapped_column
 
 from . import config
 from .database import Base
 
+logger = logging.getLogger('guestlift.email')
 
 class EmailOutbox(Base):
     __tablename__ = 'email_outbox'
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     workspace_id: Mapped[str] = mapped_column(ForeignKey('saas_workspaces.id'), index=True)
-    kind: Mapped[str] = mapped_column(String(30))  # weekly_digest | outcome
+    kind: Mapped[str] = mapped_column(String(30))  # weekly_digest | outcome | trial_ending
     dedupe_key: Mapped[str] = mapped_column(String(160), unique=True)
     to_address: Mapped[str] = mapped_column(String(254))
     subject: Mapped[str] = mapped_column(String(200))
     html_body: Mapped[str] = mapped_column(Text)
     text_body: Mapped[str] = mapped_column(Text)
-    status: Mapped[str] = mapped_column(String(20))  # sent | not_sent | failed
+    status: Mapped[str] = mapped_column(String(20))  # see STATUSES
     provider_id: Mapped[str] = mapped_column(String(120), default='')
     created_at: Mapped[str] = mapped_column(String(48))
+
+
+# The member preference (a WorkspaceMember column) that controls each kind of email. Trial reminders
+# share `outcome_emails`, the owner-notices switch: their unsubscribe links have always turned that
+# off, so links already in inboxes keep working. Splitting it out needs a migration, see
+# docs/EMAIL_OUTBOX_MIGRATION.md.
+PREFERENCE = {'weekly_digest': 'weekly_digest', 'outcome': 'outcome_emails', 'trial_ending': 'outcome_emails'}
 
 
 def _secret() -> bytes:
@@ -51,7 +73,7 @@ def verify_unsubscribe(token: str) -> tuple[str, str] | None:
     except ValueError:
         return None
     good = unsubscribe_token(member_id, kind).split('.')[2]
-    return (member_id, kind) if kind in ('weekly_digest', 'outcome') and hmac.compare_digest(sig, good) else None
+    return (member_id, kind) if kind in PREFERENCE and hmac.compare_digest(sig, good) else None
 
 
 def unsubscribe_url(member_id: str, kind: str) -> str:
@@ -113,32 +135,217 @@ def render_trial_ending(days_left: int, workspace_name: str, unsubscribe: str) -
             "and the analyst pause until you subscribe.</p>"
             f"<p><a href='{e(config.app_url())}/billing' style='color:#0f6b5c;font-weight:600'>Choose a plan</a></p>")
     text = f"Your TableSignal trial ends {when}. Subscribe at {config.app_url()}/billing\n\nUnsubscribe: {unsubscribe}"
-    return subject, _shell(f'Your free trial ends {when}', body, unsubscribe, 'You get this once, near the end of your trial.'), text
+    return subject, _shell(f'Your free trial ends {when}', body, unsubscribe,
+                           'You get this near the end of your trial. Unsubscribing also stops decision outcome emails.'), text
 
 
-def send(db: Session, workspace_id: str, kind: str, dedupe_key: str, to: str, subject: str, html_body: str, text: str) -> str:
-    """Send once per dedupe_key. Returns the outbox status."""
-    from sqlalchemy import select
-    existing = db.scalar(select(EmailOutbox).where(EmailOutbox.dedupe_key == dedupe_key))
-    if existing and existing.status != 'failed':
-        return existing.status
-    if existing:  # a failed attempt is retried on the next run
-        db.delete(existing)
-        db.flush()
-    row = EmailOutbox(id=str(uuid.uuid4()), workspace_id=workspace_id, kind=kind, dedupe_key=dedupe_key, to_address=to,
-                      subject=subject, html_body=html_body, text_body=text, status='not_sent',
-                      created_at=datetime.now(timezone.utc).isoformat())
+
+
+# ---- Outbox: record once, deliver (and retry) from the worker -------------------------------------
+
+PENDING, SENT, FAILED, EXPIRED, SKIPPED = 'pending', 'sent', 'failed', 'expired', 'skipped'
+STATUSES = (PENDING, SENT, FAILED, EXPIRED, SKIPPED)
+WAITING = (PENDING, 'not_sent')  # rows recorded before retries existed say not_sent; they are pending
+# How long a message stays worth sending. A Monday brief delivered on Friday is stale, and a
+# "trial ends in 3 days" reminder is wrong a day later.
+DELIVERY_WINDOW = {'weekly_digest': timedelta(days=3), 'outcome': timedelta(days=14), 'trial_ending': timedelta(hours=24)}
+DEFAULT_WINDOW = timedelta(days=3)
+RESEND_URL = 'https://api.resend.com/emails'
+
+
+# Dedupe keys name the message and its recipient. The outbox has no member column, so delivery reads
+# the recipient back from the key (_recipient_member_id); keep the two in step.
+def digest_key(member_id: str, week_start: str) -> str:
+    return f'digest:{member_id}:{week_start}'
+
+
+def outcome_key(plan_id: str, member_id: str) -> str:
+    return f'outcome:{plan_id}:{member_id}'
+
+
+def trial_key(workspace_id: str, member_id: str, days_left: int) -> str:
+    return f'trial:{workspace_id}:{member_id}:{days_left}'
+
+
+def legacy_trial_key(workspace_id: str, days_left: int) -> str:
+    """Before trial reminders were keyed per recipient: one key per workspace, so a second owner never got one."""
+    return f'trial:{workspace_id}:{days_left}'
+
+
+def _recipient_member_id(row: EmailOutbox) -> str | None:
+    parts = row.dedupe_key.split(':')
+    if row.kind == 'weekly_digest' and len(parts) == 3:
+        return parts[1]
+    if row.kind == 'outcome' and len(parts) == 3:
+        return parts[2]
+    if row.kind == 'trial_ending' and len(parts) == 4:
+        return parts[2]
+    return None
+
+
+def provider_configured() -> bool:
+    return bool(os.getenv('RESEND_API_KEY') and os.getenv('EMAIL_FROM'))
+
+
+def idempotency_key(row: EmailOutbox) -> str:
+    """Stable for the row's lifetime, so every retry of one message is the same request to Resend."""
+    return f'tablesignal-email/{row.id}'
+
+
+def already_recorded(db: Session, dedupe_key: str, to: str | None = None) -> bool:
+    q = select(EmailOutbox.id).where(EmailOutbox.dedupe_key == dedupe_key)
+    if to is not None:
+        q = q.where(func.lower(EmailOutbox.to_address) == to.lower())
+    return db.scalar(q) is not None
+
+
+def enqueue(db: Session, workspace_id: str, kind: str, dedupe_key: str, to: str, subject: str, html_body: str,
+            text: str, now: datetime | None = None) -> bool:
+    """Record a message for delivery, once per dedupe key. False if it was already recorded.
+
+    Committed before any send is attempted: the unique dedupe key is the claim, so two workers
+    (or a restarted one) can't both decide to send the same message.
+    """
+    if already_recorded(db, dedupe_key):
+        return False
+    db.add(EmailOutbox(id=str(uuid.uuid4()), workspace_id=workspace_id, kind=kind, dedupe_key=dedupe_key, to_address=to,
+                       subject=subject, html_body=html_body, text_body=text, status=PENDING, provider_id='',
+                       created_at=(now or datetime.now(timezone.utc)).isoformat()))
+    try:
+        db.commit()
+    except IntegrityError:  # another worker recorded it first
+        db.rollback()
+        return False
+    return True
+
+
+def _parse(ts: str) -> datetime | None:
+    try:
+        value = datetime.fromisoformat(ts.replace('Z', '+00:00'))
+    except (AttributeError, ValueError):
+        return None
+    return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
+
+
+def _recipient(db: Session, row: EmailOutbox):
+    from .membership import WorkspaceMember
+    member_id = _recipient_member_id(row)
+    if member_id:
+        member = db.get(WorkspaceMember, member_id)
+        return member if member and member.workspace_id == row.workspace_id else None
+    return db.scalar(select(WorkspaceMember).where(  # legacy trial key: find the owner it was addressed to
+        WorkspaceMember.workspace_id == row.workspace_id,
+        func.lower(WorkspaceMember.email) == row.to_address.lower()).limit(1))
+
+
+def _not_deliverable(db: Session, row: EmailOutbox, now: datetime) -> str | None:
+    """EXPIRED or SKIPPED when the message should no longer go out; None when it should."""
+    created = _parse(row.created_at)
+    if created is None or now - created > DELIVERY_WINDOW.get(row.kind, DEFAULT_WINDOW):
+        return EXPIRED
+    member = _recipient(db, row)
+    if member is None:  # no longer on this workspace
+        return SKIPPED
+    preference = PREFERENCE.get(row.kind)
+    if preference and not getattr(member, preference):
+        return SKIPPED  # unsubscribed after the message was queued
+    if row.kind == 'trial_ending':
+        from .billing import entitlement
+        from .saas import Workspace
+        workspace = db.get(Workspace, row.workspace_id)
+        if workspace is None or entitlement(workspace, now)['state'] != 'trial':
+            return SKIPPED  # subscribed (or the trial already ended): the reminder is no longer true
+    return None
+
+
+def _client() -> httpx.Client:
+    return httpx.Client(timeout=10)
+
+
+def _send_interval() -> float:
+    """Pause between sends; Resend allows 10 requests per second per team by default."""
+    try:
+        return max(0.0, float(os.getenv('GUESTLIFT_EMAIL_SEND_INTERVAL_SECONDS', '0.15')))
+    except ValueError:
+        return 0.15
+
+
+def _attempt(client: httpx.Client, row: EmailOutbox, key: str, sender: str) -> tuple[str, str, bool]:
+    """One send through Resend: (status, provider id, stop this pass).
+
+    PENDING means try again on a later pass. Only a rejection of this message itself is FAILED;
+    a bad key, an unverified domain, rate limits and outages leave everything pending.
+    """
+    payload = {'from': sender, 'to': [row.to_address], 'subject': row.subject, 'html': row.html_body, 'text': row.text_body}
+    try:
+        r = client.post(RESEND_URL, json=payload,
+                        headers={'Authorization': f'Bearer {key}', 'Idempotency-Key': idempotency_key(row)})
+    except httpx.HTTPError as exc:  # includes timeouts: Resend may have accepted it; the key makes a retry safe
+        logger.warning('email %s: provider unreachable (%s); will retry', row.id, type(exc).__name__)
+        return PENDING, '', True
+    try:
+        body = r.json()
+    except ValueError:
+        body = {}
+    body = body if isinstance(body, dict) else {}
+    if r.status_code < 300:
+        return SENT, str(body.get('id', ''))[:120], False
+    error = str(body.get('name') or body.get('type') or '')
+    if r.status_code == 409 and error == 'concurrent_idempotent_requests':
+        return PENDING, '', False  # the same message is mid-send elsewhere
+    if r.status_code in (400, 409, 422):
+        # This message was rejected (bad address, or its key was already used for different content).
+        logger.warning('email %s rejected by provider: %s %s', row.id, r.status_code, error)
+        return FAILED, '', False
+    logger.warning('email delivery paused: provider returned %s %s', r.status_code, error)
+    return PENDING, '', True
+
+
+def deliver_pending(db: Session, now: datetime | None = None, limit: int = 200) -> dict:
+    """Send (or retry) everything pending, oldest first. Returns this pass's counts plus what's still pending."""
+    now = now or datetime.now(timezone.utc)
+    report = {SENT: 0, FAILED: 0, EXPIRED: 0, SKIPPED: 0}
     key, sender = os.getenv('RESEND_API_KEY', ''), os.getenv('EMAIL_FROM', '')
-    if key and sender:
-        try:
-            r = httpx.post('https://api.resend.com/emails', timeout=15, headers={'Authorization': f'Bearer {key}'},
-                           json={'from': sender, 'to': [to], 'subject': subject, 'html': html_body, 'text': text})
-            if r.status_code < 300:
-                row.status, row.provider_id = 'sent', str(r.json().get('id', ''))[:120]
-            else:
-                row.status = 'failed'
-        except httpx.HTTPError:
-            row.status = 'failed'
-    db.add(row)
-    db.commit()
-    return row.status
+    client = _client() if key and sender else None
+    ids = db.scalars(select(EmailOutbox.id).where(EmailOutbox.status.in_(WAITING))
+                     .order_by(EmailOutbox.created_at).limit(limit)).all()
+    attempts = 0
+    try:
+        for row_id in ids:
+            # Hold the row while sending it. Postgres skips rows another worker holds; SQLite ignores
+            # this, and the idempotency key still stops a second copy.
+            row = db.scalar(select(EmailOutbox).where(EmailOutbox.id == row_id, EmailOutbox.status.in_(WAITING))
+                            .with_for_update(skip_locked=True))
+            if row is None:  # finished or held by another worker
+                db.commit()
+                continue
+            status, provider_id, stop = _not_deliverable(db, row, now), '', False
+            if status is None and client is not None:
+                if attempts:
+                    time.sleep(_send_interval())
+                attempts += 1
+                status, provider_id, stop = _attempt(client, row, key, sender)
+            if status and status != PENDING:
+                row.status, row.provider_id = status, provider_id
+                report[status] += 1
+            db.commit()
+            if stop:
+                break
+    finally:
+        if client is not None:
+            client.close()
+    report[PENDING] = db.scalar(select(func.count()).select_from(EmailOutbox)
+                                .where(EmailOutbox.status.in_(WAITING))) or 0
+    return report
+
+
+def outbox_counts(db: Session, workspace_id: str | None = None) -> dict:
+    """Messages by status. Each row counts once; legacy not_sent rows count as pending, never as sent."""
+    q = select(EmailOutbox.status, func.count()).group_by(EmailOutbox.status)
+    if workspace_id:
+        q = q.where(EmailOutbox.workspace_id == workspace_id)
+    counts = dict.fromkeys(STATUSES, 0)
+    for status, n in db.execute(q):
+        bucket = PENDING if status in WAITING else status if status in counts else FAILED
+        counts[bucket] += n
+    return counts
