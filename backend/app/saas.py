@@ -20,6 +20,7 @@ from .database import Base, engine
 from .adapters import parse
 from .insights import analyze_orders, answer_question
 from .local_auth import authenticated_subject
+from .membership import owner_subject
 from .rate_limit import ai_question_subject
 
 router=APIRouter(prefix='/api/saas',tags=['SaaS foundation (test mode)'])
@@ -87,12 +88,9 @@ def _now()->str:return datetime.now(timezone.utc).isoformat()
 
 
 def _get_workspace(db:Session,owner_sub:str) -> Workspace:
-    w=db.scalar(select(Workspace).where(Workspace.owner_sub==owner_sub))
-    if w is None:
-        w=Workspace(id=str(uuid.uuid4()),owner_sub=owner_sub,created_at=_now())
-        db.add(w);db.commit();db.refresh(w)
-        # No automatic demo seeding: a new account starts with zero connected data.
-    return w
+    """The caller's workspace (as owner or member); created on first sign-in. See membership.resolve."""
+    from .membership import resolve
+    return resolve(db,owner_sub)[0]
 
 
 def _seed_workspace(db:Session,workspace_id:str) -> int:
@@ -187,7 +185,7 @@ def read_onboarding(sub:str=Depends(authenticated_subject)):
         return {'stage':2 if w.name!='My Restaurant' else 1,'plan_choice':'not_chosen'}
 
 @router.post('/onboarding')
-def save_onboarding(payload:OnboardingUpdate,sub:str=Depends(authenticated_subject)):
+def save_onboarding(payload:OnboardingUpdate,sub:str=Depends(owner_subject)):
     with Session(engine) as db:
         w=_get_workspace(db,sub)
         if payload.stage>1 and w.name=='My Restaurant':
@@ -204,7 +202,7 @@ def save_onboarding(payload:OnboardingUpdate,sub:str=Depends(authenticated_subje
         return {'stage':progress.stage,'plan_choice':progress.plan_choice}
 
 @router.post('/profile')
-def profile(profile:ProfileUpdate,sub:str=Depends(authenticated_subject)):
+def profile(profile:ProfileUpdate,sub:str=Depends(owner_subject)):
     with Session(engine) as db:
         w=_get_workspace(db,sub)
         w.name=profile.name.strip();w.restaurant_type=profile.restaurant_type;w.goal=profile.goal
@@ -396,7 +394,7 @@ def sandbox_location_quote(sub: str = Depends(authenticated_subject)):
 
 
 @router.post('/billing/checkout')
-def checkout(sub: str = Depends(authenticated_subject)):
+def checkout(sub: str = Depends(owner_subject)):
     stripe = _stripe_client()
     price = os.getenv('STRIPE_GROWTH_PRICE_ID', '')
     base = config.app_url()
@@ -452,7 +450,7 @@ def checkout(sub: str = Depends(authenticated_subject)):
 
 
 @router.post('/billing/reconcile')
-def reconcile_checkout(payload: CheckoutReconcileRequest, sub: str = Depends(authenticated_subject)):
+def reconcile_checkout(payload: CheckoutReconcileRequest, sub: str = Depends(owner_subject)):
     """Reconcile a completed test purchase against Stripe using the signed-in owner.
 
     The no-session-ID case repairs purchases made with the old redirect URL:
@@ -471,7 +469,7 @@ def reconcile_checkout(payload: CheckoutReconcileRequest, sub: str = Depends(aut
 
 
 @router.post('/billing/portal')
-def portal(sub: str = Depends(authenticated_subject)):
+def portal(sub: str = Depends(owner_subject)):
     stripe = _stripe_client()
     with Session(engine) as db:
         w = _get_workspace(db, sub)

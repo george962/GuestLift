@@ -4,6 +4,9 @@ import Link from 'next/link';
 import {useRouter} from 'next/navigation';
 import {ArrowRight,CheckCircle2,Eye,EyeOff,KeyRound,LockKeyhole} from 'lucide-react';
 import {localAuthClient} from '@/lib/local-auth';
+import {authMode} from '@/lib/auth-mode';
+import {safeNext} from '@/lib/safe-next';
+import {ClerkAuthPanel} from './clerk-auth-panel';
 
 type Mode='sign-in'|'sign-up'|'forgot-password'|'reset-password';
 const headings:Record<Mode,{tag:string,title:string,body:string}>={
@@ -12,10 +15,13 @@ const headings:Record<Mode,{tag:string,title:string,body:string}>={
  'forgot-password':{tag:'LOCAL ACCOUNT RECOVERY',title:'Password recovery.',body:'Email recovery is not enabled in this local developer release.'},
  'reset-password':{tag:'ACCOUNT SECURITY',title:'Change your password.',body:'While signed in, confirm your current password before setting a new one.'}
 };
-const allowed=new Set(['/billing','/dashboard','/connections','/settings','/onboarding','/account']);
-function safeNext(value:string|null){return value&&allowed.has(value)?value:'/dashboard'}
 
 export function AuthPanel({mode}:{mode:Mode}){
+ if(authMode()==='clerk')return <ClerkAuthPanel mode={mode}/>;
+ return <LocalAuthPanel mode={mode}/>;
+}
+
+function LocalAuthPanel({mode}:{mode:Mode}){
  const router=useRouter();const sb=localAuthClient();
  const [email,setEmail]=useState(''),[password,setPassword]=useState(''),[confirm,setConfirm]=useState(''),[currentPassword,setCurrentPassword]=useState('');
  const [showPassword,setShowPassword]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState('');
@@ -40,7 +46,7 @@ export function AuthPanel({mode}:{mode:Mode}){
    }
    if(mode==='sign-up'){
     const {data,error}=await sb.auth.signUp({email,password});if(error)throw error;
-    if(data.session){router.push('/account/welcome')}else{setNotice('Account created. Sign in to continue.')}return;
+    if(data.session){router.push(next.startsWith('/join')?next:'/account/welcome')}else{setNotice('Account created. Sign in to continue.')}return;
    }
    const {data,error}=await sb.auth.signInWithPassword({email,password});if(error)throw error;
    if(!data.session)throw new Error('No verified session was established.');router.push(next);

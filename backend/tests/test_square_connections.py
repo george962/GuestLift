@@ -8,13 +8,14 @@ from fastapi.testclient import TestClient
 from app.main import app
 from app import saas,local_auth,connections
 from app.database import Base
+from app import membership
 
 ORIGIN={'Origin':'http://localhost:3000'}
 
 
 def db_fixture(tmp_path, monkeypatch):
     engine=create_engine('sqlite:///'+str(tmp_path/'sandbox.sqlite'),connect_args={'check_same_thread':False})
-    for module in (saas,local_auth,connections):monkeypatch.setattr(module,'engine',engine)
+    for module in (saas,local_auth,connections, membership):monkeypatch.setattr(module,'engine',engine)
     Base.metadata.create_all(engine)
     return engine
 

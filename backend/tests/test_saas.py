@@ -7,6 +7,7 @@ from app import saas
 from app.database import Base
 from app.insights import analyze_orders, answer_question
 from app.main import app
+from app import membership
 
 
 def test_evidence_first_analyst_from_fictional_orders():
@@ -26,6 +27,7 @@ def test_evidence_first_analyst_from_fictional_orders():
 def test_workspace_isolation_and_zero_default(tmp_path,monkeypatch):
     engine=create_engine('sqlite:///'+str(tmp_path/'saas.sqlite'),connect_args={'check_same_thread':False})
     monkeypatch.setattr(saas,'engine',engine)
+    monkeypatch.setattr(membership, 'engine', engine)
     Base.metadata.create_all(engine)
     with Session(engine) as db:
         a=saas._get_workspace(db,'supabase-user-one')
@@ -52,6 +54,7 @@ def test_private_endpoints_require_verification():
 def test_plan_gates_analyst_and_checkout_is_test_only(tmp_path,monkeypatch):
     engine=create_engine('sqlite:///'+str(tmp_path/'entitlement.sqlite'),connect_args={'check_same_thread':False})
     monkeypatch.setattr(saas,'engine',engine)
+    monkeypatch.setattr(membership, 'engine', engine)
     Base.metadata.create_all(engine)
     app.dependency_overrides[saas.authenticated_subject]=lambda:'test-user-01'
     monkeypatch.delenv('STRIPE_SECRET_KEY',raising=False)

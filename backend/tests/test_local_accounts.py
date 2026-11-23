@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from app import saas, local_auth
 from app.database import Base
 from app.main import app
+from app import membership
 
 ORIGIN = {'Origin':'http://localhost:3000'}
 
@@ -16,6 +17,7 @@ def setup_db(tmp_path,monkeypatch):
     engine = create_engine('sqlite:///' + str(tmp_path/'local_accounts.sqlite'),connect_args={'check_same_thread':False})
     monkeypatch.setattr(local_auth, 'engine', engine)
     monkeypatch.setattr(saas, 'engine', engine)
+    monkeypatch.setattr(membership, 'engine', engine)
     Base.metadata.create_all(engine)
     return engine
 

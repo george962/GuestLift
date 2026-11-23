@@ -7,6 +7,8 @@ type User={id:string;email:string};
 type LocalSession={user:User;access_token:'cookie-session'};
 type AuthResult={data:{session:LocalSession|null;user?:User|null};error:Error|null};
 type Listener=(event:string,session:LocalSession|null)=>void;
+import {authMode} from './auth-mode';
+import {clerkClient,clerkApi} from './clerk-auth';
 let csrfToken:string|null=null;
 const listeners=new Set<Listener>();
 const notify=(event:string,session:LocalSession|null)=>{for(const f of listeners)f(event,session)};
@@ -61,8 +63,10 @@ const localClient={
   }
  }
 };
-export function localAuthClient(){return localClient}
+/** The active auth client: local development accounts, or Clerk when NEXT_PUBLIC_AUTH_MODE=clerk. */
+export function localAuthClient(){return authMode()==='clerk'?clerkClient:localClient}
 export async function accountApi(path:string,token:string,method:'GET'|'POST'='GET',body?:unknown){
+ if(authMode()==='clerk')return clerkApi(apiOrigin()+path,method,body);
  if(!token)throw new Error('Sign in to your local account first.');
  if(method==='POST'&&!csrfToken)await session();
  return api(path,method,body,method==='POST'?csrfToken||'':undefined);

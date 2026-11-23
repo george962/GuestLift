@@ -26,6 +26,7 @@ from sqlalchemy.orm import Mapped, Session, mapped_column
 from . import config
 from .database import Base, engine
 from .local_auth import authenticated_subject
+from .membership import owner_subject
 from .location_entitlements import (SandboxMonitoredLocation, eligible_location,
     selection_enabled, selected_rows, snapshot, utc_now)
 
@@ -432,7 +433,7 @@ def available_sandbox_locations(sub: str = Depends(authenticated_subject)):
 
 
 @router.post('/locations/selection')
-def save_sandbox_locations(payload: MonitoredSelection, sub: str = Depends(authenticated_subject)):
+def save_sandbox_locations(payload: MonitoredSelection, sub: str = Depends(owner_subject)):
     if not selection_enabled():
         raise HTTPException(409, 'Enable the v0.13 local Sandbox location gate first.')
     ids = payload.location_ids
@@ -497,7 +498,7 @@ def status(sub: str = Depends(authenticated_subject)):
 
 
 @router.post('/connect-developer-sandbox')
-def connect_developer(sub: str = Depends(authenticated_subject)):
+def connect_developer(sub: str = Depends(owner_subject)):
     token = os.getenv('SQUARE_SANDBOX_ACCESS_TOKEN', '')
     if not token:
         raise HTTPException(503, 'Add a Square Sandbox developer access token to the local .env first.')
@@ -510,7 +511,7 @@ def connect_developer(sub: str = Depends(authenticated_subject)):
 
 
 @router.post('/oauth/start')
-def oauth_start(sub: str = Depends(authenticated_subject)):
+def oauth_start(sub: str = Depends(owner_subject)):
     app_id = os.getenv('SQUARE_SANDBOX_APP_ID', '')
     secret = os.getenv('SQUARE_SANDBOX_APP_SECRET', '')
     redirect = os.getenv('SQUARE_SANDBOX_REDIRECT_URI', '')
@@ -582,7 +583,7 @@ def sync(sub: str = Depends(authenticated_subject)):
 
 
 @router.post('/disconnect')
-def disconnect(sub: str = Depends(authenticated_subject)):
+def disconnect(sub: str = Depends(owner_subject)):
     # Deletes only this workspace's Sandbox records and encrypted credentials.
     # For OAuth, the seller should also revoke app access in Square's Sandbox Dashboard.
     with Session(engine) as db:

@@ -13,17 +13,19 @@
     "test:e2e": "playwright test"
   },
   "dependencies": {
+    "@clerk/nextjs": "7.9.25",
+    "lucide-react": "^0.468.0",
     "next": "^15.5.0",
     "react": "^19.1.0",
-    "react-dom": "^19.1.0",
-    "lucide-react": "^0.468.0"
+    "react-dom": "^19.1.0"
   },
   "devDependencies": {
-    "typescript": "^5.7.0",
+    "@clerk/testing": "2.2.55",
+    "@playwright/test": "^1.56.0",
     "@types/node": "^22.15.0",
     "@types/react": "^19.1.0",
     "@types/react-dom": "^19.1.0",
-    "@playwright/test": "^1.56.0"
+    "typescript": "^5.7.0"
   },
   "overrides": {
     "postcss": "^8.5.23"
