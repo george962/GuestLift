@@ -38,3 +38,17 @@
   - no causal language
   - missing data is said plainly
 - It must score 100%. A self-test confirms the suite fails on a fabricated number.
+
+## P1 comparison reliability
+
+Weekly findings and decision outcomes require a recent successful Square sync and durable
+coverage for **every monitored location** across the full comparison window. The API
+returns `data_status: incomplete` (no findings or misleading zero totals) until the
+initial backfill, historical baseline and complete local reporting period are present.
+The Monday worker does not store or send a brief while this gate is closed; outcomes
+remain pending rather than being permanently saved based on partial data.
+
+This is a conservative synchronization check, **not** proof that Square's source reports
+have been independently reconciled. Late order corrections, older refunds, missing
+comps/gift-card distinctions and source-report mismatches still require the M3/M7
+reconciliation and pilot trust gates.

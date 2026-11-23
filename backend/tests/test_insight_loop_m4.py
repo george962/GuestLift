@@ -7,7 +7,7 @@ from datetime import date, datetime, timedelta, timezone
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app import decisions, emailer, insight_loop, saas, weekly
+from app import connections, decisions, emailer, insight_loop, saas, square_sync, weekly
 from journey_support import harness  # noqa: F401
 
 
@@ -88,6 +88,17 @@ def test_seasonal_movement_is_separated_out():
     assert r['seasonal_change_percent'] is not None and abs(r['beyond_seasonal_points']) < 8, r
 
 
+def _simulate_sync_at(when: datetime) -> None:
+    """The email scheduler's simulated clock also needs matching complete provider checkpoints."""
+    with Session(saas.engine) as db:
+        conn = db.scalar(select(connections.SquareConnection))
+        conn.last_sync_at = when.isoformat()
+        for state in db.scalars(select(square_sync.SquareLocationState)):
+            state.synced_through = when.isoformat()
+            state.backfill_complete = True
+        db.commit()
+
+
 def _monday_8am_local():
     now = datetime.now(timezone.utc)
     monday = now - timedelta(days=now.weekday())
@@ -96,9 +107,11 @@ def _monday_8am_local():
 
 def test_weekly_digest_sends_once_and_unsubscribe_works(harness):
     _synced(harness)
+    scheduled = _monday_8am_local()
+    _simulate_sync_at(scheduled)
     with Session(saas.engine) as db:
-        first = insight_loop.run_due(db, now=_monday_8am_local())
-        again = insight_loop.run_due(db, now=_monday_8am_local())
+        first = insight_loop.run_due(db, now=scheduled)
+        again = insight_loop.run_due(db, now=scheduled)
         outbox = db.scalars(select(emailer.EmailOutbox).where(emailer.EmailOutbox.kind == 'weekly_digest')).all()
     assert first['queued']['weekly_digest'] == 1 and again['queued']['weekly_digest'] == 0 and len(outbox) == 1  # deduplicated
     assert first['sent'] == 0 and again['sent'] == 0 and again['pending'] == 1  # no provider configured: waiting, not sent
@@ -112,6 +125,7 @@ def test_weekly_digest_sends_once_and_unsubscribe_works(harness):
 
 def test_outcome_email_goes_to_the_owner_once(harness):
     _synced(harness)
+    _simulate_sync_at(_monday_8am_local() + timedelta(days=1))
     harness.post('/api/decisions/plans', {
         'title': 'Open brunch an hour earlier', 'objective': 'returning_guests', 'offer_type': 'no_offer', 'offer_value': 0,
         'target_redemptions': 1, 'reference_basket_minor': 2500, 'assumed_margin_percent': 35,
