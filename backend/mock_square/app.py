@@ -36,6 +36,12 @@ def _last_week(now, loc):
     today = now.astimezone(ZoneInfo(loc['timezone'])).date()
     return today - timedelta(days=today.weekday() + 7)  # Monday of the last complete week
 
+
+def _complete_week(now):
+    """Monday of the last week that has ended at both eligible locations: what the brief reports."""
+    return min(_last_week(now, loc) for loc in LOCATIONS[:2])
+
+
 app = FastAPI(title='Mock Square API', docs_url=None, redoc_url=None)
 _state: dict = {'tokens': {DEV_TOKEN}, 'codes': {}, 'refresh': {}, 'faults': []}
 
@@ -67,7 +73,7 @@ def build_dataset(now: datetime | None = None, seed: int = 7) -> tuple[list[dict
             # Planted effects the weekly brief and outcome readouts must find (see truth()['planted']):
             if loc['id'] == 'LOC_HARBOR' and when.weekday() >= 5 and day < BOOST_DAYS:
                 count += 6  # weekend lift at Harbor Street since the "earlier brunch" change
-            if loc['id'] == 'LOC_MARKET' and when.weekday() < 5 and _last_week(now, loc) <= when < _last_week(now, loc) + timedelta(days=7):
+            if loc['id'] == 'LOC_MARKET' and when.weekday() < 5 and _complete_week(now) <= when < _complete_week(now) + timedelta(days=7):
                 count = max(1, count - 4)  # weekday dip at Market Square last week
             for _ in range(count):
                 n += 1
@@ -107,8 +113,9 @@ def build_dataset(now: datetime | None = None, seed: int = 7) -> tuple[list[dict
     return orders, payments, refunds
 
 
-def truth(orders: list[dict], payments: list[dict], refunds: list[dict] | None = None) -> dict:
+def truth(orders: list[dict], payments: list[dict], refunds: list[dict] | None = None, now: datetime | None = None) -> dict:
     """Expected figures, computed independently of TableSignal's importer."""
+    reference_now = now if now is not None else DATASET_REFERENCE_NOW
     from zoneinfo import ZoneInfo
     refunds = refunds or []
     imported = [o for o in orders if o['state'] in ('COMPLETED', 'CANCELED')]
@@ -135,7 +142,7 @@ def truth(orders: list[dict], payments: list[dict], refunds: list[dict] | None =
     refunded = sum(r['amount_money']['amount'] for r in done_refunds)
     return {
         'refunds_minor': refunded, 'completed_refunds': len(done_refunds),
-        'planted': {'market_weekday_dip_week': _last_week(datetime.now(timezone.utc), LOCATIONS[1]).isoformat(),
+        'planted': {'market_weekday_dip_week': _complete_week(reference_now).isoformat(),
                     'harbor_weekend_lift_since_days': BOOST_DAYS},
         'net_sales_after_refunds_minor': sum(net(o) for o in completed) - refunded,
         'daily': daily,
@@ -149,7 +156,8 @@ def truth(orders: list[dict], payments: list[dict], refunds: list[dict] | None =
     }
 
 
-ORDERS, PAYMENTS, REFUNDS = build_dataset()
+DATASET_REFERENCE_NOW = datetime.now(timezone.utc).replace(microsecond=0)
+ORDERS, PAYMENTS, REFUNDS = build_dataset(now=DATASET_REFERENCE_NOW)
 
 
 def _authorize(authorization: str | None) -> None:

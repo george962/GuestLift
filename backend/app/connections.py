@@ -544,13 +544,10 @@ def data_health(sub: str = Depends(authenticated_subject)):
 @router.get('/reconciliation')
 def reconciliation_report(start: str | None = None, end: str | None = None, sub: str = Depends(authenticated_subject)):
     """Daily totals per location, to compare with Square's Sales Summary. Dates are local (YYYY-MM-DD)."""
-    from datetime import date as _date
     from . import square_sync
-    try:
-        stop = _date.fromisoformat(end) if end else (datetime.now(timezone.utc).date() - timedelta(days=1))
-        begin = _date.fromisoformat(start) if start else stop - timedelta(days=6)
-    except ValueError:
-        raise HTTPException(422, 'Use dates like 2026-11-16.')
+    from .validation import parse_date
+    stop = parse_date(end, 'End date') if end else (datetime.now(timezone.utc).date() - timedelta(days=1))
+    begin = parse_date(start, 'Start date') if start else stop - timedelta(days=6)
     if begin > stop or (stop - begin).days > 92:
         raise HTTPException(422, 'Choose a range of up to 93 days with the start before the end.')
     with Session(engine) as db:

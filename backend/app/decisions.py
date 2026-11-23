@@ -16,6 +16,7 @@ from .local_auth import authenticated_subject
 from .billing import paid_subject
 from .saas import Workspace, _get_workspace, _scoped_summary
 from .connections import SquareOrder
+from .validation import parse_date
 
 router = APIRouter(prefix='/api/decisions', tags=['Private restaurant decisions'])
 
@@ -56,7 +57,8 @@ class PlanCreate(BaseModel):
     metric: str = Field(default='net_sales', pattern='^(net_sales|orders|average_order|discount_spend|returning_share)$')
     location_id: str | None = Field(default=None, max_length=160)
     # The day the change started. May be in the past: owners often log a change after making it.
-    start_date: str | None = Field(default=None, pattern=r'^\d{4}-\d{2}-\d{2}$')
+    # Checked in create_plan, so a bad date gets the same plain-text 422 as the other checks.
+    start_date: str | None = Field(default=None, max_length=32)
     follow_up_weeks: int = Field(default=4, ge=1, le=26)
 
 class StatusUpdate(BaseModel):
@@ -172,12 +174,11 @@ def create_plan(payload:PlanCreate,sub:str=Depends(paid_subject)):
         calc=scenario(payload.offer_type,payload.offer_value,payload.target_redemptions,
                       payload.reference_basket_minor,payload.assumed_margin_percent)
         at=_now()
-        from datetime import date as _date
         from .insight_loop import _workspace_data, local_today
         _, _, names, tz, _ = _workspace_data(db, w.id)
         if payload.location_id and payload.location_id not in names:
             raise HTTPException(status_code=422, detail='Choose one of your monitored locations, or all locations.')
-        start = _date.fromisoformat(payload.start_date) if payload.start_date else local_today(tz)
+        start = parse_date(payload.start_date, 'Start date') if payload.start_date else local_today(tz)
         if start > local_today(tz) + timedelta(days=60):
             raise HTTPException(status_code=422, detail='Start date must be within the next 60 days.')
         item=DecisionPlan(id=str(uuid.uuid4()),workspace_id=w.id,title=payload.title.strip(),

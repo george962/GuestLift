@@ -45,7 +45,7 @@ def _workspace_data(db: Session, wid: str):
                for f in db.scalars(select(SquareRefund).where(SquareRefund.workspace_id == wid))
                if allowed is None or f.location_id in allowed]
     names = {loc: s.name for loc, s in states.items() if allowed is None or loc in allowed}
-    tz = next((s.timezone for s in states.values()), 'UTC')
+    tz = workspace_timezone(s.timezone for loc, s in states.items() if allowed is None or loc in allowed)
     earliest = min((date.fromisoformat(o['local_date']) for o in orders), default=None)
     return orders, refunds, names, tz, earliest
 
@@ -56,6 +56,20 @@ def local_today(tz: str, now: datetime | None = None) -> date:
     except Exception:
         zone = ZoneInfo('UTC')
     return (now or datetime.now(timezone.utc)).astimezone(zone).date()
+
+
+def workspace_timezone(zones, now: datetime | None = None) -> str:
+    """The workspace's clock: the zone where it is earliest (westernmost), so "last complete week",
+    today's date and the Monday digest all wait until the week has ended at every location.
+    Deterministic whatever order the locations come back in."""
+    now = now or datetime.now(timezone.utc)
+
+    def offset(tz: str):
+        try:
+            return now.astimezone(ZoneInfo(tz)).utcoffset()
+        except Exception:
+            return timedelta(0)
+    return min(sorted(set(z for z in zones if z)), key=offset, default='UTC')
 
 
 def brief_for(db: Session, wid: str, today: date | None = None) -> dict:
@@ -123,52 +137,62 @@ def member_email(db: Session, member) -> str:
 
 
 def run_due(db: Session, now: datetime | None = None) -> dict:
-    """Worker hook: Monday digests (7am local) and outcome emails on follow-up dates."""
+    """Worker hook: queue what's due, then deliver everything pending (including earlier retries).
+
+    Due: Monday digests (7am local), outcome emails on follow-up dates, and trial-ending reminders
+    3 days and 1 day out. Returns {'queued': {kind: n}, 'sent', 'failed', 'expired', 'skipped': n
+    this pass, 'pending': n still waiting}.
+    """
     from .billing import entitlement
     from .connections import SquareConnection
     from .decisions import DecisionPlan
     from .membership import WorkspaceMember
     from .saas import Workspace
     now = now or datetime.now(timezone.utc)
-    sent = {'digests': 0, 'outcomes': 0, 'trial_reminders': 0}
+    queued = {'weekly_digest': 0, 'outcome': 0, 'trial_ending': 0}
+
+    def queue(w, kind, key, to, rendered) -> None:
+        if emailer.enqueue(db, w.id, kind, key, to, *rendered, now=now):
+            queued[kind] += 1
+
     for conn in db.scalars(select(SquareConnection).where(SquareConnection.status == 'active')).all():
         w = db.get(Workspace, conn.workspace_id)
-        if w is None or entitlement(w, now)['access'] != 'full' or not conn.last_sync_at:
+        if w is None or not conn.last_sync_at:
             continue
         e = entitlement(w, now)
-        if e['state'] == 'trial' and e['days_left'] in (1, 3):  # M5 trial-ending reminders, to owners, once each
-            for m in db.scalars(select(WorkspaceMember).where(WorkspaceMember.workspace_id == w.id,
-                                                              WorkspaceMember.role == 'owner')).all():
-                if to := member_email(db, m):
-                    subject, html_body, text = emailer.render_trial_ending(e['days_left'], w.name,
-                                                                           emailer.unsubscribe_url(m.id, 'outcome'))
-                    emailer.send(db, w.id, 'trial_ending', f"trial:{w.id}:{e['days_left']}", to, subject, html_body, text)
-                    sent['trial_reminders'] = sent.get('trial_reminders', 0) + 1
+        if e['access'] != 'full':
+            continue
+        members = db.scalars(select(WorkspaceMember).where(WorkspaceMember.workspace_id == w.id)).all()
+        owners = [m for m in members if m.role == 'owner']
+        if e['state'] == 'trial' and e['days_left'] in (1, 3):  # M5 trial-ending reminders, once per owner each
+            for m in owners:
+                if not m.outcome_emails or not (to := member_email(db, m)):
+                    continue
+                if emailer.already_recorded(db, emailer.legacy_trial_key(w.id, e['days_left']), to):
+                    continue  # sent under the old per-workspace key
+                queue(w, 'trial_ending', emailer.trial_key(w.id, m.id, e['days_left']), to,
+                      emailer.render_trial_ending(e['days_left'], w.name, emailer.unsubscribe_url(m.id, 'trial_ending')))
         orders, _, _, tz, _ = _workspace_data(db, w.id)
         local = now.astimezone(ZoneInfo(tz) if tz else ZoneInfo('UTC'))
-        members = db.scalars(select(WorkspaceMember).where(WorkspaceMember.workspace_id == w.id)).all()
         if orders and local.weekday() == 0 and local.hour >= 7:
             brief = brief_for(db, w.id, local.date())
             store_brief(db, w.id, brief)
             for m in members:
                 if not m.weekly_digest or not (to := member_email(db, m)):
                     continue
-                subject, html_body, text = emailer.render_weekly(brief, w.name, emailer.unsubscribe_url(m.id, 'weekly_digest'))
-                if emailer.send(db, w.id, 'weekly_digest', f"digest:{m.id}:{brief['week_start']}", to, subject, html_body, text) != 'failed':
-                    sent['digests'] += 1
+                queue(w, 'weekly_digest', emailer.digest_key(m.id, brief['week_start']), to,
+                      emailer.render_weekly(brief, w.name, emailer.unsubscribe_url(m.id, 'weekly_digest')))
         for plan in db.scalars(select(DecisionPlan).where(DecisionPlan.workspace_id == w.id,
                                                           DecisionPlan.follow_up_date <= local.date().isoformat())).all():
             result = plan_outcome(db, plan, local.date())
             if not result or not result.get('available'):
                 continue
-            for m in members:
-                if m.role != 'owner' or not m.outcome_emails or not (to := member_email(db, m)):
+            for m in owners:
+                if not m.outcome_emails or not (to := member_email(db, m)):
                     continue
-                subject, html_body, text = emailer.render_outcome({'title': plan.title}, result, w.name,
-                                                                   emailer.unsubscribe_url(m.id, 'outcome'))
-                if emailer.send(db, w.id, 'outcome', f'outcome:{plan.id}:{m.id}', to, subject, html_body, text) != 'failed':
-                    sent['outcomes'] += 1
-    return sent
+                queue(w, 'outcome', emailer.outcome_key(plan.id, m.id), to,
+                      emailer.render_outcome({'title': plan.title}, result, w.name, emailer.unsubscribe_url(m.id, 'outcome')))
+    return {'queued': queued, **emailer.deliver_pending(db, now)}
 
 
 router = APIRouter(tags=['Weekly brief and email'])
@@ -194,7 +218,7 @@ def my_email_preferences(sub: str = Depends(authenticated_subject)):
         resolve(db, sub)
         m = db.scalar(select(WorkspaceMember).where(WorkspaceMember.subject == sub))
         return {'email': member_email(db, m) or None, 'weekly_digest': m.weekly_digest, 'outcome_emails': m.outcome_emails,
-                'provider_configured': bool(os.getenv('RESEND_API_KEY') and os.getenv('EMAIL_FROM'))}
+                'provider_configured': emailer.provider_configured()}
 
 
 @router.post('/api/team/me/email')
@@ -219,8 +243,9 @@ def unsubscribe(token: str = ''):
     with Session(engine) as db:
         m = db.get(WorkspaceMember, member_id)
         if m:
-            setattr(m, 'weekly_digest' if kind == 'weekly_digest' else 'outcome_emails', False)
+            setattr(m, emailer.PREFERENCE[kind], False)
             db.commit()
-    what = 'the weekly brief' if kind == 'weekly_digest' else 'decision outcome emails'
+    what = {'weekly_digest': 'the weekly brief', 'outcome': 'decision outcome emails or trial reminders',
+            'trial_ending': 'trial reminders or decision outcome emails'}[kind]
     return f"<!doctype html><title>Unsubscribed</title><p style='font-family:sans-serif'>You won't get {what} any more. " \
            f"You can turn it back on in <a href='{config.app_url()}/settings'>Settings</a>.</p>"
