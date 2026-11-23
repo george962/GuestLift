@@ -10,9 +10,20 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 WEB_PORT="${WEB_PORT:-3100}" API_PORT="${API_PORT:-8200}" MOCK_PORT="${MOCK_PORT:-8100}"
 PY="${PYTHON:-$ROOT/backend/.venv/bin/python}"
+# Worktrees share source history but not necessarily Python environments.
+if ! command -v "$PY" >/dev/null 2>&1 && [ ! -x "$PY" ]; then
+  COMMON="$(git -C "$ROOT" rev-parse --path-format=absolute --git-common-dir)"
+  FALLBACK="$COMMON/../backend/.venv/bin/python"
+  if [ -x "$FALLBACK" ]; then
+    PY="$FALLBACK"
+  else
+    echo "No Python environment found; set PYTHON to an installed interpreter." >&2
+    exit 1
+  fi
+fi
 WORK="$(mktemp -d)"
 pids=()
-cleanup() { for p in "${pids[@]}"; do kill "$p" 2>/dev/null || true; done; }
+cleanup() { for p in "${pids[@]-}"; do if [ -n "$p" ]; then kill "$p" 2>/dev/null || true; fi; done; }
 trap cleanup EXIT
 
 wait_for() { for _ in $(seq 1 60); do curl -fsS "$1" >/dev/null 2>&1 && return 0; sleep 1; done; echo "Timed out waiting for $1"; cat "$WORK"/*.log; exit 1; }

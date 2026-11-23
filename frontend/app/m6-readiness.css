@@ -84,3 +84,16 @@ section[aria-labelledby="team-h"] > .ts-muted{color:#61716c!important;}
 /* Mobile scrolling belongs to the labelled focusable region, never to the table itself. */
 .ts9-panel [role="region"][tabindex="0"] > table.ts9-table{display:table;overflow:visible;max-width:none;min-width:100%;width:max-content}
 .ts9-panel [role="region"][tabindex="0"]:focus-visible{outline:3px solid #1b5d83;outline-offset:3px}
+
+
+/*
+ * M6 CI accessibility:
+ * Small saved-experiment labels must meet WCAG AA
+ * contrast requirements on white backgrounds.
+ */
+.ts10-plan-facts small {
+    color: #526a60 !important;
+}
+
+/* M6: WCAG AA label contrast across macOS and Linux. */
+.ts10-plan-facts small{color:#526a60!important;}
