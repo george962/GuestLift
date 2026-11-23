@@ -194,3 +194,17 @@ def test_worker_process_starts_and_stops_cleanly(tmp_path):
     proc.send_signal(signal.SIGTERM)
     out, _ = proc.communicate(timeout=15)
     assert proc.returncode == 0 and 'worker stopped' in out, out
+
+
+def test_worker_cannot_steal_a_sync_now_job(harness, monkeypatch):
+    """Regression: the worker grabbed the manual job between create and claim, so Sync now returned 'already running'."""
+    _ready(harness)
+    original = square_sync.enqueue
+
+    def enqueue_then_worker_polls(db, wid, kind, **kw):
+        job = original(db, wid, kind, **kw)
+        assert square_sync.claim(db, job.id) is False, 'a worker could claim the Sync now job'
+        return job
+    monkeypatch.setattr(square_sync, 'enqueue', enqueue_then_worker_polls)
+    r = harness.post('/api/integrations/square/sync')
+    assert r.status_code == 200 and r.json()['status'] == 'completed'

@@ -55,6 +55,19 @@ export default function Connections(){
         if(typeof result.url==='string'&&result.url.startsWith(squareAuthorizeUrl))window.location.assign(result.url);
       }else if(path==='sync'){
         if(result.status==='completed'){setSynced(result);setMessage('')}
+        else if(result.status==='running'){
+          // A scheduled sync was already running: wait for it, then show what it imported.
+          setMessage('A sync is already running. Showing the result when it finishes…');
+          for(let i=0;i<60;i++){
+            await new Promise(r=>setTimeout(r,2000));
+            const s=await accountApi('/api/integrations/square/status',token) as Connection;
+            const run=s.runs[0];
+            if(run&&run.status!=='running'){
+              if(run.status==='completed'){setSynced(run);setMessage('')}else setMessage(s.last_error||'The sync did not finish.');
+              break;
+            }
+          }
+        }
         else{setSynced(null);setMessage(result.message||'Importing your history in the background. This page updates as it goes.')}
       }else if(path==='locations/selection'){
         setMessage('Monitored Sandbox location selection saved. Only these locations will sync when the v0.13 gate is enabled.');

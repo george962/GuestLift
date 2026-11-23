@@ -262,18 +262,25 @@ def progress(db: Session, wid: str) -> dict:
             'synced_through': min(through)}
 
 
-def enqueue(db: Session, wid: str, kind: str, delay_seconds: int = 0) -> SquareSyncJob:
-    """One open job per workspace; a second request reuses it."""
+def enqueue(db: Session, wid: str, kind: str, delay_seconds: int = 0, claimed: bool = False,
+            lease_seconds: int = 300) -> SquareSyncJob:
+    """One open job per workspace; a second request reuses it.
+
+    `claimed=True` creates the job already leased to the caller, so a worker polling the queue
+    can't take it in the gap between creating and claiming it.
+    """
     open_job = db.scalar(select(SquareSyncJob).where(SquareSyncJob.workspace_id == wid,
                                                      SquareSyncJob.status.in_(('queued', 'running'))))
     if open_job:
         return open_job
-    now = _iso(datetime.now(timezone.utc))
-    job = SquareSyncJob(id=str(uuid.uuid4()), workspace_id=wid, kind=kind, status='queued', attempts=0,
-                        run_after=int(time.time()) + delay_seconds, locked_until=0, progress='{}',
-                        last_error='', created_at=now, updated_at=now)
+    now_ts, now = int(time.time()), _iso(datetime.now(timezone.utc))
+    job = SquareSyncJob(id=str(uuid.uuid4()), workspace_id=wid, kind=kind,
+                        status='running' if claimed else 'queued', attempts=0,
+                        run_after=now_ts + delay_seconds, locked_until=now_ts + lease_seconds if claimed else 0,
+                        progress='{}', last_error='', created_at=now, updated_at=now)
     db.add(job)
     db.commit()
+    job.claimed_here = claimed  # transient marker for the caller
     return job
 
 

@@ -492,8 +492,8 @@ def sync(response: Response, sub: str = Depends(authenticated_subject)):
             raise HTTPException(409, 'Connect a Square account before syncing.')
         if connection.status != 'active':
             raise HTTPException(409, 'Reconnect Square before syncing; access was turned off or expired.')
-        job = square_sync.enqueue(db, wid, 'manual')
-        if not square_sync.claim(db, job.id):
+        job = square_sync.enqueue(db, wid, 'manual', claimed=True)
+        if not getattr(job, 'claimed_here', False) and not square_sync.claim(db, job.id):
             response.status_code = 202
             return {'status': 'running', 'message': 'A sync is already running.', 'progress': square_sync.progress(db, wid)}
         result = square_sync.execute(db, db.get(square_sync.SquareSyncJob, job.id),
