@@ -2,14 +2,16 @@
 from __future__ import annotations
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-from .database import engine, init_db
+from .database import engine
 from .local_auth import LocalUser
 from .saas import Workspace
 from .connections import AssistedSetupRequest, SquareConnection
+from . import main as _registers_every_model  # noqa: F401
+from .migrate import wait_until_ready
 
 
 def main():
-    init_db()
+    wait_until_ready(engine, timeout=5)  # read-only tool: never changes the schema
     with Session(engine) as db:
         print('=== Local TableSignal development accounts ===')
         for user in db.scalars(select(LocalUser).order_by(LocalUser.created_at)).all():

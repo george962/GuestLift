@@ -88,47 +88,14 @@ class CampaignImportRun(Base):
 WORKSPACE_SCOPED_TABLES = ('canonical_orders', 'import_runs', 'campaigns', 'campaign_redemptions', 'campaign_import_runs')
 
 
-def _adopt_pre_scoping_schema(inspector) -> None:
-    """Upgrade a local database created before demo tables had workspace_id.
-
-    create_all() never alters existing tables, so such a database would fail on
-    its first query. Alembic's revisions are idempotent, so run them on this engine.
-    """
-    names = set(inspector.get_table_names())
-    stale = [t for t in WORKSPACE_SCOPED_TABLES
-             if t in names and 'workspace_id' not in {c['name'] for c in inspector.get_columns(t)}]
-    if not stale:
-        return
-    from pathlib import Path
-    from alembic import command
-    from alembic.config import Config
-    backend_dir = Path(__file__).resolve().parents[1]
-    cfg = Config(str(backend_dir / 'alembic.ini'))
-    cfg.set_main_option('script_location', str(backend_dir / 'alembic'))
-    with engine.begin() as connection:
-        cfg.attributes['connection'] = connection
-        command.upgrade(cfg, 'head')
-
-
 def init_db() -> None:
-    """Create the schema on startup for local development.
+    """Bring the schema to the latest Alembic revision (see app/migrate.py and docs/MIGRATIONS.md).
 
-    Hosted deployments should set GUESTLIFT_AUTO_CREATE_SCHEMA=0 and run
-    `alembic upgrade head` as a release step instead (see docs/MIGRATIONS.md).
+    Alembic is the only thing that changes the schema; this is the same locked, idempotent upgrade
+    `python -m app.migrate` runs. The API and worker don't call it: they wait for the schema instead.
     """
-    if os.getenv('GUESTLIFT_AUTO_CREATE_SCHEMA', '1') == '0':
-        return
-    Base.metadata.create_all(engine)
-    from .square_sync import ensure_indexes
-    ensure_indexes(engine)  # also for databases created before the index existed
-    inspector = inspect(engine)
-    _adopt_pre_scoping_schema(inspector)
-    inspector = inspect(engine)  # fresh: the upgrade above may have changed the schema
-    if 'canonical_orders' in inspector.get_table_names():
-        columns = {x['name'] for x in inspector.get_columns('canonical_orders')}
-        if 'customer_id' not in columns:
-            with engine.begin() as connection:
-                connection.exec_driver_sql('ALTER TABLE canonical_orders ADD COLUMN customer_id VARCHAR(120)')
+    from .migrate import upgrade
+    upgrade(engine)
 
 
 def reset_db(workspace_id: str = DEMO_WORKSPACE_ID) -> None:
