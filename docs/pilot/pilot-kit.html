@@ -1,0 +1,196 @@
+<title>TableSignal Pilot Kit</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Figtree:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: two printable sheets stacked (sample brief styled as the Monday email, then the data-access sheet), one 760px column. */
+:root{
+  --paper:#fbfcfb; --ink:#14201d; --muted:#5b6b66; --line:#dfe6e3; --card:#ffffff;
+  --accent:#0f6b5c; --accent-soft:#e3f1ed; --down:#a4432c; --down-soft:#f7e6e0; --up:#1f7a4d; --warn-soft:#fbf3dc;
+  --display:"Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --body:"Figtree", "Segoe UI", system-ui, sans-serif;
+  --mono:"IBM Plex Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --paper:#0f1615; --ink:#e4ece9; --muted:#97a8a2; --line:#26332f; --card:#151f1d;
+  --accent:#5cc4ad; --accent-soft:#16302a; --down:#f08f74; --down-soft:#35201a; --up:#6fd39f; --warn-soft:#2e2915; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --paper:#0f1615; --ink:#e4ece9; --muted:#97a8a2; --line:#26332f; --card:#151f1d;
+  --accent:#5cc4ad; --accent-soft:#16302a; --down:#f08f74; --down-soft:#35201a; --up:#6fd39f; --warn-soft:#2e2915; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--paper);color:var(--ink);font:16px/1.55 var(--body);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:32px 64px}
+.wrap{max-width:760px;margin:0 auto;display:grid;gap:48px}
+h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0;line-height:1.15}
+h1{font-size:2rem;font-weight:700}
+h2{font-size:1.35rem;font-weight:700}
+h3{font-size:1.05rem;font-weight:600}
+p{margin:0}
+.label{font:500 .72rem/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.kit-head{display:grid;gap:10px}
+.kit-head p{color:var(--muted);max-width:62ch}
+nav{display:flex;gap:16px;flex-wrap:wrap;font-weight:600}
+nav a,a{color:var(--accent)}
+a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* Sheet 1: the brief, framed as the email an owner receives */
+.email{background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.email-meta{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;padding:16px 22px;border-bottom:1px solid var(--line);font-size:.88rem;color:var(--muted)}
+.email-meta b{color:var(--ink);font-weight:600}
+.email-body{padding:26px 22px 30px;display:grid;gap:28px}
+.sample{background:var(--warn-soft);border-radius:8px;padding:8px 12px;font-size:.85rem}
+.headline{display:grid;gap:8px}
+.headline p{color:var(--muted);max-width:62ch}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.tile{background:var(--card);padding:14px 16px;display:grid;gap:4px}
+.tile .v{font:500 1.4rem/1.1 var(--mono);font-variant-numeric:tabular-nums}
+.chg{font:500 .8rem/1 var(--mono);display:inline-block;padding:3px 6px;border-radius:5px;width:max-content}
+.chg.down{color:var(--down);background:var(--down-soft)}
+.chg.flat{color:var(--muted);background:var(--line)}
+.chg.up{color:var(--up);background:var(--accent-soft)}
+.section{display:grid;gap:14px}
+.finding{display:grid;grid-template-columns:28px 1fr;gap:4px 12px;padding-top:14px;border-top:1px solid var(--line)}
+.finding .n{font:500 .9rem/1.6 var(--mono);color:var(--muted)}
+.finding p{color:var(--ink);max-width:62ch}
+.finding .ev{grid-column:2;font:400 .82rem/1.5 var(--mono);color:var(--muted)}
+.readout{background:var(--accent-soft);border-radius:10px;padding:16px 18px;display:grid;gap:8px}
+.readout .verdict{font-weight:600;color:var(--accent)}
+.action{border:1.5px solid var(--accent);border-radius:10px;padding:16px 18px;display:grid;gap:6px}
+.foot{font-size:.82rem;color:var(--muted);display:grid;gap:4px;border-top:1px solid var(--line);padding-top:14px}
+
+/* Sheet 2: data access */
+.sheet{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:28px 24px;display:grid;gap:24px}
+.sheet .intro{color:var(--muted);max-width:62ch}
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:20px}
+.cols ul{margin:0;padding-left:1.1em;display:grid;gap:6px}
+.yes h3{color:var(--accent)}
+.no h3{color:var(--down)}
+.perm{font:400 .85rem/1.6 var(--mono);background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:12px 14px;overflow-x:auto}
+.promises{display:grid;gap:12px}
+.promise{display:grid;grid-template-columns:150px 1fr;gap:12px;padding-top:12px;border-top:1px solid var(--line)}
+.promise b{font-weight:600}
+.contact{display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px;font-size:.9rem;color:var(--muted);border-top:1px solid var(--line);padding-top:14px}
+@media (max-width:520px){.promise{grid-template-columns:1fr;gap:2px}.email-meta{grid-template-columns:1fr}}
+@media print{body{padding:0;background:#fff}.kit-head,nav{display:none}.email,.sheet{border:none;break-after:page}}
+</style>
+
+<div class="wrap">
+  <header class="kit-head">
+    <span class="label">Pilot kit · show these to restaurant owners</span>
+    <h1>What an owner sees, and what we can see</h1>
+    <p>Two sheets. The first is a sample of the Monday email an owner would get, built from a fictional restaurant. The second explains exactly what TableSignal can and can't access in their Square account.</p>
+    <nav><a href="#brief">Sample weekly brief</a><a href="#access">What we can see</a></nav>
+  </header>
+
+  <article class="email" id="brief" aria-label="Sample weekly brief">
+    <div class="email-meta">
+      <span>From</span><b>TableSignal weekly brief</b>
+      <span>To</span><span>Owner, Harbor Café</span>
+      <span>Subject</span><b>Quieter lunches at Market Square; your brunch change is working</b>
+    </div>
+    <div class="email-body">
+      <p class="sample">Sample. Harbor Café is a fictional two-location restaurant. Every number here is invented to show the format.</p>
+
+      <div class="headline">
+        <span class="label">Week of Mon Nov 16 – Sun Nov 22 · both locations</span>
+        <h2>A quieter week at Market Square. Regulars held steady.</h2>
+        <p>Sales were 6% under your four-week average, almost all from weekday lunch at Market Square. Harbor Street was flat.</p>
+      </div>
+
+      <div class="tiles" role="list">
+        <div class="tile" role="listitem"><span class="label">Net sales</span><span class="v">$18,420</span><span class="chg down">−6% vs 4-wk avg</span></div>
+        <div class="tile" role="listitem"><span class="label">Orders</span><span class="v">1,212</span><span class="chg down">−4%</span></div>
+        <div class="tile" role="listitem"><span class="label">Average order</span><span class="v">$15.20</span><span class="chg flat">−2%</span></div>
+        <div class="tile" role="listitem"><span class="label">Returning guests</span><span class="v">38%</span><span class="chg flat">no change</span></div>
+      </div>
+
+      <section class="section" aria-labelledby="changed">
+        <h3 id="changed">What changed</h3>
+        <div class="finding">
+          <span class="n">1</span>
+          <p><b>Market Square weekday lunch fell 14%.</b> Tuesday to Thursday, 11am–2pm. Dinner and weekends there were normal, and Harbor Street lunch was flat, so this looks local to that store and that time.</p>
+          <span class="ev">312 orders vs 363 four-week average · Tue–Thu 11:00–14:00 local</span>
+        </div>
+        <div class="finding">
+          <span class="n">2</span>
+          <p><b>LUNCH3 mostly went to regulars.</b> It cost $288 in discounts this week. Of the guests we could identify, 71% had already visited in the previous 30 days, so most of that discount went to people likely to come anyway.</p>
+          <span class="ev">96 redemptions × $3.00 · 41 identified redeemers, 29 seen in prior 30 days</span>
+        </div>
+        <div class="finding">
+          <span class="n">3</span>
+          <p><b>23 regulars haven't been back in a month.</b> These guests each visited 3+ times in August and September and haven't ordered since late October.</p>
+          <span class="ev">Identified guests only · list available in your workspace</span>
+        </div>
+      </section>
+
+      <section class="readout" aria-labelledby="readout">
+        <span class="label">Your decision from Oct 26</span>
+        <h3 id="readout">Opening brunch an hour earlier on weekends</h3>
+        <p>Over the four weekends since, the 9–10am hour averaged 41 orders and $620 in net sales per weekend. Total weekend sales are up $1,380 compared with the four weekends before the change.</p>
+        <p class="verdict">Early signal: positive. Some of the lift may be seasonal, so keep it for four more weeks before deciding.</p>
+      </section>
+
+      <section class="action" aria-labelledby="action">
+        <span class="label">One thing to try this week</span>
+        <h3 id="action">Pause LUNCH3 at Harbor Street for two weeks</h3>
+        <p>Keep it running at Market Square. If Harbor Street lunch orders stay flat without the discount, you save about $150 a week. We'll compare both stores in your brief on Dec 7.</p>
+      </section>
+
+      <div class="foot">
+        <span>Data from Square through Sun Nov 22, 11:59pm local time. Refunds and voided orders are excluded from sales.</span>
+        <span>Guest figures cover the 41% of orders linked to a known guest (loyalty, card on file or emailed receipt). We show what changed and what happened after your decisions; we don't claim a change caused it.</span>
+      </div>
+    </div>
+  </article>
+
+  <article class="sheet" id="access" aria-label="What TableSignal can see">
+    <div style="display:grid;gap:10px">
+      <span class="label">For restaurant owners · pilot program</span>
+      <h2>What TableSignal can see in your Square account</h2>
+      <p class="intro">You connect through Square's own approval screen. Access is read-only, you can see exactly what we asked for, and you can turn it off yourself at any time.</p>
+    </div>
+
+    <div class="cols">
+      <div class="yes">
+        <h3>What we read</h3>
+        <ul>
+          <li>Your business name and locations</li>
+          <li>Orders: time, location, totals, discounts, tax and tips</li>
+          <li>Payments and refunds, to get revenue right</li>
+          <li>Square's anonymous guest ID on an order, to count return visits</li>
+        </ul>
+      </div>
+      <div class="no">
+        <h3>What we never get or keep</h3>
+        <ul>
+          <li>Card numbers or bank details</li>
+          <li>Guest names, emails or phone numbers</li>
+          <li>Any ability to change your menu, prices, payments or staff</li>
+          <li>Any ability to message your customers</li>
+        </ul>
+      </div>
+    </div>
+
+    <div style="display:grid;gap:8px">
+      <h3>The exact Square permissions we request</h3>
+      <div class="perm">MERCHANT_PROFILE_READ · ORDERS_READ · PAYMENTS_READ</div>
+      <p style="color:var(--muted);font-size:.9rem">All three are read-only. Square shows this list on its approval screen before you agree.</p>
+    </div>
+
+    <div class="promises">
+      <h3>Our commitments during the pilot</h3>
+      <div class="promise"><b>Turn it off anytime</b><span>Square Dashboard → Account &amp; Settings → Apps → TableSignal → Revoke. Or tell us and we'll do it the same day.</span></div>
+      <div class="promise"><b>Deletion</b><span>When you disconnect, your access token is deleted at once and your imported data within 7 days. We confirm it in writing.</span></div>
+      <div class="promise"><b>Only for you</b><span>Your data is used only to make your reports. We don't sell it, share it or combine it with other restaurants'.</span></div>
+      <div class="promise"><b>Protected</b><span>Encrypted in transit and at rest. Only the founder can access production systems, with two-factor sign-in.</span></div>
+      <div class="promise"><b>AI</b><span>If AI features are on, only totals and averages are sent, never individual orders or guest IDs, and the provider doesn't keep them.</span></div>
+      <div class="promise"><b>Checked against Square</b><span>In week one we compare our numbers with your Square Sales Summary together, before you rely on anything.</span></div>
+    </div>
+
+    <div class="contact">
+      <span>Questions: your TableSignal contact</span>
+      <span>Free during the pilot · no card required</span>
+    </div>
+  </article>
+</div>
