@@ -66,7 +66,7 @@ def test_plan_gates_analyst_and_checkout_is_test_only(tmp_path,monkeypatch):
             w=saas._get_workspace(Session(engine),'test-user-01')
             with Session(engine) as db:
                 row=db.get(saas.Workspace,w.id)
-                row.subscription_plan='growth';row.subscription_status='active';db.commit()
+                row.subscription_plan='growth';row.subscription_status='active';row.stripe_subscription_id='sub_test_fixture';db.commit()
             res=c.post('/api/saas/analyst',json={'question':'Which campaign gave discounts?'})
             assert res.status_code==409, res.text  # Need a connected source, even for a paid test account.
     finally:

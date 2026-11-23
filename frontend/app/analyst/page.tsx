@@ -5,6 +5,7 @@ import Link from 'next/link';
 import {ArrowRight,BookOpen,BrainCircuit,CheckCircle2,Database,GitBranch,LockKeyhole,MessageCircle,RefreshCw,Send,ShieldCheck,Sparkles,TriangleAlert} from 'lucide-react';
 import {accountApi,localAuthClient} from '@/lib/local-auth';
 import {DataHealthBanner,useDataHealth} from '@/components/data-health';
+import {PlanBanner,usePlan} from '@/components/plan-status';
 
 type Node={id:string;label:string;value:string;unit:string;detail:string};
 type Edge={from:string;to:string;label:string};
@@ -15,6 +16,7 @@ type Turn={role:'user'|'assistant';content:string};
 
 export default function Analyst(){
  const {health:dataHealth}=useDataHealth();
+ const {plan:planState}=usePlan();
  const [token,setToken]=useState('');
  const [brief,setBrief]=useState<Brief|null>(null);
  const [loading,setLoading]=useState(true);
@@ -49,7 +51,7 @@ export default function Analyst(){
   finally{setBusy(false)}
  }
  const node=brief?.nodes.find(x=>x.id===selected);
- return <main className="ts10-app ts11-analyst"><DataHealthBanner health={dataHealth}/>
+ return <main className="ts10-app ts11-analyst"><DataHealthBanner health={dataHealth}/><PlanBanner plan={planState}/>
   <header className="ts10-heading"><span className="ts9-kicker">YOUR RESTAURANT · EVIDENCE INTELLIGENCE</span>
    <h1>Connect the dots. Then decide.</h1>
    <p>Explore relationships between purchases, guest recognition, repeat behavior, and discount costs. Ask an AI analyst to explain what the evidence supports—and what it doesn't.</p>

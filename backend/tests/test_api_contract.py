@@ -117,3 +117,13 @@ def test_data_health_and_reconciliation_contract(synced):
     assert_matches(rec, r, 'Reconciliation', '/api/integrations/square/reconciliation')
     assert_matches(first(rec['days'], 'days'), r, 'ReconRow', 'reconciliation.days[]')
     assert_matches(first(rec['totals'], 'totals'), r, 'ReconTotal', 'reconciliation.totals[]')
+
+
+def test_plan_and_location_preview_contract(synced):
+    me = synced.get('/api/saas/me').json()
+    assert_matches(me['workspace']['entitlement'], 'components/plan-status.tsx', 'Entitlement', 'workspace.entitlement')
+    import os
+    if os.getenv('STRIPE_SECRET_KEY', '').startswith('sk_test_'):
+        ids = [l['id'] for l in synced.get('/api/integrations/square/locations').json()['locations'] if l['eligible']]
+        p = synced.post('/api/saas/billing/locations/preview', {'location_ids': ids[:1]}).json()
+        assert_matches(p, 'components/change-locations.tsx', 'Preview', '/api/saas/billing/locations/preview')

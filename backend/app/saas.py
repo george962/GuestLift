@@ -6,13 +6,14 @@ Authentication is via local PostgreSQL sessions. No developer bypass or magic to
 from __future__ import annotations
 import csv
 import os
+import time
 import uuid
 from pathlib import Path
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
-from sqlalchemy import String, Integer, Text, ForeignKey, UniqueConstraint, select, delete
+from sqlalchemy import Boolean, String, Integer, Text, ForeignKey, UniqueConstraint, select, delete, false as sa_false
 from sqlalchemy.orm import Mapped, mapped_column, Session
 
 from . import config
@@ -21,6 +22,7 @@ from .adapters import parse
 from .insights import analyze_orders, answer_question
 from .local_auth import authenticated_subject
 from .membership import owner_subject
+from .billing import entitlement, paid_subject
 from .rate_limit import ai_question_subject
 
 router=APIRouter(prefix='/api/saas',tags=['SaaS foundation (test mode)'])
@@ -37,6 +39,12 @@ class Workspace(Base):
     stripe_customer_id:Mapped[str|None]=mapped_column(String(120),nullable=True,unique=True)
     stripe_subscription_id:Mapped[str|None]=mapped_column(String(120),nullable=True,unique=True)
     created_at:Mapped[str]=mapped_column(String(40))
+    # M5 billing state (see app/billing.py)
+    trial_started_at:Mapped[str|None]=mapped_column(String(40),nullable=True)
+    trial_ends_at:Mapped[str|None]=mapped_column(String(40),nullable=True)
+    current_period_end:Mapped[int|None]=mapped_column(Integer,nullable=True)
+    cancel_at_period_end:Mapped[bool]=mapped_column(Boolean,default=False,server_default=sa_false())
+    payment_failed_at:Mapped[str|None]=mapped_column(String(40),nullable=True)
 
 class OnboardingProgress(Base):
     __tablename__ = 'tablesignal_onboarding_progress'
@@ -117,8 +125,9 @@ def _seed_workspace(db:Session,workspace_id:str) -> int:
 
 
 def _workspace_json(w:Workspace)->dict:
-    enabled=w.subscription_plan=='growth' and w.subscription_status in ('active','trialing')
-    return {'workspace_id':w.id,'name':w.name,'restaurant_type':w.restaurant_type,'goal':w.goal,
+    access=entitlement(w)
+    enabled=access['access']=='full'
+    return {'entitlement':access,'workspace_id':w.id,'name':w.name,'restaurant_type':w.restaurant_type,'goal':w.goal,
       'plan':w.subscription_plan,'subscription_status':w.subscription_status,'ai_enabled':enabled,
       'source_mode':'square_sandbox_api_or_empty','payments_live':False,
       'has_billing_customer':bool(w.stripe_customer_id)}
@@ -226,11 +235,9 @@ def reset_demo(sub: str = Depends(authenticated_subject)):
                         detail='Private workspaces no longer contain demo fixtures. Use the public free demo at /workspace.')
 
 @router.post('/analyst')
-def analyst(data:AnalystRequest,sub:str=Depends(ai_question_subject)):
+def analyst(data:AnalystRequest,_paid:str=Depends(paid_subject),sub:str=Depends(ai_question_subject)):
     with Session(engine) as db:
         w=_get_workspace(db,sub)
-        if not (w.subscription_plan=='growth' and w.subscription_status in ('active','trialing')):
-            raise HTTPException(status_code=402,detail='Growth subscription required for account-based analyst. Free synthetic demo available without sign-in.')
         summary=_scoped_summary(db,w)
         if not summary['has_connected_source']:
             raise HTTPException(status_code=409, detail='Connect and sync Square Sandbox before using the account analyst.')
@@ -331,7 +338,17 @@ def _apply_verified_subscription(db: Session, w: Workspace, subscription, custom
     w.stripe_customer_id = customer_id
     w.stripe_subscription_id = sub_id
     w.subscription_status = status
-    w.subscription_plan = 'growth' if status in ('active', 'trialing') else 'sandbox'
+    w.subscription_plan = 'growth' if status in ('active', 'trialing', 'past_due') else 'sandbox'
+    w.cancel_at_period_end = bool(subscription.get('cancel_at_period_end'))
+    # Newer Stripe API versions report the period on each subscription item.
+    ends = [subscription.get('current_period_end')] + [line.get('current_period_end') for line in
+            ((subscription.get('items') or {}).get('data') or [])]
+    ends = [int(x) for x in ends if isinstance(x, int)]
+    w.current_period_end = max(ends) if ends else w.current_period_end
+    if status in ('active', 'trialing'):
+        w.payment_failed_at = None
+    elif status == 'past_due' and not w.payment_failed_at:
+        w.payment_failed_at = _now()
     db.commit()
     db.refresh(w)
     return {'verified': True, 'workspace': _workspace_json(w),
@@ -386,6 +403,12 @@ def sandbox_location_quote(sub: str = Depends(authenticated_subject)):
     from .location_entitlements import selection_enabled, snapshot
     from .location_billing_rules import MONTHLY_LOCATION_PRICE_MINOR
     from .connections import _connection
+    unit, source = MONTHLY_LOCATION_PRICE_MINOR, 'proposal'
+    if os.getenv('STRIPE_SECRET_KEY', '').startswith('sk_test_') and os.getenv('STRIPE_GROWTH_PRICE_ID', '').startswith('price_'):
+        try:
+            unit, source = _growth_unit_price(_stripe_client()), 'stripe'
+        except HTTPException:
+            pass  # fall back to the proposal price; checkout still uses Stripe's
     with Session(engine) as db:
         w = _get_workspace(db, sub)
         conn = _connection(db, w.id)
@@ -393,9 +416,11 @@ def sandbox_location_quote(sub: str = Depends(authenticated_subject)):
         return {'enabled': selection_enabled(), 'environment': 'sandbox',
                 'selected_quantity': item['quantity'] if selection_enabled() else 0,
                 'selected_location_ids': item['ids'] if selection_enabled() else [],
-                'proposed_monthly_subtotal_minor': item['quantity'] * MONTHLY_LOCATION_PRICE_MINOR if selection_enabled() else 0,
+                'proposed_monthly_subtotal_minor': item['quantity'] * unit if selection_enabled() else 0,
+                'unit_amount_minor': unit, 'price_source': source,
                 'currency': 'USD', 'real_payments_enabled': False,
-                'notice': 'The $99 price is a proposal, not the Stripe TEST Price amount. No live charges are enabled.'}
+                'notice': 'Price per monitored location per month, from Stripe.' if source == 'stripe'
+                          else 'Proposed price; Stripe is not configured here. No live charges are enabled.'}
 
 
 @router.post('/billing/checkout')
@@ -407,8 +432,8 @@ def checkout(sub: str = Depends(owner_subject)):
         raise HTTPException(status_code=503, detail='Stripe Growth test price is not configured.')
     with Session(engine) as db:
         w = _get_workspace(db, sub)
-        if w.subscription_plan == 'growth' and w.subscription_status in ('active', 'trialing'):
-            raise HTTPException(status_code=409, detail='Already subscribed; use the customer portal.')
+        if entitlement(w)['state'] in ('active', 'canceling', 'past_due'):
+            raise HTTPException(status_code=409, detail='Already subscribed; use Manage billing to change your plan or card.')
         # Protect local testers from duplicate subscriptions after a missed webhook.
         # Verify the existing Checkout first; a verified canceled subscription may be renewed.
         for recent in _recent_owner_checkouts(stripe, w.id):
@@ -440,7 +465,7 @@ def checkout(sub: str = Depends(owner_subject)):
             'mode': 'subscription',
             'line_items': [{'price': price, 'quantity': quantity}],
             # Stripe replaces this literal placeholder with its own session ID.
-            'success_url': base + '/billing/success?session_id={CHECKOUT_SESSION_ID}',
+            'success_url': base + '/billing?checkout=return&session_id={CHECKOUT_SESSION_ID}',
             'cancel_url': base + '/billing?checkout=canceled',
             'client_reference_id': w.id,
             'subscription_data': {'metadata': billing_meta},
@@ -489,6 +514,116 @@ def portal(sub: str = Depends(owner_subject)):
     return {'url': session.url}
 
 
+class LocationChange(BaseModel):
+    location_ids: list[str] = Field(min_length=1, max_length=25)
+    proration_date: int | None = None
+
+
+def _growth_unit_price(stripe) -> int:
+    try:
+        price = _stripe_payload(stripe.Price.retrieve(os.getenv('STRIPE_GROWTH_PRICE_ID', '')))
+    except Exception as exc:
+        raise HTTPException(502, 'Could not read the plan price from Stripe.') from exc
+    return int(price.get('unit_amount') or 0)
+
+
+def _display_unit_price() -> int:
+    """Stripe's price when Stripe is configured, else the proposed price (for showing, never charging)."""
+    from .location_billing_rules import MONTHLY_LOCATION_PRICE_MINOR
+    if os.getenv('STRIPE_SECRET_KEY', '').startswith('sk_test_') and os.getenv('STRIPE_GROWTH_PRICE_ID', '').startswith('price_'):
+        try:
+            return _growth_unit_price(_stripe_client())
+        except HTTPException:
+            pass
+    return MONTHLY_LOCATION_PRICE_MINOR
+
+
+def _subscription_item(stripe, w: Workspace) -> tuple[dict, dict]:
+    try:
+        sub = _stripe_payload(stripe.Subscription.retrieve(w.stripe_subscription_id))
+    except Exception as exc:
+        raise HTTPException(502, 'Could not read your subscription from Stripe.') from exc
+    items = [i for i in ((sub.get('items') or {}).get('data') or []) if _object_id(i.get('price')) == os.getenv('STRIPE_GROWTH_PRICE_ID')]
+    if len(items) != 1:
+        raise HTTPException(409, 'Your subscription has an unexpected set of items. Contact support.')
+    return sub, items[0]
+
+
+@router.post('/billing/locations/preview')
+def preview_location_change(payload: LocationChange, sub: str = Depends(owner_subject)):
+    """What a new set of monitored locations costs, including Stripe's proration, before anything changes."""
+    from .connections import validated_selection
+    from .location_entitlements import snapshot
+    with Session(engine) as db:
+        w = _get_workspace(db, sub)
+        merchant, _ = validated_selection(db, w.id, payload.location_ids)
+        before = snapshot(db, w.id, merchant)['quantity']
+        subscribed = entitlement(w)['state'] in ('active', 'canceling', 'past_due')
+        stripe = _stripe_client() if subscribed else None
+        unit = _growth_unit_price(stripe) if stripe else _display_unit_price()
+        quantity = len(payload.location_ids)
+        base = {'quantity_before': before, 'quantity_after': quantity, 'unit_amount_minor': unit,
+                'monthly_total_minor': unit * quantity, 'currency': 'usd'}
+        if not subscribed:
+            return {**base, 'subscribed': False, 'prorated_change_minor': 0, 'next_invoice_total_minor': None,
+                    'proration_date': None, 'message': 'Nothing is charged until you subscribe.'}
+        subscription, item = _subscription_item(stripe, w)
+        when = int(time.time())
+        try:
+            preview = _stripe_payload(stripe.Invoice.create_preview(
+                customer=w.stripe_customer_id, subscription=w.stripe_subscription_id,
+                subscription_details={'items': [{'id': item['id'], 'quantity': quantity}],
+                                      'proration_behavior': 'create_prorations', 'proration_date': when}))
+        except Exception as exc:
+            raise HTTPException(502, 'Stripe could not preview the change. Try again.') from exc
+        lines = (preview.get('lines') or {}).get('data') or []
+        def is_proration(line):
+            details = ((line.get('parent') or {}).get('subscription_item_details') or {})
+            return bool(line.get('proration') or details.get('proration'))
+        prorated = sum(int(l.get('amount') or 0) for l in lines if is_proration(l))
+        return {**base, 'subscribed': True, 'quantity_before': int(item.get('quantity') or before),
+                'prorated_change_minor': prorated, 'next_invoice_total_minor': int(preview.get('total') or 0),
+                'proration_date': when,
+                'message': ('Adding locations adds a prorated charge to your next invoice.' if prorated > 0 else
+                            'Removing locations adds a prorated credit to your next invoice.' if prorated < 0 else
+                            'No change to your bill.')}
+
+
+@router.post('/billing/locations/confirm')
+def confirm_location_change(payload: LocationChange, sub: str = Depends(owner_subject)):
+    """Apply the previewed change: Stripe quantity and the monitored set change together."""
+    from .connections import queue_import_if_added, validated_selection, write_selection
+    from .location_entitlements import snapshot
+    with Session(engine) as db:
+        w = _get_workspace(db, sub)
+        subscribed = entitlement(w)['state'] in ('active', 'canceling', 'past_due')
+        merchant, authorized = validated_selection(db, w.id, payload.location_ids)
+        if not subscribed:
+            added = write_selection(db, w.id, merchant, payload.location_ids, authorized)
+            db.commit()
+            queue_import_if_added(db, w.id, added)
+            return {'saved': True, 'subscribed': False, 'selected_count': len(payload.location_ids)}
+        if not payload.proration_date or abs(time.time() - payload.proration_date) > 600:
+            raise HTTPException(409, 'The price preview expired. Preview the change again.')
+        stripe = _stripe_client()
+        subscription, item = _subscription_item(stripe, w)
+        added = write_selection(db, w.id, merchant, payload.location_ids, authorized)
+        snap = snapshot(db, w.id, merchant)
+        meta = {**(subscription.get('metadata') or {}), 'workspace_id': w.id,
+                'sandbox_location_digest': snap['digest'], 'sandbox_location_quantity': str(snap['quantity'])}
+        try:
+            updated = stripe.Subscription.modify(w.stripe_subscription_id,
+                items=[{'id': item['id'], 'quantity': snap['quantity']}], metadata=meta,
+                proration_behavior='create_prorations', proration_date=payload.proration_date)
+        except Exception as exc:
+            db.rollback()  # the monitored set only changes if Stripe accepted the new quantity
+            raise HTTPException(502, 'Stripe did not accept the change. Nothing was changed.') from exc
+        db.commit()
+        queue_import_if_added(db, w.id, added)
+        result = _apply_verified_subscription(db, w, updated, w.stripe_customer_id)
+        return {'saved': True, 'subscribed': True, 'selected_count': snap['quantity'], 'workspace': result['workspace']}
+
+
 @router.post('/billing/webhook')
 async def webhook(request: Request):
     secret = os.getenv('STRIPE_WEBHOOK_SECRET', '')
@@ -526,6 +661,18 @@ async def webhook(request: Request):
                 try:
                     # Current Stripe status avoids stale, out-of-order webhooks reactivating access.
                     current = stripe.Subscription.retrieve(event_sub)
+                except Exception as exc:
+                    raise HTTPException(status_code=502, detail='Unable to verify Stripe subscription.') from exc
+                _apply_verified_subscription(db, w, current, customer_id)
+        elif kind in ('invoice.payment_failed', 'invoice.paid', 'invoice.payment_succeeded'):
+            customer_id = _object_id(obj.get('customer'))
+            w = db.scalar(select(Workspace).where(Workspace.stripe_customer_id == customer_id)) if customer_id else None
+            if w and w.stripe_subscription_id:
+                if kind == 'invoice.payment_failed':
+                    w.payment_failed_at = w.payment_failed_at or _now()
+                db.commit()
+                try:
+                    current = stripe.Subscription.retrieve(w.stripe_subscription_id)
                 except Exception as exc:
                     raise HTTPException(status_code=502, detail='Unable to verify Stripe subscription.') from exc
                 _apply_verified_subscription(db, w, current, customer_id)

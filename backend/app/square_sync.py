@@ -362,6 +362,9 @@ def execute(db: Session, job: SquareSyncJob, budget_seconds: float) -> dict:
     if result['complete']:
         job.status, job.last_error = 'succeeded', ''
         conn.last_sync_at, conn.last_error = run.completed_at, None
+        from .billing import start_trial_if_eligible
+        db.commit()
+        start_trial_if_eligible(db, job.workspace_id)
     else:
         job.status, job.run_after = 'queued', int(time.time())
     job.updated_at = run.completed_at

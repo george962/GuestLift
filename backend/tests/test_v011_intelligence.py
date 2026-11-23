@@ -25,6 +25,7 @@ def fixture(tmp_path, monkeypatch, *, growth=False):
         w = saas._get_workspace(db, 'test-owner-a')
         if growth:
             w.subscription_plan = 'growth'
+            w.stripe_subscription_id = 'sub_test_fixture'
             w.subscription_status = 'active'
         db.add(SquareConnection(id=str(uuid.uuid4()), workspace_id=w.id,
                 merchant_id='fake-merchant-a', credential_mode='developer_env',
@@ -69,7 +70,7 @@ def test_chat_requires_paid_plan_and_configured_model(tmp_path,monkeypatch):
             assert c.post('/api/intelligence/ask',json=payload).status_code==402
             with Session(engine) as db:
                 w=saas._get_workspace(db,'test-owner-a')
-                w.subscription_plan='growth';w.subscription_status='active';db.commit()
+                w.subscription_plan='growth';w.subscription_status='active';w.stripe_subscription_id='sub_test_fixture';db.commit()
             monkeypatch.delenv('OPENAI_API_KEY', raising=False)
             assert c.post('/api/intelligence/ask',json=payload).status_code==503
     finally:

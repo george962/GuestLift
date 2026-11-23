@@ -27,6 +27,7 @@ from . import config
 from .database import Base, engine
 from .local_auth import authenticated_subject
 from .membership import owner_subject
+from .billing import sync_subject
 from .location_entitlements import (SandboxMonitoredLocation, eligible_location,
     selection_enabled, selected_rows, snapshot, utc_now)
 
@@ -341,42 +342,65 @@ def available_sandbox_locations(sub: str = Depends(authenticated_subject)):
         }
 
 
+def validated_selection(db: Session, wid: str, ids: list[str]) -> tuple[str, dict]:
+    """Check a requested location list against Square right now. Returns (merchant, {id: location})."""
+    if any(not isinstance(x, str) or not x.strip() or len(x) > 160 for x in ids) or len(ids) != len(set(ids)):
+        raise HTTPException(422, 'Select 1–25 distinct valid location IDs.')
+    conn = _connection(db, wid)
+    if not conn:
+        raise HTTPException(409, 'Connect Square before selecting locations.')
+    token = _refresh_oauth(conn, db)
+    merchant, locations = _merchant_from_locations(token)
+    if merchant != conn.merchant_id:
+        raise HTTPException(409, 'Connected Square merchant does not match.')
+    authorized = {str(x['id']): x for x in locations if eligible_location(x)}
+    if any(location_id not in authorized for location_id in ids):
+        raise HTTPException(422, 'Selection includes an unauthorized, inactive, nonphysical or unrecognized location.')
+    return merchant, authorized
+
+
+def write_selection(db: Session, wid: str, merchant: str, ids: list[str], authorized: dict) -> bool:
+    """Replace the monitored set (caller commits). Data from dropped locations is removed.
+    Returns True when a location was added, so the caller can queue its history import."""
+    from .square_sync import SquareLocationState, SquareRefund
+    before = {r.location_id for r in selected_rows(db, wid, merchant)}
+    db.execute(delete(SandboxMonitoredLocation).where(SandboxMonitoredLocation.workspace_id == wid))
+    for loc_id in sorted(ids):
+        loc = authorized[loc_id]
+        db.add(SandboxMonitoredLocation(workspace_id=wid, location_id=loc_id,
+            merchant_id=merchant, name=str(loc.get('name') or loc_id)[:160], selected_at=utc_now()))
+    for model in (SquareOrder, SquareRefund, SquareLocationState):
+        db.execute(delete(model).where(model.workspace_id == wid, model.location_id.not_in(ids)))
+    db.flush()
+    return bool(set(ids) - before)
+
+
+def queue_import_if_added(db: Session, wid: str, added: bool) -> None:
+    """A newly monitored location needs its history; the worker picks this up within seconds."""
+    if added and _connection(db, wid) and _connection(db, wid).last_sync_at:
+        from . import square_sync
+        square_sync.enqueue(db, wid, 'scheduled')
+
+
 @router.post('/locations/selection')
 def save_sandbox_locations(payload: MonitoredSelection, sub: str = Depends(owner_subject)):
     if not selection_enabled():
         raise HTTPException(409, 'Enable the v0.13 local Sandbox location gate first.')
-    ids = payload.location_ids
-    if any(not isinstance(x, str) or not x.strip() or len(x) > 160 for x in ids) or len(ids) != len(set(ids)):
-        raise HTTPException(422, 'Select 1–25 distinct valid location IDs.')
     with Session(engine) as db:
         wid = _workspace(db, sub)
-        conn = _connection(db, wid)
-        if not conn:
-            raise HTTPException(409, 'Connect Square Sandbox before selecting locations.')
         from .saas import Workspace
+        from .billing import entitlement
         w = db.get(Workspace, wid)
-        if w and w.subscription_status in ('active', 'trialing'):
-            raise HTTPException(409, 'Existing subscription must be canceled and reconciled before changing monitored locations. Prorations are not implemented.')
-        token = _refresh_oauth(conn, db)
-        merchant, locations = _merchant_from_locations(token)
-        if merchant != conn.merchant_id:
-            raise HTTPException(409, 'Connected Sandbox merchant does not match.')
-        authorized = {str(x['id']): x for x in locations if eligible_location(x)}
-        if any(location_id not in authorized for location_id in ids):
-            raise HTTPException(422, 'Selection includes an unauthorized, inactive, nonphysical or unrecognized location.')
-        db.execute(delete(SandboxMonitoredLocation).where(SandboxMonitoredLocation.workspace_id == wid))
-        for loc_id in sorted(ids):
-            loc = authorized[loc_id]
-            db.add(SandboxMonitoredLocation(workspace_id=wid, location_id=loc_id,
-                merchant_id=merchant, name=str(loc.get('name') or loc_id)[:160], selected_at=utc_now()))
-        # Eliminate old Sandbox orders from previously monitored but now excluded locations.
-        db.execute(delete(SquareOrder).where(
-            SquareOrder.workspace_id == wid, SquareOrder.location_id.not_in(ids)))
+        if w and entitlement(w)['state'] in ('active', 'canceling', 'past_due'):
+            raise HTTPException(409, 'You are subscribed: change locations under Billing → Change locations, which shows the price change first.')
+        merchant, authorized = validated_selection(db, wid, payload.location_ids)
+        added = write_selection(db, wid, merchant, payload.location_ids, authorized)
         db.commit()
+        queue_import_if_added(db, wid, added)
         result = snapshot(db, wid, merchant)
-        return {'saved': True, 'environment': 'sandbox', 'selected_count': result['quantity'],
+        return {'saved': True, 'environment': square_environment(), 'selected_count': result['quantity'],
                 'selected_location_ids': result['ids'],
-                'notice': 'Selection saved in the local test database. Stripe TEST will derive its quantity from these server records.'}
+                'notice': 'Selection saved. Billing quantity is derived from these server records.'}
 
 
 @router.get('/status')
@@ -482,7 +506,7 @@ def oauth_callback(code: str = '', state: str = '', error: str = ''):
 
 
 @router.post('/sync')
-def sync(response: Response, sub: str = Depends(authenticated_subject)):
+def sync(response: Response, sub: str = Depends(sync_subject)):
     """Sync now: run the job here for a short time; anything left continues in the background worker."""
     from . import square_sync
     with Session(engine) as db:
