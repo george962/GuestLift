@@ -24,7 +24,8 @@ from typing import Any
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from fastapi import HTTPException
-from sqlalchemy import Boolean, ForeignKey, Integer, String, Text, UniqueConstraint, select, update
+from sqlalchemy import DDL, Boolean, ForeignKey, Integer, String, Text, UniqueConstraint, event, select, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Mapped, Session, mapped_column
 
 from .database import Base
@@ -90,6 +91,19 @@ class SquareSyncJob(Base):
     last_error: Mapped[str] = mapped_column(String(220), default='')
     created_at: Mapped[str] = mapped_column(String(48))
     updated_at: Mapped[str] = mapped_column(String(48))
+
+
+# At most one open job per workspace, enforced by the database: two syncs of the same workspace
+# at once would write the same orders twice. A partial unique index, created idempotently here and
+# by migration 0008 (SQLAlchemy re-checks partial indexes unreliably, so it isn't in the metadata).
+ONE_OPEN_JOB_INDEX = DDL("CREATE UNIQUE INDEX IF NOT EXISTS uq_square_sync_jobs_one_open ON square_sync_jobs "
+                         "(workspace_id) WHERE status IN ('queued', 'running')")
+event.listen(SquareSyncJob.__table__, 'after_create', ONE_OPEN_JOB_INDEX)
+
+
+def ensure_indexes(bind) -> None:
+    with bind.begin() as conn:
+        conn.execute(ONE_OPEN_JOB_INDEX)
 
 
 def _iso(dt: datetime) -> str:
@@ -231,14 +245,24 @@ def run_sync(db: Session, wid: str, token: str, merchant: str, budget_seconds: f
                 db.commit()
                 return {**counts, 'complete': False}
             end = min(start + WINDOW, now)
-            try:
-                _sync_window(db, wid, token, loc, start, end, counts)
-                if end >= now:
-                    loc.backfill_complete = True
-                db.commit()
-            except Exception:
-                db.rollback()
-                raise
+            for attempt in (1, 2):
+                before = dict(counts)
+                try:
+                    _sync_window(db, wid, token, loc, start, end, counts)
+                    if end >= now:
+                        loc.backfill_complete = True
+                    db.commit()
+                    break
+                except IntegrityError:
+                    # Another writer saved some of these orders first. Redo the window as updates.
+                    db.rollback()
+                    counts.clear(); counts.update(before)
+                    loc = db.get(SquareLocationState, (wid, loc.location_id))
+                    if attempt == 2:
+                        raise
+                except Exception:
+                    db.rollback()
+                    raise
             counts['windows'] += 1
             start = end
     return {**counts, 'complete': True}
@@ -279,7 +303,12 @@ def enqueue(db: Session, wid: str, kind: str, delay_seconds: int = 0, claimed: b
                         run_after=now_ts + delay_seconds, locked_until=now_ts + lease_seconds if claimed else 0,
                         progress='{}', last_error='', created_at=now, updated_at=now)
     db.add(job)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:  # another request or the worker opened one first: use theirs
+        db.rollback()
+        return db.scalar(select(SquareSyncJob).where(SquareSyncJob.workspace_id == wid,
+                                                     SquareSyncJob.status.in_(('queued', 'running'))))
     job.claimed_here = claimed  # transient marker for the caller
     return job
 

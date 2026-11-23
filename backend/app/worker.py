@@ -39,6 +39,9 @@ def schedule(db: Session, now: int | None = None) -> int:
             continue
         if last and square_sync._parse(last.updated_at).timestamp() > now - interval:
             continue
+        from .location_entitlements import selected_rows, selection_enabled
+        if selection_enabled() and not selected_rows(db, conn.workspace_id, conn.merchant_id):
+            continue  # just connected: wait until the owner picks locations, rather than fail
         from .billing import READ_ONLY, entitlement
         from .saas import Workspace
         workspace = db.get(Workspace, conn.workspace_id)

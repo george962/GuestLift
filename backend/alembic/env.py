@@ -25,16 +25,24 @@ def run_migrations_offline() -> None:
         context.run_migrations()
 
 
+# Managed outside the metadata (partial unique index; see app/square_sync.py and migration 0008).
+UNMANAGED_INDEXES = {'uq_square_sync_jobs_one_open'}
+
+
+def include_object(obj, name, type_, reflected, compare_to):
+    return not (type_ == 'index' and name in UNMANAGED_INDEXES)
+
+
 def run_migrations_online() -> None:
     if _attached_connection is not None:
-        context.configure(connection=_attached_connection, target_metadata=target_metadata)
+        context.configure(connection=_attached_connection, target_metadata=target_metadata, include_object=include_object)
         with context.begin_transaction():
             context.run_migrations()
         return
     connectable = engine_from_config(config.get_section(config.config_ini_section, {}),
                                      prefix='sqlalchemy.', poolclass=pool.NullPool)
     with connectable.connect() as connection:
-        context.configure(connection=connection, target_metadata=target_metadata)
+        context.configure(connection=connection, target_metadata=target_metadata, include_object=include_object)
         with context.begin_transaction():
             context.run_migrations()
 

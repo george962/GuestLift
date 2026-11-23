@@ -119,6 +119,8 @@ def init_db() -> None:
     if os.getenv('GUESTLIFT_AUTO_CREATE_SCHEMA', '1') == '0':
         return
     Base.metadata.create_all(engine)
+    from .square_sync import ensure_indexes
+    ensure_indexes(engine)  # also for databases created before the index existed
     inspector = inspect(engine)
     _adopt_pre_scoping_schema(inspector)
     inspector = inspect(engine)  # fresh: the upgrade above may have changed the schema
