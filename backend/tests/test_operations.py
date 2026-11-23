@@ -45,7 +45,9 @@ def test_ai_endpoints_return_429_when_over_limit(monkeypatch, path):
     monkeypatch.setenv('GUESTLIFT_AI_QUESTIONS_PER_HOUR', '1')
     rate_limit.reset()
     rate_limit.check('limited-user')  # use up the allowance
+    from app.billing import paid_subject
     app.dependency_overrides[authenticated_subject] = lambda: 'limited-user'
+    app.dependency_overrides[paid_subject] = lambda: 'limited-user'
     try:
         r = TestClient(app).post(path, json={'question': 'What changed this week?'})
         assert r.status_code == 429 and 'Retry-After' in r.headers

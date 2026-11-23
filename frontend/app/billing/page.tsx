@@ -4,6 +4,8 @@ import {useCallback,useEffect,useState} from 'react';
 import Link from 'next/link';
 import {ArrowRight,CheckCircle2,CreditCard,RefreshCcw,ShieldCheck,LockKeyhole,ExternalLink,AlertCircle,Clock3} from 'lucide-react';
 import {accountApi,apiOrigin,localAuthClient} from '@/lib/local-auth';
+import {PlanStatusCard,usePlan} from '@/components/plan-status';
+import {ChangeLocations} from '@/components/change-locations';
 
 type Workspace = {
   plan:string;
@@ -29,6 +31,7 @@ type ReconcileResult = {
 };
 
 export default function Billing() {
+  const {plan,reload:reloadPlan}=usePlan();
   const [token,setToken]=useState('');
   const [account,setAccount]=useState<Workspace|null>(null);
   const [config,setConfig]=useState<Configuration|null>(null);
@@ -79,7 +82,8 @@ export default function Billing() {
         if(checkout==='return'){
           // v0.9's legacy success URL did not contain a session ID.
           setRepairing(true);
-          try{await reconcile(t)}
+          const sessionId=new URLSearchParams(window.location.search).get('session_id')||undefined;
+          try{await reconcile(t,sessionId&&/^cs_test_[A-Za-z0-9_]+$/.test(sessionId)?sessionId:undefined)}
           catch(e){
             if(active){setFeedback('warning');setMessage(
               (e instanceof Error?e.message:'Could not check Stripe.')+
@@ -135,6 +139,8 @@ export default function Billing() {
       <p>Manage your verified test subscription. Payment details and cancellations are handled securely by Stripe.</p>
     </div>
     <div className="v7-billing-layout">
+      <PlanStatusCard plan={plan}/>
+      {token&&<ChangeLocations token={token} onChanged={()=>void reloadPlan()}/>}
       <section className="ts-settings-card v7-billing-main">
         <div className="ts-section-icon"><CreditCard size={25}/></div>
         {!token&&!loading ? <>

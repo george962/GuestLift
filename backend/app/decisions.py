@@ -13,6 +13,7 @@ from sqlalchemy import ForeignKey, Integer, String, Text, select
 from sqlalchemy.orm import Mapped, mapped_column, Session
 from .database import Base, engine
 from .local_auth import authenticated_subject
+from .billing import paid_subject
 from .saas import Workspace, _get_workspace, _scoped_summary
 from .connections import SquareOrder
 
@@ -146,7 +147,7 @@ def plans(sub: str = Depends(authenticated_subject)):
         return {'plans':[_serialize(p) for p in records]}
 
 @router.post('/plans',status_code=201)
-def create_plan(payload:PlanCreate,sub:str=Depends(authenticated_subject)):
+def create_plan(payload:PlanCreate,sub:str=Depends(paid_subject)):
     with Session(engine) as db:
         w=_get_workspace(db,sub)
         summary=_scoped_summary(db,w)
@@ -166,7 +167,7 @@ def create_plan(payload:PlanCreate,sub:str=Depends(authenticated_subject)):
         return {'plan':_serialize(item),'scenario':calc,'message':'Draft saved to this restaurant. No campaign was launched.'}
 
 @router.post('/plans/{plan_id}/status')
-def update_plan(plan_id:str,payload:StatusUpdate,sub:str=Depends(authenticated_subject)):
+def update_plan(plan_id:str,payload:StatusUpdate,sub:str=Depends(paid_subject)):
     with Session(engine) as db:
         w=_get_workspace(db,sub)
         p=db.get(DecisionPlan,plan_id)

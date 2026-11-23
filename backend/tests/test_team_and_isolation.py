@@ -30,6 +30,8 @@ ISOLATION = {
     'POST /api/saas/demo-reset': None, 'POST /api/saas/analyst': {'question': 'Summarize my sales'},
     'GET /api/saas/billing/quote': None, 'POST /api/saas/billing/checkout': None,
     'POST /api/saas/billing/reconcile': {}, 'POST /api/saas/billing/portal': None,
+    'POST /api/saas/billing/locations/preview': {'location_ids': ['LOC_HARBOR']},
+    'POST /api/saas/billing/locations/confirm': {'location_ids': ['LOC_HARBOR']},
     'GET /api/integrations/square/locations': None,
     'POST /api/integrations/square/locations/selection': {'location_ids': ['LOC_HARBOR']},
     'GET /api/integrations/square/status': None,
@@ -95,6 +97,12 @@ def test_other_tenant_cannot_read_or_change_anything(harness):
     before = _snapshot(alpha)
     beta = Harness(TestClient(app), alpha.square)
     beta.sign_up('beta@beta.test')
+    # Give B an active trial so paid routes reach their ownership checks instead of stopping at 402.
+    from datetime import datetime, timedelta, timezone
+    beta_id = beta.get('/api/saas/me').json()['workspace']['workspace_id']
+    with Session(saas.engine) as db:
+        db.get(saas.Workspace, beta_id).trial_ends_at = (datetime.now(timezone.utc) + timedelta(days=5)).isoformat()
+        db.commit()
     markers = ['Alpha Marker Bistro', 'ALPHA-PLAN-MARKER', 'alpha-manager@alpha.test', 'MOCK_MERCHANT_1',
                ids['plan_id'], ids['invite_id'], ids['member_id']]
     for route, body in ISOLATION.items():

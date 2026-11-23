@@ -20,6 +20,7 @@ from sqlalchemy.orm import Session
 from .database import engine
 from .local_auth import authenticated_subject
 from .rate_limit import ai_question_subject
+from .billing import paid_subject
 from .saas import _get_workspace, _scoped_summary
 from .connections import SquareConnection
 from .decisions import DecisionPlan, opportunity_summary
@@ -125,15 +126,16 @@ def build_brief(db: Session, w) -> dict:
                   'A proposed offer needs explicit margin and redemption assumptions.',
          'evidence_ids':['discounts','orders','sales'],'next_path':'/opportunities'}
     ]
-    ai_ready = (w.subscription_plan == 'growth'
-                and w.subscription_status in ('active', 'trialing')
+    from .billing import entitlement
+    paid = entitlement(w)['access'] == 'full'
+    ai_ready = (paid
                 and _model_available() and connected and orders > 0)
     return {
         'environment':'square_sandbox_only',
         'data_connected':connected,
         'orders_available':orders > 0,
         'last_sync_at':connection.last_sync_at if connection else None,
-        'subscription_active':w.subscription_plan == 'growth' and w.subscription_status in ('active', 'trialing'),
+        'subscription_active':paid,
         'model_configured':_model_available(),
         'ai_ready':ai_ready,
         'price_label':'Growth test subscription',
@@ -176,11 +178,11 @@ def brief(sub: str = Depends(authenticated_subject)):
 
 
 @router.post('/ask')
-def ask(payload: AskRequest, sub: str = Depends(ai_question_subject)):
+def ask(payload: AskRequest, _paid: str = Depends(paid_subject), sub: str = Depends(ai_question_subject)):
     with Session(engine) as db:
         result = build_brief(db, _get_workspace(db, sub))
     if not result['subscription_active']:
-        raise HTTPException(402, 'The account AI analyst requires a verified Growth test subscription.')
+        raise HTTPException(402, 'The AI analyst needs an active trial or subscription.')
     if not result['data_connected'] or not result['orders_available']:
         raise HTTPException(409, 'Connect and synchronize Square Sandbox orders before asking the AI analyst.')
     if not result['model_configured']:

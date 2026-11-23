@@ -82,6 +82,33 @@ test('owner signs up, connects Square, syncs, reads the brief and saves a decisi
     await expect(page.getByText('Up to date')).toBeVisible();
   });
 
+  await test.step('M5 · the first complete sync starts the 14-day no-card trial', async () => {
+    await page.goto('/billing');
+    const plan = page.locator('[data-plan="trial"]').first();
+    await expect(plan).toContainText('Free trial');
+    await expect(plan).toContainText('14 days left');
+  });
+
+  await test.step('M5 · changing locations shows the price first, then saves', async () => {
+    await page.getByLabel('Market Square').uncheck();
+    await page.getByRole('button', {name: 'Preview the price'}).click();
+    const preview = page.locator('[data-preview]');
+    await expect(preview).toContainText('2 → 1 location');
+    await expect(preview).toContainText('Nothing is charged until you subscribe');
+    await page.getByRole('button', {name: 'Confirm change'}).click();
+    await expect(page.getByText('Locations updated.')).toBeVisible();
+    await page.getByLabel('Market Square').check();   // put it back for the steps below
+    await page.getByRole('button', {name: 'Preview the price'}).click();
+    await page.getByRole('button', {name: 'Confirm change'}).click();
+    await expect(page.getByText('Locations updated.')).toBeVisible();
+    // Re-adding a location queues its history import; the background worker brings the numbers back.
+    const orders = new Intl.NumberFormat('en-US').format(truth.completed_orders);
+    await expect(async () => {
+      await page.goto('/dashboard');
+      await expect(page.locator('.ts9-metric', {hasText: 'Completed orders'})).toContainText(orders, {timeout: 2_000});
+    }).toPass({timeout: 45_000});
+  });
+
   await test.step('5 · the dashboard shows numbers that match Square', async () => {
     await page.goto('/dashboard');
     const orders = new Intl.NumberFormat('en-US').format(truth.completed_orders);

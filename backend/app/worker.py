@@ -39,6 +39,11 @@ def schedule(db: Session, now: int | None = None) -> int:
             continue
         if last and square_sync._parse(last.updated_at).timestamp() > now - interval:
             continue
+        from .billing import READ_ONLY, entitlement
+        from .saas import Workspace
+        workspace = db.get(Workspace, conn.workspace_id)
+        if workspace is None or entitlement(workspace)['access'] == READ_ONLY:
+            continue  # no new data while the trial has ended or payment has lapsed
         square_sync.enqueue(db, conn.workspace_id, 'scheduled')
         queued += 1
     return queued

@@ -55,7 +55,9 @@ def test_empty_workspace_never_invents_opportunities_or_allows_plan(tmp_path,mon
             assert result.json()['has_connected_source'] is False
             payload=dict(title='Test return visit offer', objective='returning_guests',offer_type='percent',
                          offer_value=10,target_redemptions=10,reference_basket_minor=2500,assumed_margin_percent=35)
-            assert c.post('/api/decisions/plans',json=payload).status_code==409
+            # No data and no trial yet: still refused (M5 entitlements answer first, with how to start).
+            refused=c.post('/api/decisions/plans',json=payload)
+            assert refused.status_code==402 and 'sync' in refused.json()['detail']
     finally:
         app.dependency_overrides.clear();engine.dispose()
 
@@ -67,6 +69,7 @@ def test_decision_plans_persist_and_are_private(tmp_path,monkeypatch):
         with Session(engine) as db:
             w=saas._get_workspace(db,'owner-a')
             wid=w.id
+            w.trial_ends_at=(now+timedelta(days=14)).isoformat()  # as after a first complete sync
             db.add(SquareConnection(id=str(uuid.uuid4()),workspace_id=wid,merchant_id='sandbox-merchant-1',
                    credential_mode='developer',connected_at=now.isoformat()))
             # Records with recognizable returning guests; no identifying names/emails.
@@ -96,6 +99,8 @@ def test_decision_plans_persist_and_are_private(tmp_path,monkeypatch):
             assert c.post('/api/decisions/plans/'+pid+'/status',json={'status':'planned'}).json()['plan']['status']=='planned'
             # Switch identity: the other account must see zero records and cannot edit the first.
             app.dependency_overrides[saas.authenticated_subject]=lambda:'owner-b'
+            with Session(engine) as db:  # owner-b is entitled, so the ownership check is what refuses
+                b=saas._get_workspace(db,'owner-b');b.trial_ends_at=(now+timedelta(days=14)).isoformat();db.commit()
             assert c.get('/api/decisions/plans').json()['plans']==[]
             assert c.post('/api/decisions/plans/'+pid+'/status',json={'status':'reviewed'}).status_code==404
             assert c.get('/api/decisions/opportunities').json()['observed_orders']==0
