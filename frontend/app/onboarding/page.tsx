@@ -4,6 +4,7 @@ import Link from 'next/link';
 import {useRouter} from 'next/navigation';
 import {ArrowRight,CheckCircle2,CreditCard,Database,ShieldCheck,Store} from 'lucide-react';
 import {accountApi,localAuthClient} from '@/lib/local-auth';
+import {notifyFirstRunProgressChanged} from '@/components/first-run-checklist';
 type Step=1|2|3;
 type Choice='not_chosen'|'sandbox'|'growth';
 export default function Onboarding(){
@@ -44,7 +45,7 @@ export default function Onboarding(){
  async function selectPlan(which:'sandbox'|'growth'){
   if(!token)return;acted.current=true;setBusy(true);setNotice('');
   try{await accountApi('/api/saas/onboarding',token,'POST',{stage:3,plan_choice:which});
-   setChoice(which);setStep(3);
+   setChoice(which);setStep(3);notifyFirstRunProgressChanged();
    if(which==='growth')router.push('/billing');
    else setNotice('Sandbox selected. You can now connect Square test data.');
   }catch(e){setNotice(e instanceof Error?e.message:'Could not save your plan choice.');}

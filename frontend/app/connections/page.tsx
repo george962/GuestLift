@@ -6,6 +6,7 @@ import {ArrowRight, CheckCircle2, Database, ExternalLink, Info, PlugZap, Refresh
   ShieldCheck, Trash2, Store, LifeBuoy, Clock3} from 'lucide-react';
 import {accountApi,localAuthClient} from '@/lib/local-auth';
 import {DataHealthBanner,HealthSummary,useDataHealth} from '@/components/data-health';
+import {notifyFirstRunProgressChanged} from '@/components/first-run-checklist';
 import {ReconciliationPanel} from '@/components/reconciliation';
 
 type SandboxLocations={enabled:boolean;selected_count:number;selected_location_ids:string[];notice:string;
@@ -77,7 +78,7 @@ export default function Connections(){
       }else{
         setMessage(path==='disconnect'?'Sandbox connection and imported orders deleted locally.':'Square Sandbox connected. Sync your orders next.');
       }
-      await reload();await reloadHealth();
+      await reload();await reloadHealth();notifyFirstRunProgressChanged();
     }catch(e){setMessage(e instanceof Error?e.message:'Connection action failed.');await reloadHealth();}
     finally{setBusy(false);}
   }

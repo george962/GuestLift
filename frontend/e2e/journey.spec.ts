@@ -70,6 +70,7 @@ test('owner signs up, connects Square, syncs, reads the brief and saves a decisi
     await expect(page.locator('label', {hasText: 'Online Store'}).getByRole('checkbox')).toBeDisabled();
     await page.getByRole('button', {name: /Save monitored Sandbox locations/}).click();
     await expect(page.getByText(`Saved: ${truth.eligible_location_ids.length}`)).toBeVisible();
+    await expect(page.locator('[data-first-run-checklist]')).toHaveAttribute('data-completed-steps', '2');
   });
 
   await test.step('4 · sync and see the import result', async () => {
@@ -129,6 +130,7 @@ test('owner signs up, connects Square, syncs, reads the brief and saves a decisi
     await expect(brief).toContainText(truth.planted.market_weekday_dip_week);
     await expect(brief.locator('[data-finding^="LOC_MARKET:"]').first()).toContainText(/Market Square: .* down \d+%/);
     await expect(page.locator('.ts11-findings article').first()).toBeVisible();
+    await expect(page.locator('[data-first-run-checklist]')).toHaveAttribute('data-completed-steps', '4');
   });
 
   await test.step('7 · save a decision and find it in saved decisions', async () => {
@@ -143,6 +145,7 @@ test('owner signs up, connects Square, syncs, reads the brief and saves a decisi
     await expect(page.getByText('Draft saved.')).toBeVisible();
     await page.getByRole('link', {name: /Review your saved decisions/}).click();
     await expect(page.getByText('Win back lapsed regulars')).toBeVisible();
+    await expect(page.locator('[data-first-run-checklist]')).toHaveCount(0);
   });
 
   await test.step('9 · the outcome readout finds the planted weekend lift, without claiming a cause', async () => {

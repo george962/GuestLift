@@ -5,6 +5,7 @@ import {ArrowRight,Menu,X,ArrowUpRight,LogOut,Settings2,Database,UserCircle2} fr
 import {useEffect,useState} from 'react';
 import {localAuthClient} from '@/lib/local-auth';
 import {BrandMark} from './brand-mark';
+import {FirstRunChecklist} from './first-run-checklist';
 
 const appPaths=['/analyst','/guests','/dashboard','/opportunities','/experiments','/connections','/settings','/account','/billing','/onboarding','/reset-password'];
 function isApp(pathname:string){return appPaths.some(p=>pathname===p||pathname.startsWith(p+'/'))}
@@ -35,7 +36,7 @@ export function Nav(){
  const app=isApp(pathname);
  const primary=[{href:'/dashboard',label:'Overview'},{href:'/guests',label:'Guests'},{href:'/opportunities',label:'Opportunities'},{href:'/analyst',label:'AI analyst'},{href:'/experiments',label:'Experiments'}];
  const secondary=[{href:'/connections',label:'Data connection',icon:Database},{href:'/settings',label:'Restaurant settings',icon:Settings2},{href:'/billing',label:'Subscription & billing',icon:ArrowUpRight},{href:'/account',label:'My account',icon:UserCircle2}];
- if(app)return <header className="ts10-header">
+ if(app)return <><header className="ts10-header">
   <div className="ts10-header-inner"><div className="ts10-header-brand"><Brand/><span className="ts10-workspace-label">/ My restaurant</span></div>
    <nav className={'ts10-primary-nav '+(open?'open':'')} aria-label="Restaurant navigation">
     {primary.map(x=><Link key={x.label} href={x.href} onClick={()=>setOpen(false)} className={pathname===x.href?'active':''}>{x.label}</Link>)}
@@ -46,7 +47,7 @@ export function Nav(){
    <button className="ts10-menu-toggle" aria-label={open?'Close navigation':'Open navigation'} aria-expanded={open} onClick={()=>setOpen(x=>!x)}>{open?<X/>:<Menu/>}</button>
   </div>
   {sessionWarning&&<div className="ts10-session-warning" role="status">Account connection unavailable. Your session may still be active. <button onClick={()=>window.location.reload()}>Retry</button></div>}
- </header>;
+ </header><FirstRunChecklist/></>;
  const links=[{href:'/product',label:'How it works'},{href:'/pricing',label:'Pricing'},{href:'/help',label:'Help'}];
  return <header className="nav-shell ts-header"><div className="nav-inner"><Brand/>
   <nav className={'nav-links '+(open?'nav-open':'')} aria-label="Public navigation">{links.map(l=><Link key={l.href} href={l.href} onClick={()=>setOpen(false)} className={pathname===l.href?'active':''}>{l.label}</Link>)}<Link href={signedIn?'/dashboard':'/sign-in'} onClick={()=>setOpen(false)} className="ts-nav-mobile-signin">{signedIn?'My restaurant':'Sign in'}</Link></nav>
