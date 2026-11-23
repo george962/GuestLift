@@ -8,8 +8,8 @@ from app import main  # noqa: F401  (imports every router so all models register
 from app.database import DATABASE_URL, Base
 
 config = context.config
-# When the app upgrades a legacy local database at startup it hands us its own
-# connection; don't reconfigure the app's logging in that case.
+# `python -m app.migrate` hands us its own connection (held under the migration lock);
+# don't reconfigure the app's logging in that case.
 _attached_connection = config.attributes.get('connection')
 if config.config_file_name is not None and _attached_connection is None:
     fileConfig(config.config_file_name, disable_existing_loggers=False)
@@ -26,6 +26,7 @@ def run_migrations_offline() -> None:
 
 
 def run_migrations_online() -> None:
+    # app.migrate hands us its own (locked) connection; the alembic CLI connects itself.
     if _attached_connection is not None:
         context.configure(connection=_attached_connection, target_metadata=target_metadata)
         with context.begin_transaction():

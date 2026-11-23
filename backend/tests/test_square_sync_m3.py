@@ -184,16 +184,20 @@ def test_square_production_is_locked_until_go_live(monkeypatch):
 
 
 def test_worker_process_starts_and_stops_cleanly(tmp_path):
-    """The real `python -m app.worker` boots against a fresh database and exits on SIGTERM."""
+    """The real `python -m app.worker` boots against a migrated database and exits on SIGTERM."""
     import os, signal, subprocess, sys, time
-    env = {**os.environ, 'DATABASE_URL': f"sqlite:///{tmp_path / 'worker.db'}", 'GUESTLIFT_WORKER_IDLE_SECONDS': '0.2'}
+    env = {**os.environ, 'DATABASE_URL': f"sqlite:///{tmp_path / 'worker.db'}", 'GUESTLIFT_WORKER_IDLE_SECONDS': '0.2',
+           'GUESTLIFT_WORKER_HEARTBEAT_FILE': str(tmp_path / 'beat')}
+    backend = os.path.dirname(os.path.dirname(__file__))
+    assert subprocess.run([sys.executable, '-m', 'app.migrate'], cwd=backend, env=env).returncode == 0
     proc = subprocess.Popen([sys.executable, '-m', 'app.worker'], cwd=os.path.dirname(os.path.dirname(__file__)),
                             env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     time.sleep(3)
     assert proc.poll() is None, proc.stdout.read()
     proc.send_signal(signal.SIGTERM)
     out, _ = proc.communicate(timeout=15)
-    assert proc.returncode == 0 and 'worker stopped' in out, out
+    assert proc.returncode == 0 and 'worker started' in out and 'worker stopped' in out, out
+    assert (tmp_path / 'beat').exists()  # the heartbeat a container health check reads
 
 
 def test_worker_cannot_steal_a_sync_now_job(harness, monkeypatch):
@@ -208,3 +212,48 @@ def test_worker_cannot_steal_a_sync_now_job(harness, monkeypatch):
     monkeypatch.setattr(square_sync, 'enqueue', enqueue_then_worker_polls)
     r = harness.post('/api/integrations/square/sync')
     assert r.status_code == 200 and r.json()['status'] == 'completed'
+
+
+def test_only_one_open_sync_job_even_when_requests_race(harness):
+    """Regression (CI, PR #29): the worker and Sync now could both create a job and sync at once."""
+    from concurrent.futures import ThreadPoolExecutor
+    _ready(harness)
+    with Session(connections.engine) as db:
+        wid = db.scalar(select(connections.SquareConnection)).workspace_id
+
+    def open_job(_):
+        with Session(connections.engine) as db:
+            return square_sync.enqueue(db, wid, 'scheduled').id
+    with ThreadPoolExecutor(max_workers=6) as pool:
+        ids = set(pool.map(open_job, range(12)))
+    assert len(ids) == 1
+    with Session(connections.engine) as db:
+        open_jobs = db.scalars(select(square_sync.SquareSyncJob).where(
+            square_sync.SquareSyncJob.status.in_(('queued', 'running')))).all()
+        assert len(open_jobs) == 1
+
+
+def test_window_retries_when_another_writer_saved_the_orders_first(harness, monkeypatch):
+    truth = _ready(harness)
+    real = square_sync._sync_window
+    state = {'raced': False}
+
+    def racing_window(db, wid, token, loc, start, end, counts):
+        real(db, wid, token, loc, start, end, counts)
+        if not state['raced'] and counts['inserted']:
+            state['raced'] = True
+            from sqlalchemy.exc import IntegrityError
+            raise IntegrityError('INSERT', {}, Exception('UNIQUE constraint failed'))
+    monkeypatch.setattr(square_sync, '_sync_window', racing_window)
+    r = harness.post('/api/integrations/square/sync')
+    assert r.status_code == 200 and state['raced']
+    assert harness.get('/api/saas/me').json()['summary']['orders'] == truth['completed_orders']
+
+
+def test_worker_waits_for_location_choice_before_first_sync(harness):
+    harness.sign_up(); harness.connect_oauth()
+    with Session(connections.engine) as db:
+        assert worker.schedule(db) == 0  # connected, no locations chosen yet
+    harness.select_eligible()
+    with Session(connections.engine) as db:
+        assert worker.schedule(db) == 1

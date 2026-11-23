@@ -80,22 +80,26 @@ jobs:
           cache: pip
           cache-dependency-path: backend/requirements.lock
       - run: python -m pip install -r requirements.lock
-      - run: python -m alembic upgrade head
+      # The single schema authority (docs/MIGRATIONS.md); a second run must be a no-op.
+      - run: python -m app.migrate
+      - run: python -m app.migrate | tee /tmp/migrate-again.log && grep -q 'already current' /tmp/migrate-again.log
       - run: python -m alembic check
-      - run: python -m alembic downgrade base && python -m alembic upgrade head
+      - run: python -m alembic downgrade base && python -m app.migrate
+      # Legacy adoption, concurrent startups, API/worker waiting for migrate, on real PostgreSQL.
+      - run: python -m pytest -q tests/test_postgres_lifecycle.py
+        env:
+          TEST_POSTGRES_URL: postgresql+psycopg://ci:ci@localhost:5432/ci
 
   docker:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
-      - run: docker build -t tablesignal-backend:ci backend
-      - run: docker build -t tablesignal-frontend:ci frontend
-      - name: Backend container boots and reports healthy
-        run: |
-          docker run -d --name api -p 8000:8000 tablesignal-backend:ci
-          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8000/api/health && exit 0; sleep 2; done
-          docker logs api; exit 1
+      # Real compose: PostgreSQL -> migrate -> API + worker -> frontend, auth over HTTP,
+      # worker stability, restarts and a repeated `up`.
+      - run: scripts/compose-smoke.sh
+        env:
+          SMOKE_PROJECT: tablesignal-ci
 
   journey:
     # docs/PRODUCT_PLAN.md M1: golden-path steps 2–7 in a real browser against the mock Square API.

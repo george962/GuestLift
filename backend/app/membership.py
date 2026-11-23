@@ -15,7 +15,7 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
-from sqlalchemy import ForeignKey, Integer, String, delete, func, select
+from sqlalchemy import Boolean, ForeignKey, Integer, String, delete, func, select, true
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Mapped, Session, mapped_column
 
@@ -36,6 +36,8 @@ class WorkspaceMember(Base):
     role: Mapped[str] = mapped_column(String(20))
     email: Mapped[str] = mapped_column(String(254), default='')
     created_at: Mapped[str] = mapped_column(String(40))
+    weekly_digest: Mapped[bool] = mapped_column(Boolean, default=True, server_default=true())
+    outcome_emails: Mapped[bool] = mapped_column(Boolean, default=True, server_default=true())
 
 
 class WorkspaceInvite(Base):

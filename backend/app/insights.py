@@ -78,6 +78,14 @@ def answer_question(question: str, summary: dict) -> dict:
     if not q:
         raise ValueError('Question is required')
     source = str(summary.get('data_origin', 'fictional_workspace_seed')) + ' / normalized orders'
+    if not summary.get('orders'):
+        # Say plainly that there is nothing to analyze, rather than reporting zeros as findings.
+        return {'question': question[:500], 'answer': 'There are no completed orders to analyze yet, so I cannot answer this. '
+                'Connect Square and sync, or check that your monitored locations have sales in this period.',
+                'tool': 'no_data', 'evidence_keys': ['orders'], 'source': source,
+                'recommended_next_step': 'Connect Square and run a sync.', 'causal_claim': False,
+                'data_origin': summary.get('data_origin', 'synthetic'), 'engine': 'verified_rules',
+                'disclaimer': 'No data yet; nothing was inferred.'}
     fmt = lambda n: f"${n/100:,.2f}"
     if any(k in q for k in ('customer','repeat','loyal','retention','return','lapse')):
         n=summary['identified_customers']; rate=summary['repeat_customer_rate_percent']

@@ -98,8 +98,7 @@ def production_config_problems() -> list[str]:
         problems.append('GUESTLIFT_ENABLE_DEMO_ENDPOINTS must be unset (unauthenticated shared demo API).')
     if env('TABLESIGNAL_ENABLE_DEMO_RESET') == '1':
         problems.append('TABLESIGNAL_ENABLE_DEMO_RESET must be unset (unauthenticated data reset).')
-    if env('GUESTLIFT_AUTO_CREATE_SCHEMA', '1') != '0':
-        problems.append('GUESTLIFT_AUTO_CREATE_SCHEMA=0 is required; run `alembic upgrade head` instead.')
+    # (Schema changes need no flag here: the services never run DDL; only `python -m app.migrate` does.)
     if env('SQUARE_API_BASE_URL'):
         problems.append('SQUARE_API_BASE_URL is a test/mock override and must be unset in production.')
     if not env('TABLESIGNAL_CREDENTIAL_KEY'):

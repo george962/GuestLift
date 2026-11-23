@@ -127,3 +127,12 @@ def test_plan_and_location_preview_contract(synced):
         ids = [l['id'] for l in synced.get('/api/integrations/square/locations').json()['locations'] if l['eligible']]
         p = synced.post('/api/saas/billing/locations/preview', {'location_ids': ids[:1]}).json()
         assert_matches(p, 'components/change-locations.tsx', 'Preview', '/api/saas/billing/locations/preview')
+
+
+def test_weekly_brief_contract(synced):
+    f = 'components/weekly-brief.tsx'
+    brief = synced.get('/api/briefs/latest').json()
+    assert_matches(brief, f, 'WeeklyBriefData', '/api/briefs/latest')
+    finding = first(brief['findings'], 'brief findings')
+    assert_matches(finding, f, 'BriefFinding', 'brief.findings[]')
+    assert_matches(finding['evidence'], f, 'BriefEvidence', 'brief.findings[].evidence')

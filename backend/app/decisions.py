@@ -16,6 +16,7 @@ from .local_auth import authenticated_subject
 from .billing import paid_subject
 from .saas import Workspace, _get_workspace, _scoped_summary
 from .connections import SquareOrder
+from .validation import parse_date
 
 router = APIRouter(prefix='/api/decisions', tags=['Private restaurant decisions'])
 
@@ -36,6 +37,13 @@ class DecisionPlan(Base):
     notes: Mapped[str] = mapped_column(Text, nullable=False, default='')
     created_at: Mapped[str] = mapped_column(String(40), nullable=False)
     updated_at: Mapped[str] = mapped_column(String(40), nullable=False)
+    # M4 tracking: what to measure, where, from when, and when to read the outcome.
+    metric: Mapped[str] = mapped_column(String(30), nullable=False, default='net_sales', server_default='net_sales')
+    location_id: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    start_date: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    follow_up_date: Mapped[str | None] = mapped_column(String(10), nullable=True, index=True)
+    outcome: Mapped[str | None] = mapped_column(Text, nullable=True)
+    outcome_at: Mapped[str | None] = mapped_column(String(48), nullable=True)
 
 class PlanCreate(BaseModel):
     title: str = Field(min_length=3, max_length=140)
@@ -46,6 +54,12 @@ class PlanCreate(BaseModel):
     reference_basket_minor: int = Field(ge=100, le=1000000)
     assumed_margin_percent: int = Field(ge=1, le=95)
     notes: str = Field(default='', max_length=1200)
+    metric: str = Field(default='net_sales', pattern='^(net_sales|orders|average_order|discount_spend|returning_share)$')
+    location_id: str | None = Field(default=None, max_length=160)
+    # The day the change started. May be in the past: owners often log a change after making it.
+    # Checked in create_plan, so a bad date gets the same plain-text 422 as the other checks.
+    start_date: str | None = Field(default=None, max_length=32)
+    follow_up_weeks: int = Field(default=4, ge=1, le=26)
 
 class StatusUpdate(BaseModel):
     status: str = Field(pattern='^(draft|planned|reviewed)$')
@@ -80,10 +94,13 @@ def scenario(offer_type: str, offer_value: int, redemptions: int, basket_minor: 
     }
 
 
-def _serialize(p: DecisionPlan) -> dict:
-    return {key: getattr(p, key) for key in ('id','title','objective','offer_type','offer_value',
+def _serialize(p: DecisionPlan, outcome: dict | None = None) -> dict:
+    data = {key: getattr(p, key) for key in ('id','title','objective','offer_type','offer_value',
        'target_redemptions','reference_basket_minor','assumed_margin_percent','discount_budget_minor',
-       'modeled_contribution_minor','status','notes','created_at','updated_at')}
+       'modeled_contribution_minor','status','notes','created_at','updated_at',
+       'metric','location_id','start_date','follow_up_date')}
+    data['outcome'] = outcome
+    return data
 
 
 def opportunity_summary(db: Session, workspace: Workspace) -> dict:
@@ -144,7 +161,8 @@ def plans(sub: str = Depends(authenticated_subject)):
         w=_get_workspace(db,sub)
         records=db.scalars(select(DecisionPlan).where(DecisionPlan.workspace_id==w.id)
                            .order_by(DecisionPlan.created_at.desc())).all()
-        return {'plans':[_serialize(p) for p in records]}
+        from .insight_loop import plan_outcome
+        return {'plans':[_serialize(p, plan_outcome(db, p)) for p in records]}
 
 @router.post('/plans',status_code=201)
 def create_plan(payload:PlanCreate,sub:str=Depends(paid_subject)):
@@ -156,13 +174,22 @@ def create_plan(payload:PlanCreate,sub:str=Depends(paid_subject)):
         calc=scenario(payload.offer_type,payload.offer_value,payload.target_redemptions,
                       payload.reference_basket_minor,payload.assumed_margin_percent)
         at=_now()
+        from .insight_loop import _workspace_data, local_today
+        _, _, names, tz, _ = _workspace_data(db, w.id)
+        if payload.location_id and payload.location_id not in names:
+            raise HTTPException(status_code=422, detail='Choose one of your monitored locations, or all locations.')
+        start = parse_date(payload.start_date, 'Start date') if payload.start_date else local_today(tz)
+        if start > local_today(tz) + timedelta(days=60):
+            raise HTTPException(status_code=422, detail='Start date must be within the next 60 days.')
         item=DecisionPlan(id=str(uuid.uuid4()),workspace_id=w.id,title=payload.title.strip(),
             objective=payload.objective,offer_type=payload.offer_type,offer_value=payload.offer_value,
             target_redemptions=payload.target_redemptions,reference_basket_minor=payload.reference_basket_minor,
             assumed_margin_percent=payload.assumed_margin_percent,
             discount_budget_minor=calc['discount_budget_minor'],
             modeled_contribution_minor=calc['modeled_contribution_minor'],
-            status='draft',notes=payload.notes.strip(),created_at=at,updated_at=at)
+            status='draft',notes=payload.notes.strip(),created_at=at,updated_at=at,
+            metric=payload.metric,location_id=payload.location_id,start_date=start.isoformat(),
+            follow_up_date=(start+timedelta(days=7*payload.follow_up_weeks)).isoformat())
         db.add(item);db.commit()
         return {'plan':_serialize(item),'scenario':calc,'message':'Draft saved to this restaurant. No campaign was launched.'}
 

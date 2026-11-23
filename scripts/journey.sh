@@ -35,6 +35,8 @@ fi
 
 cd "$ROOT/backend"
 CRED_KEY="$("$PY" -c 'from cryptography.fernet import Fernet;print(Fernet.generate_key().decode())')"
+# The API and worker never change the schema (docs/MIGRATIONS.md): migrate first, as compose does.
+DATABASE_URL="sqlite:///$WORK/journey.db" "$PY" -m app.migrate
 "$PY" -m uvicorn mock_square.app:app --port "$MOCK_PORT" > "$WORK/mock.log" 2>&1 & pids+=($!)
 env ${api_auth[@]+"${api_auth[@]}"} DATABASE_URL="sqlite:///$WORK/journey.db" \
   GUESTLIFT_APP_URL="http://localhost:$WEB_PORT" GUESTLIFT_ALLOWED_ORIGINS="http://localhost:$WEB_PORT" \

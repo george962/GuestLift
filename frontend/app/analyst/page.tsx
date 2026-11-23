@@ -4,6 +4,7 @@ import {useCallback,useEffect,useState} from 'react';
 import Link from 'next/link';
 import {ArrowRight,BookOpen,BrainCircuit,CheckCircle2,Database,GitBranch,LockKeyhole,MessageCircle,RefreshCw,Send,ShieldCheck,Sparkles,TriangleAlert} from 'lucide-react';
 import {accountApi,localAuthClient} from '@/lib/local-auth';
+import {WeeklyBrief} from '@/components/weekly-brief';
 import {DataHealthBanner,useDataHealth} from '@/components/data-health';
 import {PlanBanner,usePlan} from '@/components/plan-status';
 
@@ -71,7 +72,7 @@ export default function Analyst(){
      <aside className="ts10-card ts11-evidence-detail"><span className="ts9-kicker">VERIFIABLE MEASURE</span><h3>{node?.label}</h3><p>{node?.detail}</p><div className="ts11-relationships"><strong>Relationships</strong>{brief.edges.filter(e=>e.from===selected||e.to===selected).map(e=><p key={e.from+e.to}><span>{brief.nodes.find(n=>n.id===e.from)?.label}</span> <b>{e.label}</b> <span>{brief.nodes.find(n=>n.id===e.to)?.label}</span></p>)}</div></aside>
     </div>
     <div className="ts11-section-heading"><div><span className="ts9-kicker">SIGNALS WORTH INVESTIGATING</span><h2>What these numbers suggest</h2></div></div>
-    <div className="ts11-findings">{brief.findings.map(f=><article className="ts10-card" key={f.id}><div className="ts11-finding-kicker"><Sparkles size={16}/> {f.severity==='attention'?'DATA QUALITY OPPORTUNITY':'OBSERVED PATTERN'}</div><h3>{f.title}</h3><p>{f.detail}</p><small>Evidence: {f.evidence_ids.join(' · ')}</small><Link href={f.next_path}>Explore next step <ArrowRight size={15}/></Link></article>)}</div>
+    {token&&<WeeklyBrief token={token}/>}<div className="ts11-findings">{brief.findings.map(f=><article className="ts10-card" key={f.id}><div className="ts11-finding-kicker"><Sparkles size={16}/> {f.severity==='attention'?'DATA QUALITY OPPORTUNITY':'OBSERVED PATTERN'}</div><h3>{f.title}</h3><p>{f.detail}</p><small>Evidence: {f.evidence_ids.join(' · ')}</small><Link href={f.next_path}>Explore next step <ArrowRight size={15}/></Link></article>)}</div>
    </>}
    <section className="ts10-card ts11-conversation" aria-label="Ask the TableSignal AI analyst">
     <div className="ts11-chat-heading"><div><span className="ts9-kicker">AI ANALYST · READ ONLY</span><h2><MessageCircle size={24}/> Ask about your business</h2><p>Real model responses use verified, account-scoped aggregates. Raw guest records are not included automatically. Do not enter personal data into your questions. The AI cannot send offers or change records.</p></div><BrainCircuit size={32}/></div>

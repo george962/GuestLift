@@ -25,8 +25,15 @@ export default function Opportunities(){
  const [basket,setBasket]=useState(2500);
  const [margin,setMargin]=useState(35);
  const [notes,setNotes]=useState('');
+ const [metric,setMetric]=useState('net_sales');
+ const [where,setWhere]=useState('');
+ const [startDate,setStartDate]=useState(()=>new Date().toISOString().slice(0,10));
+ const [followWeeks,setFollowWeeks]=useState(4);
+ const [places,setPlaces]=useState<{id:string;name:string}[]>([]);
  const [saving,setSaving]=useState(false);
  const [saved,setSaved]=useState(false);
+ useEffect(()=>{void localAuthClient().auth.getSession().then(async({data})=>{const t=data.session?.access_token;if(!t)return;
+  try{const r=await accountApi('/api/integrations/square/locations',t);if(r.enabled)setPlaces(r.locations.filter((l:{selected:boolean})=>l.selected))}catch{/* optional */}})},[]);
  const reload=useCallback(async()=>{
   setError('');setLoading(true);
   try{
@@ -45,7 +52,7 @@ export default function Opportunities(){
  async function save(){if(!token)return;setSaving(true);setError('');
   try{await accountApi('/api/decisions/plans',token,'POST',{
    title,objective,offer_type:type,offer_value:type==='no_offer'?0:value,target_redemptions:redemptions,
-   reference_basket_minor:basket,assumed_margin_percent:margin,notes});setSaved(true);
+   reference_basket_minor:basket,assumed_margin_percent:margin,notes,metric,location_id:where||null,start_date:startDate,follow_up_weeks:followWeeks});setSaved(true);
   }catch(e){setError(e instanceof Error?e.message:'Unable to save decision.');}
   finally{setSaving(false)}
  }
@@ -66,6 +73,10 @@ export default function Opportunities(){
          <label>Assumed completed purchases<input type="number" min="1" max="10000" value={redemptions} onChange={e=>{setRedemptions(Number(e.target.value));setSaved(false)}}/></label>
          <label>Assumed basket size (cents)<input type="number" min="100" max="1000000" value={basket} onChange={e=>{setBasket(Number(e.target.value));setSaved(false)}}/></label>
          <label>Assumed pre-discount contribution margin (%)<input type="number" min="1" max="95" value={margin} onChange={e=>{setMargin(Number(e.target.value));setSaved(false)}}/></label>
+         <label>What to measure<select value={metric} onChange={e=>{setMetric(e.target.value);setSaved(false)}}><option value="net_sales">Net sales</option><option value="orders">Orders</option><option value="average_order">Average order</option><option value="discount_spend">Discount spend</option><option value="returning_share">Returning guests</option></select></label>
+         <label>Where<select value={where} onChange={e=>{setWhere(e.target.value);setSaved(false)}}><option value="">All locations</option>{places.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></label>
+         <label>The change starts (or started) on<input type="date" value={startDate} onChange={e=>{setStartDate(e.target.value);setSaved(false)}}/></label>
+         <label>Show me the result after<select value={followWeeks} onChange={e=>{setFollowWeeks(Number(e.target.value));setSaved(false)}}><option value={2}>2 weeks</option><option value={4}>4 weeks</option><option value={6}>6 weeks</option><option value={8}>8 weeks</option></select></label>
          <label className="ts10-full">Notes / what you want to learn<textarea rows={3} maxLength={1200} value={notes} onChange={e=>{setNotes(e.target.value);setSaved(false)}} placeholder="Example: Compare the cost of a 10% offer with a $10 offer before running a controlled test."/></label>
         </div>
         <div className="ts10-scenario-results"><div><span>Discount per hypothetical order</span><strong>{money(discount)}</strong></div><div><span>Total modeled discount expense</span><strong>{money(expense)}</strong></div><div><span>Modeled contribution after discounts*</span><strong>{money(contribution)}</strong></div></div>

@@ -45,6 +45,8 @@ ISOLATION = {
     'POST /api/decisions/plans/{plan_id}/status': {'status': 'reviewed'},
     'GET /api/intelligence/brief': None, 'POST /api/intelligence/ask': {'question': 'What changed?'},
     'GET /api/launch/readiness': None, 'GET /api/team': None,
+    'GET /api/briefs/latest': None, 'GET /api/team/me/email': None,
+    'POST /api/team/me/email': {'weekly_digest': False, 'outcome_emails': False},
     'POST /api/team/invites': {'email': 'beta-friend@beta.test'},
     'POST /api/team/invites/{invite_id}/revoke': None,
     'POST /api/team/invites/accept': {'token': 'not-a-real-invite-token-000000'},
