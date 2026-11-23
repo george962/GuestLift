@@ -674,3 +674,8 @@ html{scroll-behavior:smooth}
 .ts-legal{max-width:760px;margin:0 auto;padding:8px 0 64px}
 .ts-legal h2{margin:28px 0 8px;font-size:1.15rem}
 .ts-legal p{line-height:1.65;margin:0 0 10px}
+/* M3: reconciliation tables */
+.ts9-table{width:100%;border-collapse:collapse;font-size:14px;margin-top:12px}
+.ts9-table th,.ts9-table td{padding:8px 10px;border-bottom:1px solid #dbe8e3;text-align:left;white-space:nowrap}
+.ts9-table thead th{font-size:12px;letter-spacing:.04em;text-transform:uppercase;color:#53675f}
+.ts9-panel details summary{cursor:pointer;margin-top:12px;font-weight:600}

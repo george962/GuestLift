@@ -1,7 +1,7 @@
 """Mock Square API for the journey harness. Never deploy this.
 
 Implements the subset TableSignal calls: OAuth authorize/token, ListLocations,
-SearchOrders and ListPayments, with cursor pagination. The dataset is
+SearchOrders, ListPayments and ListPaymentRefunds, with cursor pagination and date ranges. The dataset is
 deterministic (seeded) and dated relative to "now", so every run produces the
 same counts. GET /__mock/truth returns the expected totals for assertions.
 Fault injection: POST /__mock/faults {"status": 429, "count": 1, "after": 0}.
@@ -22,12 +22,12 @@ from fastapi.responses import JSONResponse, RedirectResponse
 MERCHANT_ID = 'MOCK_MERCHANT_1'
 DEV_TOKEN = 'mock-dev-token'
 LOCATIONS = [
-    {'id': 'LOC_HARBOR', 'name': 'Harbor Street', 'status': 'ACTIVE', 'type': 'PHYSICAL'},
-    {'id': 'LOC_MARKET', 'name': 'Market Square', 'status': 'ACTIVE', 'type': 'PHYSICAL'},
-    {'id': 'LOC_ONLINE', 'name': 'Online Store', 'status': 'ACTIVE', 'type': 'MOBILE'},
-    {'id': 'LOC_CLOSED', 'name': 'Old Pier (closed)', 'status': 'INACTIVE', 'type': 'PHYSICAL'},
+    {'id': 'LOC_HARBOR', 'name': 'Harbor Street', 'status': 'ACTIVE', 'type': 'PHYSICAL', 'timezone': 'America/Los_Angeles'},
+    {'id': 'LOC_MARKET', 'name': 'Market Square', 'status': 'ACTIVE', 'type': 'PHYSICAL', 'timezone': 'America/New_York'},
+    {'id': 'LOC_ONLINE', 'name': 'Online Store', 'status': 'ACTIVE', 'type': 'MOBILE', 'timezone': 'America/New_York'},
+    {'id': 'LOC_CLOSED', 'name': 'Old Pier (closed)', 'status': 'INACTIVE', 'type': 'PHYSICAL', 'timezone': 'America/New_York'},
 ]
-DAYS = 60
+DAYS = 120  # ~1,400 orders: well past the old 800-order sync cap
 
 app = FastAPI(title='Mock Square API', docs_url=None, redoc_url=None)
 _state: dict = {'tokens': {DEV_TOKEN}, 'codes': {}, 'refresh': {}, 'faults': []}
@@ -45,18 +45,25 @@ def _iso(dt: datetime) -> str:
     return dt.isoformat(timespec='seconds').replace('+00:00', 'Z')
 
 
-def build_dataset(now: datetime | None = None, seed: int = 7) -> tuple[list[dict], list[dict]]:
-    """Orders and payments for the two eligible locations plus noise the importer must skip."""
+def build_dataset(now: datetime | None = None, seed: int = 7) -> tuple[list[dict], list[dict], list[dict]]:
+    """Orders, payments and refunds for the two eligible locations plus noise the importer must skip."""
     rng = random.Random(seed)
     now = (now or datetime.now(timezone.utc)).replace(microsecond=0)
     customers = [f'CUST_{i:03d}' for i in range(30)]
-    orders, payments = [], []
+    orders, payments, refunds = [], [], []
     n = 0
     for day in range(DAYS):
         for loc in LOCATIONS[:2]:
-            for _ in range(rng.randint(2, 4)):
+            for _ in range(rng.randint(4, 8)):
                 n += 1
-                created = now - timedelta(days=day, hours=rng.randint(1, 12), minutes=rng.randint(0, 59))
+                # Opening hours in the store's own time zone (7am-10pm), so evening orders fall on the
+                # next UTC day: a sync that ignores time zones gets the daily totals wrong.
+                from zoneinfo import ZoneInfo
+                local_day = (now.astimezone(ZoneInfo(loc['timezone'])) - timedelta(days=day)).date()
+                created = datetime(local_day.year, local_day.month, local_day.day, rng.randint(7, 21), rng.randint(0, 59),
+                                   tzinfo=ZoneInfo(loc['timezone'])).astimezone(timezone.utc)
+                if created > now:
+                    created = now - timedelta(minutes=rng.randint(5, 50))
                 subtotal = rng.randint(900, 6500)
                 discount = rng.choice([0, 0, 0, 0, 200, 500])
                 tax = round((subtotal - discount) * 0.08)
@@ -71,18 +78,50 @@ def build_dataset(now: datetime | None = None, seed: int = 7) -> tuple[list[dict
                     'total_tip_money': {'amount': tip, 'currency': 'USD'},
                     'total_discount_money': {'amount': discount, 'currency': 'USD'},
                 })
+                paid_at = created + timedelta(minutes=1)
                 if state == 'COMPLETED' and rng.random() < 0.55:
                     payments.append({'id': f'PAY_{n:05d}', 'order_id': oid, 'location_id': loc['id'],
                                      'status': 'COMPLETED', 'customer_id': rng.choice(customers),
-                                     'created_at': _iso(created)})
-    return orders, payments
+                                     'created_at': _iso(paid_at)})
+                refunded_at = created + timedelta(days=1)
+                if state == 'COMPLETED' and n % 37 == 0 and refunded_at < now:
+                    refunds.append({'id': f'REF_{n:05d}', 'order_id': oid, 'location_id': loc['id'],
+                                    'status': 'PENDING' if n % 185 == 0 else 'COMPLETED',
+                                    'amount_money': {'amount': (subtotal - discount) // 2, 'currency': 'USD'},
+                                    'created_at': _iso(refunded_at)})
+    return orders, payments, refunds
 
 
-def truth(orders: list[dict], payments: list[dict]) -> dict:
+def truth(orders: list[dict], payments: list[dict], refunds: list[dict] | None = None) -> dict:
+    """Expected figures, computed independently of TableSignal's importer."""
+    from zoneinfo import ZoneInfo
+    refunds = refunds or []
     imported = [o for o in orders if o['state'] in ('COMPLETED', 'CANCELED')]
     completed = [o for o in imported if o['state'] == 'COMPLETED']
     net = lambda o: o['total_money']['amount'] - o['total_tax_money']['amount'] - o['total_tip_money']['amount']
+    tz = {l['id']: ZoneInfo(l['timezone']) for l in LOCATIONS}
+    day = lambda ts, loc: datetime.fromisoformat(ts.replace('Z', '+00:00')).astimezone(tz[loc]).date().isoformat()
+    done_refunds = [r for r in refunds if r['status'] == 'COMPLETED']
+    daily: dict = {}
+    blank = lambda: {'orders': 0, 'gross_sales_minor': 0, 'discounts_minor': 0, 'refunds_minor': 0,
+                     'net_sales_minor': 0, 'tax_minor': 0, 'tips_minor': 0}
+    for o in completed:
+        d = daily.setdefault(o['location_id'], {}).setdefault(day(o['created_at'], o['location_id']), blank())
+        d['orders'] += 1
+        d['net_sales_minor'] += net(o)
+        d['discounts_minor'] += o['total_discount_money']['amount']
+        d['gross_sales_minor'] += net(o) + o['total_discount_money']['amount']
+        d['tax_minor'] += o['total_tax_money']['amount']
+        d['tips_minor'] += o['total_tip_money']['amount']
+    for r in done_refunds:
+        d = daily.setdefault(r['location_id'], {}).setdefault(day(r['created_at'], r['location_id']), blank())
+        d['refunds_minor'] += r['amount_money']['amount']
+        d['net_sales_minor'] -= r['amount_money']['amount']
+    refunded = sum(r['amount_money']['amount'] for r in done_refunds)
     return {
+        'refunds_minor': refunded, 'completed_refunds': len(done_refunds),
+        'net_sales_after_refunds_minor': sum(net(o) for o in completed) - refunded,
+        'daily': daily,
         'merchant_id': MERCHANT_ID,
         'eligible_location_ids': [l['id'] for l in LOCATIONS if l['status'] == 'ACTIVE' and l['type'] == 'PHYSICAL'],
         'importable_orders': len(imported), 'completed_orders': len(completed),
@@ -93,7 +132,7 @@ def truth(orders: list[dict], payments: list[dict]) -> dict:
     }
 
 
-ORDERS, PAYMENTS = build_dataset()
+ORDERS, PAYMENTS, REFUNDS = build_dataset()
 
 
 def _authorize(authorization: str | None) -> None:
@@ -154,24 +193,39 @@ async def search_orders(request: Request, authorization: str | None = Header(Non
     _authorize(authorization)
     body = await request.json()
     wanted = set(body.get('location_ids') or [])
-    start_at = (((body.get('query') or {}).get('filter') or {}).get('date_time_filter') or {}).get('created_at', {}).get('start_at')
-    items = [o for o in ORDERS if o['location_id'] in wanted and (not start_at or o['created_at'] >= start_at)]
+    window = (((body.get('query') or {}).get('filter') or {}).get('date_time_filter') or {}).get('created_at', {})
+    start_at, end_at = window.get('start_at'), window.get('end_at')
+    items = [o for o in ORDERS if o['location_id'] in wanted and (not start_at or o['created_at'] >= start_at)
+             and (not end_at or o['created_at'] < end_at)]
     page, cursor = _page(items, body.get('cursor'), int(body.get('limit') or 100))
     return {'orders': page, **({'cursor': cursor} if cursor else {})}
 
 
 @app.get('/v2/payments')
-def list_payments(location_id: str, begin_time: str | None = None, cursor: str | None = None, limit: int = 100,
+def list_payments(location_id: str, begin_time: str | None = None, end_time: str | None = None,
+                  cursor: str | None = None, limit: int = 100,
                   authorization: str | None = Header(None), sort_order: str = 'DESC'):
     _authorize(authorization)
-    items = [p for p in PAYMENTS if p['location_id'] == location_id and (not begin_time or p['created_at'] >= begin_time)]
+    items = [p for p in PAYMENTS if p['location_id'] == location_id and (not begin_time or p['created_at'] >= begin_time)
+             and (not end_time or p['created_at'] < end_time)]
     page, nxt = _page(items, cursor, limit)
     return {'payments': page, **({'cursor': nxt} if nxt else {})}
 
 
+@app.get('/v2/refunds')
+def list_refunds(location_id: str, begin_time: str | None = None, end_time: str | None = None,
+                 cursor: str | None = None, limit: int = 100,
+                 authorization: str | None = Header(None), sort_order: str = 'DESC'):
+    _authorize(authorization)
+    items = [r for r in REFUNDS if r['location_id'] == location_id and (not begin_time or r['created_at'] >= begin_time)
+             and (not end_time or r['created_at'] < end_time)]
+    page, nxt = _page(items, cursor, limit)
+    return {'refunds': page, **({'cursor': nxt} if nxt else {})}
+
+
 @app.get('/__mock/truth')
 def mock_truth():
-    return truth(ORDERS, PAYMENTS)
+    return truth(ORDERS, PAYMENTS, REFUNDS)
 
 
 @app.post('/__mock/faults')

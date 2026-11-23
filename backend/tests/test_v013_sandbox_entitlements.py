@@ -36,16 +36,17 @@ def fake_square(token, method, path, payload=None):
     ]
     if path == '/v2/locations':
         return {'locations': locations}
-    if path == '/v2/payments':
+    if path in ('/v2/payments', '/v2/refunds'):
         assert payload['location_id'] in ('loc-a', 'loc-b')
-        return {'payments': []}
+        return {'payments': [], 'refunds': []}
     assert path == '/v2/orders/search'
     assert payload['location_ids'] == ['loc-a']
-    return {'orders': [{
-        'id':'order-a', 'location_id':'loc-a', 'state':'COMPLETED',
-        'created_at':'2026-11-20T10:00:00Z', 'updated_at':'2026-11-20T10:00:00Z',
-        'total_money':{'amount':1200,'currency':'USD'},
-    }]}
+    window = payload['query']['filter']['date_time_filter']['created_at']
+    order = {'id':'order-a', 'location_id':'loc-a', 'state':'COMPLETED',
+             'created_at':'2026-11-20T10:00:00Z', 'updated_at':'2026-11-20T10:00:00Z',
+             'total_money':{'amount':1200,'currency':'USD'}}
+    inside = window['start_at'] <= order['created_at'] < window['end_at']
+    return {'orders': [order] if inside else []}
 
 
 def test_server_selected_locations_and_scoped_sync(tmp_path, monkeypatch):

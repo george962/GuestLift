@@ -5,6 +5,7 @@ import Link from 'next/link';
 import {ArrowRight, BarChart3, CheckCircle2, CreditCard, Database, Info, RefreshCcw,
   ShieldCheck, Sparkles, Store, TicketPercent, TrendingUp, Users, Wallet} from 'lucide-react';
 import {accountApi, localAuthClient} from '@/lib/local-auth';
+import {DataHealthBanner,useDataHealth} from '@/components/data-health';
 
 // Account-backed metrics only. No bundled sample orders are imported on this route.
 type LocationMetric={location:string;orders:number;net_sales_minor:number;discount_minor:number};
@@ -24,6 +25,7 @@ const questions=['Summarize my sales','What do we know about returning customers
   'Which locations have the most sales?','What can we tell about promotions?'];
 
 export function PrivateDashboard({initialTab='overview'}:{initialTab?:Tab}){
+ const {health:dataHealth}=useDataHealth();
   const [tab,setTab]=useState<Tab>(initialTab);
   const [data,setData]=useState<Account|null>(null);
   const [token,setToken]=useState('');
@@ -64,7 +66,7 @@ export function PrivateDashboard({initialTab='overview'}:{initialTab?:Tab}){
   const hasOrders=Boolean(s?.has_connected_source&&s.orders>0);
   const maxDay=Math.max(1,...(s?.daily||[]).map(x=>x.net_sales_minor));
 
-  return <main className="ts9-app">
+  return <main className="ts9-app"><DataHealthBanner health={dataHealth}/>
     <header className="ts9-app-top">
       <div><span className="ts9-kicker">YOUR RESTAURANT · PRIVATE WORKSPACE</span>
         <h1>{w?.name||'Your restaurant'}</h1>

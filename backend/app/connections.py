@@ -17,7 +17,7 @@ from urllib.parse import urlencode
 
 import httpx
 from cryptography.fernet import Fernet, InvalidToken
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import ForeignKey, Integer, String, Text, UniqueConstraint, select, delete
@@ -34,12 +34,37 @@ router = APIRouter(prefix='/api/integrations/square', tags=['Square Sandbox loca
 SQUARE_URL = 'https://connect.squareupsandbox.com'
 
 
+SQUARE_PRODUCTION_URL = 'https://connect.squareup.com'
+
+
+def square_environment() -> str:
+    """sandbox (default) or production. Production also needs GUESTLIFT_ALLOW_SQUARE_PRODUCTION=1."""
+    env = os.getenv('SQUARE_ENVIRONMENT', 'sandbox').strip().lower()
+    return env if env in ('sandbox', 'production') else 'invalid'
+
+
+def validate_square_config() -> None:
+    env = square_environment()
+    if env == 'invalid':
+        raise RuntimeError("SQUARE_ENVIRONMENT must be 'sandbox' or 'production'.")
+    if env == 'production' and os.getenv('GUESTLIFT_ALLOW_SQUARE_PRODUCTION') != '1':
+        raise RuntimeError('Square production is locked until the go-live checklist passes '
+                           '(docs/PILOT_TRUST_PLAN.md Gate P0). Set GUESTLIFT_ALLOW_SQUARE_PRODUCTION=1 to unlock.')
+
+
 def _square_url() -> str:
     # Tests and local dev point this at the mock Square service; production refuses an override.
-    return os.getenv('SQUARE_API_BASE_URL', SQUARE_URL).rstrip('/')
+    default = SQUARE_PRODUCTION_URL if square_environment() == 'production' else SQUARE_URL
+    return os.getenv('SQUARE_API_BASE_URL', default).rstrip('/')
+
+
+def _square_setting(name: str) -> str:
+    """SQUARE_APP_ID etc.; Sandbox may still use the older SQUARE_SANDBOX_* names."""
+    value = os.getenv('SQUARE_' + name, '')
+    if not value and square_environment() == 'sandbox':
+        value = os.getenv('SQUARE_SANDBOX_' + name, '')
+    return value
 API_VERSION = '2026-09-16'
-MAX_PAGES = 8
-PAGE_SIZE = 100
 
 
 class SquareConnection(Base):
@@ -54,6 +79,9 @@ class SquareConnection(Base):
     connected_at: Mapped[str] = mapped_column(String(48), nullable=False)
     last_sync_at: Mapped[str | None] = mapped_column(String(48), nullable=True)
     last_error: Mapped[str | None] = mapped_column(String(220), nullable=True)
+    # active | needs_reconnect (Square rejected the token) | revoked (owner turned access off in Square)
+    status: Mapped[str] = mapped_column(String(20), default='active', server_default='active')
+    environment: Mapped[str] = mapped_column(String(12), default='sandbox', server_default='sandbox')
 
 
 class SquareOAuthState(Base):
@@ -73,11 +101,14 @@ class SquareOrder(Base):
     updated_at: Mapped[str] = mapped_column(String(55), nullable=False)
     status: Mapped[str] = mapped_column(String(40), nullable=False)
     customer_id: Mapped[str | None] = mapped_column(String(140), nullable=True)
-    # total less separately reported tax and tip: not reconciled against payments or refunds.
+    # Order total less tax, tip and service charges (Square's net sales before refunds).
     net_sales_minor: Mapped[int] = mapped_column(Integer, nullable=False)
     discount_minor: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     tax_minor: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     tip_minor: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    service_charge_minor: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default='0')
+    # Calendar day in the location's own time zone, as Square reports it.
+    local_date: Mapped[str | None] = mapped_column(String(10), nullable=True, index=True)
     currency: Mapped[str] = mapped_column(String(4), nullable=False, default='USD')
     __table_args__ = (UniqueConstraint('workspace_id', 'source_order_id', name='uq_sandbox_order_owner'),)
 
@@ -152,7 +183,7 @@ def _connection(db: Session, wid: str) -> SquareConnection | None:
 
 def _api(token: str, method: str, path: str, payload: dict | None = None) -> dict:
     # Fixed base URL and path set by code, never from a browser or a Square response.
-    if path not in ('/v2/locations', '/v2/orders/search', '/v2/payments'):
+    if path not in ('/v2/locations', '/v2/orders/search', '/v2/payments', '/v2/refunds'):
         raise ValueError('Unknown Square API operation')
     try:
         with httpx.Client(timeout=18.0, follow_redirects=False) as client:
@@ -204,6 +235,8 @@ def _bind(db: Session, wid: str, merchant: str, mode: str, access: str | None, r
                                    credential_mode=mode, connected_at=_now())
         db.add(current)
     current.credential_mode = mode
+    current.status = 'active'
+    current.environment = square_environment()
     current.token_ciphertext = _encrypted(access) if access is not None else None
     current.refresh_ciphertext = _encrypted(refresh) if refresh else None
     current.token_expires_at = expiry
@@ -228,11 +261,12 @@ def _refresh_oauth(connection: SquareConnection, db: Session) -> str:
         exp = datetime.fromisoformat(expires.replace('Z', '+00:00'))
     except ValueError:
         exp = datetime.now(timezone.utc)
-    if exp > datetime.now(timezone.utc) + timedelta(minutes=5):
+    # Square access tokens last 30 days; refresh a week ahead so scheduled syncs never hit expiry.
+    if exp > datetime.now(timezone.utc) + timedelta(days=7):
         return token
     refresh = _decrypted(connection.refresh_ciphertext) if connection.refresh_ciphertext else ''
-    app_id = os.getenv('SQUARE_SANDBOX_APP_ID', '')
-    app_secret = os.getenv('SQUARE_SANDBOX_APP_SECRET', '')
+    app_id = _square_setting('APP_ID')
+    app_secret = _square_setting('APP_SECRET')
     if not refresh or not app_id or not app_secret:
         raise HTTPException(503, 'Sandbox OAuth token expired. Reconnect Square.')
     try:
@@ -244,7 +278,7 @@ def _refresh_oauth(connection: SquareConnection, db: Session) -> str:
     except httpx.RequestError:
         raise HTTPException(503, 'Square Sandbox OAuth refresh could not reach Square.')
     if response.status_code != 200:
-        raise HTTPException(422, 'Sandbox authorization expired or was revoked. Reconnect Square.')
+        raise HTTPException(422, 'Square authorization expired or was revoked. Reconnect Square.')
     data = response.json()
     if not data.get('access_token'):
         raise HTTPException(502, 'Square returned no refreshed access token.')
@@ -271,138 +305,13 @@ def _parse_order(raw: dict) -> dict | None:
     taxes = int((raw.get('total_tax_money') or {}).get('amount') or 0)
     tip = int((raw.get('total_tip_money') or {}).get('amount') or 0)
     discounts = int((raw.get('total_discount_money') or {}).get('amount') or 0)
+    service = int((raw.get('total_service_charge_money') or {}).get('amount') or 0)
     return dict(source_order_id=str(raw['id']), location_id=str(raw['location_id']),
                 created_at=str(raw.get('created_at') or _now()),
                 updated_at=str(raw.get('updated_at') or raw.get('created_at') or _now()),
                 status=state, customer_id=str(raw['customer_id']) if raw.get('customer_id') else None,
-                net_sales_minor=max(0, amount - taxes - tip), discount_minor=max(0, discounts),
-                tax_minor=max(0, taxes), tip_minor=max(0, tip), currency=currency)
-
-
-def _payment_customers(token: str, location_ids: list[str], since: str) -> dict[str, str]:
-    """Optional customer IDs from payments; fail closed when required read scope is absent.
-
-    Square doesn't attach a stable customer ID to every order. Payments can
-    include a customer_id and order_id; join only exact order IDs from this
-    one authorized Sandbox merchant, never inferred names or cards.
-    """
-    result: dict[str, str] = {}
-    for location in location_ids:
-        cursor = None
-        cursors: set[str] = set()
-        for page in range(MAX_PAGES):
-            query: dict[str, Any] = {'location_id': location, 'begin_time': since,
-                                     'limit': PAGE_SIZE, 'sort_order': 'DESC'}
-            if cursor:
-                query['cursor'] = cursor
-            response = _api(token, 'GET', '/v2/payments', query)
-            payments = response.get('payments') or []
-            if not isinstance(payments, list):
-                raise HTTPException(502, 'Unexpected Square payments response.')
-            for payment in payments:
-                if not isinstance(payment, dict):
-                    continue
-                if payment.get('order_id') and payment.get('customer_id') and payment.get('status') == 'COMPLETED':
-                    result[str(payment['order_id'])] = str(payment['customer_id'])
-            cursor = response.get('cursor')
-            if not cursor:
-                break
-            if cursor in cursors or page == MAX_PAGES - 1:
-                raise HTTPException(422, 'Square payment pagination exceeded the supported limit.')
-            cursors.add(cursor)
-    return result
-
-
-def _synchronise(wid: str, db: Session, token: str) -> dict:
-    connection = _connection(db, wid)
-    if connection is None:
-        raise HTTPException(409, 'Connect Square Sandbox before syncing.')
-    run = SquareSyncRun(id=str(uuid.uuid4()), workspace_id=wid, started_at=_now(), status='running')
-    db.add(run)
-    db.commit()
-    try:
-        merchant, locations = _merchant_from_locations(token)
-        if merchant != connection.merchant_id:
-            raise HTTPException(409, 'This Sandbox token belongs to a different merchant.')
-        if selection_enabled():
-            chosen = selected_rows(db, wid, merchant)
-            authorized = {str(loc['id']) for loc in locations if eligible_location(loc)}
-            location_ids = sorted(x.location_id for x in chosen)
-            if not location_ids or not set(location_ids).issubset(authorized):
-                raise HTTPException(409, 'Choose currently eligible Square Sandbox locations before syncing.')
-            db.execute(delete(SquareOrder).where(
-                SquareOrder.workspace_id == wid, SquareOrder.location_id.not_in(location_ids)))
-        else:
-            location_ids = [loc['id'] for loc in locations if loc.get('status') != 'INACTIVE']
-            if not location_ids:
-                location_ids = [x['id'] for x in locations]
-        scanned = inserted = updated = skipped = 0
-        since = (datetime.now(timezone.utc) - timedelta(days=180)).isoformat(timespec='seconds').replace('+00:00', 'Z')
-        payment_customers = _payment_customers(token, location_ids, since)
-        for batch in (location_ids[i:i+10] for i in range(0, len(location_ids), 10)):
-            cursor = None
-            seen: set[str] = set()
-            for page in range(MAX_PAGES):
-                payload: dict[str, Any] = {
-                    'location_ids': batch, 'limit': PAGE_SIZE, 'return_entries': False,
-                    'query': {'filter': {'date_time_filter': {'created_at': {'start_at': since}}},
-                              'sort': {'sort_field': 'CREATED_AT', 'sort_order': 'DESC'}},
-                }
-                if cursor:
-                    payload['cursor'] = cursor
-                result = _api(token, 'POST', '/v2/orders/search', payload)
-                values = result.get('orders') or []
-                if not isinstance(values, list):
-                    raise HTTPException(502, 'Unexpected Square orders response.')
-                for raw in values:
-                    scanned += 1
-                    parsed = _parse_order(raw)
-                    if parsed is None:
-                        skipped += 1
-                        continue
-                    if not parsed['customer_id']:
-                        parsed['customer_id'] = payment_customers.get(parsed['source_order_id'])
-                    existing = db.scalar(select(SquareOrder).where(
-                        SquareOrder.workspace_id == wid, SquareOrder.source_order_id == parsed['source_order_id']))
-                    if existing:
-                        if parsed['updated_at'] >= existing.updated_at:
-                            for key, value in parsed.items():
-                                setattr(existing, key, value)
-                            updated += 1
-                    else:
-                        db.add(SquareOrder(id=str(uuid.uuid4()), workspace_id=wid, **parsed))
-                        inserted += 1
-                db.flush()
-                cursor = result.get('cursor')
-                if not cursor:
-                    break
-                if cursor in seen:
-                    raise HTTPException(502, 'Square returned a repeated pagination cursor.')
-                seen.add(cursor)
-                if page == MAX_PAGES - 1:
-                    raise HTTPException(422, 'More than 800 orders per location batch. Narrow the window before continuing.')
-        run.scanned, run.inserted, run.updated, run.skipped = scanned, inserted, updated, skipped
-        run.status = 'completed'
-        run.completed_at = _now()
-        connection.last_sync_at, connection.last_error = run.completed_at, None
-        db.commit()
-        return {'run_id': run.id, 'status': run.status, 'scanned': scanned,
-                'inserted': inserted, 'updated': updated, 'skipped': skipped,
-                'period': 'last_180_days', 'currency': 'USD',
-                'limitations': 'Sandbox only. Order totals exclude recorded tax/tip; payment customer IDs may be joined by order ID. Refunds, payment totals, and service charges are not fully reconciled.'}
-    except Exception as exc:
-        db.rollback()
-        # No partial import on failure. Never store API response or token in run log.
-        run = db.get(SquareSyncRun, run.id)
-        if run:
-            run.status, run.completed_at, run.message = 'failed', _now(), 'Square synchronization did not complete.'
-        connection = _connection(db, wid)
-        if connection:
-            connection.last_error = 'Most recent sync failed. Check permissions, API availability or order volume.'
-        db.commit()
-        if isinstance(exc, HTTPException):
-            raise
-        raise HTTPException(502, 'Square synchronization did not complete. See developer logs without credentials.')
+                net_sales_minor=max(0, amount - taxes - tip - service), discount_minor=max(0, discounts),
+                tax_minor=max(0, taxes), tip_minor=max(0, tip), service_charge_minor=max(0, service), currency=currency)
 
 
 @router.get('/locations')
@@ -480,20 +389,21 @@ def status(sub: str = Depends(authenticated_subject)):
         requests = db.scalars(select(AssistedSetupRequest).where(AssistedSetupRequest.workspace_id == wid)
                              .order_by(AssistedSetupRequest.created_at.desc()).limit(2)).all()
         return {
-            'connected': conn is not None, 'environment': 'sandbox',
+            'connected': conn is not None, 'environment': square_environment(),
+            'connection_status': conn.status if conn else None,
             'merchant_id': conn.merchant_id if conn else None,
             'credential_mode': conn.credential_mode if conn else None,
             'last_sync_at': conn.last_sync_at if conn else None,
             'last_error': conn.last_error if conn else None,
             'developer_token_configured': bool(os.getenv('SQUARE_SANDBOX_ACCESS_TOKEN')),
-            'oauth_configured': all(os.getenv(x) for x in ('SQUARE_SANDBOX_APP_ID', 'SQUARE_SANDBOX_APP_SECRET',
-                                 'SQUARE_SANDBOX_REDIRECT_URI', 'TABLESIGNAL_CREDENTIAL_KEY')),
+            'oauth_configured': all((_square_setting('APP_ID'), _square_setting('APP_SECRET'),
+                                     _square_setting('REDIRECT_URI'), os.getenv('TABLESIGNAL_CREDENTIAL_KEY'))),
             'runs': [{'status': x.status, 'started_at': x.started_at, 'completed_at': x.completed_at,
                       'scanned': x.scanned, 'inserted': x.inserted, 'updated': x.updated, 'skipped': x.skipped}
                      for x in runs],
             'assisted_requests': [{'provider': x.provider, 'status': x.status, 'created_at': x.created_at}
                                   for x in requests],
-            'production_enabled': False,
+            'production_enabled': square_environment() == 'production',
         }
 
 
@@ -512,9 +422,9 @@ def connect_developer(sub: str = Depends(owner_subject)):
 
 @router.post('/oauth/start')
 def oauth_start(sub: str = Depends(owner_subject)):
-    app_id = os.getenv('SQUARE_SANDBOX_APP_ID', '')
-    secret = os.getenv('SQUARE_SANDBOX_APP_SECRET', '')
-    redirect = os.getenv('SQUARE_SANDBOX_REDIRECT_URI', '')
+    app_id = _square_setting('APP_ID')
+    secret = _square_setting('APP_SECRET')
+    redirect = _square_setting('REDIRECT_URI')
     if not all((app_id, secret, redirect)):
         raise HTTPException(503, 'Configure the Square Sandbox OAuth application first.')
     _key()
@@ -550,10 +460,10 @@ def oauth_callback(code: str = '', state: str = '', error: str = ''):
     try:
         with httpx.Client(timeout=15.0, follow_redirects=False) as client:
             response = client.post(_square_url() + '/oauth2/token', json={
-                'client_id': os.getenv('SQUARE_SANDBOX_APP_ID'),
-                'client_secret': os.getenv('SQUARE_SANDBOX_APP_SECRET'),
+                'client_id': _square_setting('APP_ID'),
+                'client_secret': _square_setting('APP_SECRET'),
                 'code': code, 'grant_type': 'authorization_code',
-                'redirect_uri': os.getenv('SQUARE_SANDBOX_REDIRECT_URI'),
+                'redirect_uri': _square_setting('REDIRECT_URI'),
             })
     except httpx.RequestError:
         raise HTTPException(502, 'Could not exchange Sandbox authorization code.')
@@ -572,14 +482,93 @@ def oauth_callback(code: str = '', state: str = '', error: str = ''):
 
 
 @router.post('/sync')
-def sync(sub: str = Depends(authenticated_subject)):
+def sync(response: Response, sub: str = Depends(authenticated_subject)):
+    """Sync now: run the job here for a short time; anything left continues in the background worker."""
+    from . import square_sync
     with Session(engine) as db:
         wid = _workspace(db, sub)
         connection = _connection(db, wid)
         if connection is None:
-            raise HTTPException(409, 'Connect a Square Sandbox account before syncing.')
-        token = _refresh_oauth(connection, db)
-        return _synchronise(wid, db, token)
+            raise HTTPException(409, 'Connect a Square account before syncing.')
+        if connection.status != 'active':
+            raise HTTPException(409, 'Reconnect Square before syncing; access was turned off or expired.')
+        job = square_sync.enqueue(db, wid, 'manual', claimed=True)
+        if not getattr(job, 'claimed_here', False) and not square_sync.claim(db, job.id):
+            response.status_code = 202
+            return {'status': 'running', 'message': 'A sync is already running.', 'progress': square_sync.progress(db, wid)}
+        result = square_sync.execute(db, db.get(square_sync.SquareSyncJob, job.id),
+                                     budget_seconds=float(os.getenv('GUESTLIFT_SYNC_INLINE_SECONDS', '20')))
+        body = {'status': 'completed' if result['complete'] else 'continuing',
+                'scanned': result['scanned'], 'inserted': result['inserted'], 'updated': result['updated'],
+                'skipped': result['skipped'], 'refunds': result['refunds'], 'currency': 'USD',
+                'progress': square_sync.progress(db, wid),
+                'limitations': 'Net sales exclude tax, tips and service charges and subtract refunds. '
+                               'Gift cards and comps are not imported separately.'}
+        if not result['complete']:
+            response.status_code = 202
+            body['message'] = 'Importing your history in the background. This page updates as it goes.'
+        return body
+
+
+@router.get('/health')
+def data_health(sub: str = Depends(authenticated_subject)):
+    from . import square_sync
+    with Session(engine) as db:
+        return square_sync.health(db, _workspace(db, sub))
+
+
+@router.get('/reconciliation')
+def reconciliation_report(start: str | None = None, end: str | None = None, sub: str = Depends(authenticated_subject)):
+    """Daily totals per location, to compare with Square's Sales Summary. Dates are local (YYYY-MM-DD)."""
+    from datetime import date as _date
+    from . import square_sync
+    try:
+        stop = _date.fromisoformat(end) if end else (datetime.now(timezone.utc).date() - timedelta(days=1))
+        begin = _date.fromisoformat(start) if start else stop - timedelta(days=6)
+    except ValueError:
+        raise HTTPException(422, 'Use dates like 2026-11-16.')
+    if begin > stop or (stop - begin).days > 92:
+        raise HTTPException(422, 'Choose a range of up to 93 days with the start before the end.')
+    with Session(engine) as db:
+        wid = _workspace(db, sub)
+        ids = None
+        if selection_enabled():
+            conn = _connection(db, wid)
+            ids = [x.location_id for x in selected_rows(db, wid, conn.merchant_id)] if conn else []
+        return square_sync.reconciliation(db, wid, begin, stop, ids)
+
+
+@router.post('/webhook')
+async def square_webhook(request: Request):
+    """Square notifications. Handles oauth.authorization.revoked: stop syncing and delete the token."""
+    import base64
+    import hmac as _hmac
+    import json as _json
+    key, url = os.getenv('SQUARE_WEBHOOK_SIGNATURE_KEY', ''), os.getenv('SQUARE_WEBHOOK_URL', '')
+    if not key or not url:
+        raise HTTPException(503, 'Square webhooks are not configured.')
+    body = await request.body()
+    expected = base64.b64encode(_hmac.new(key.encode(), url.encode() + body, hashlib.sha256).digest()).decode()
+    if not _hmac.compare_digest(expected, request.headers.get('x-square-hmacsha256-signature', '')):
+        raise HTTPException(401, 'Invalid Square signature.')
+    try:
+        event = _json.loads(body)
+    except ValueError:
+        raise HTTPException(400, 'Invalid JSON.')
+    if event.get('type') == 'oauth.authorization.revoked':
+        from . import square_sync
+        with Session(engine) as db:
+            conn = db.scalar(select(SquareConnection).where(SquareConnection.merchant_id == str(event.get('merchant_id'))))
+            if conn:
+                conn.status = 'revoked'
+                conn.token_ciphertext = conn.refresh_ciphertext = None
+                conn.last_error = 'Access was turned off in Square.'
+                for job in db.scalars(select(square_sync.SquareSyncJob).where(
+                        square_sync.SquareSyncJob.workspace_id == conn.workspace_id,
+                        square_sync.SquareSyncJob.status.in_(('queued', 'running')))):
+                    job.status, job.last_error = 'failed', 'Access revoked in Square.'
+                db.commit()
+    return {'received': True}
 
 
 @router.post('/disconnect')
@@ -588,8 +577,9 @@ def disconnect(sub: str = Depends(owner_subject)):
     # For OAuth, the seller should also revoke app access in Square's Sandbox Dashboard.
     with Session(engine) as db:
         wid = _workspace(db, sub)
-        db.execute(delete(SquareOrder).where(SquareOrder.workspace_id == wid))
-        db.execute(delete(SandboxMonitoredLocation).where(SandboxMonitoredLocation.workspace_id == wid))
+        from .square_sync import SquareLocationState, SquareRefund, SquareSyncJob
+        for model in (SquareOrder, SquareRefund, SquareLocationState, SquareSyncJob, SandboxMonitoredLocation):
+            db.execute(delete(model).where(model.workspace_id == wid))
         conn = _connection(db, wid)
         if conn:
             db.delete(conn)

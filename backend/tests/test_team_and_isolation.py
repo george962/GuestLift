@@ -33,6 +33,7 @@ ISOLATION = {
     'GET /api/integrations/square/locations': None,
     'POST /api/integrations/square/locations/selection': {'location_ids': ['LOC_HARBOR']},
     'GET /api/integrations/square/status': None,
+    'GET /api/integrations/square/health': None, 'GET /api/integrations/square/reconciliation': None,
     'POST /api/integrations/square/connect-developer-sandbox': None,
     'POST /api/integrations/square/oauth/start': None, 'POST /api/integrations/square/sync': None,
     'POST /api/integrations/square/disconnect': None,

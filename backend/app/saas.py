@@ -135,17 +135,22 @@ def _scoped_summary(db: Session, w: Workspace) -> dict:
             SquareOrder.workspace_id == w.id, SquareOrder.location_id.in_(selected))).all() if selected else []
     else:
         rows = db.scalars(select(SquareOrder).where(SquareOrder.workspace_id == w.id)).all()
+    from .square_sync import SquareRefund
+    location_ids = {o.location_id for o in rows} if os.getenv('TABLESIGNAL_SANDBOX_LOCATION_BILLING', '0') != '1' else set(selected)
+    refund_rows = db.scalars(select(SquareRefund).where(SquareRefund.workspace_id == w.id)).all()
+    refunds = [{'location_id': f.location_id, 'local_date': f.local_date, 'amount_minor': f.amount_minor}
+               for f in refund_rows if not location_ids or f.location_id in location_ids]
     data = [{'provider': 'square', 'location_id': o.location_id,
-             'source_order_id': o.source_order_id, 'created_at': o.created_at,
+             'source_order_id': o.source_order_id, 'created_at': o.created_at, 'local_date': o.local_date,
              'status': o.status, 'customer_id': o.customer_id,
              'net_sales_minor': o.net_sales_minor, 'discount_minor': o.discount_minor,
              'campaign_code': None, 'campaign_discount_minor': 0} for o in rows]
-    summary = analyze_orders(data)
-    summary['data_origin'] = 'square_sandbox_api' if connection else 'no_connected_data'
+    summary = analyze_orders(data, refunds)
+    summary['data_origin'] = 'square_api' if connection else 'no_connected_data'
     summary['has_connected_source'] = bool(connection)
     summary['methodology']['sales'] = (
-        'Square Sandbox COMPLETED orders in the last 180 days: order total less recorded taxes/tips. '
-        'Payments, refunds, and service charges are NOT fully reconciled; do not call this final net sales.'
+        'Completed Square orders: order total less tax, tips and service charges, minus completed refunds '
+        'on the day they happened. Days follow each location\'s time zone. Gift cards and comps are not separated.'
     )
     summary['methodology']['repeat'] = (
         'Two or more observed completed orders with the same provider-scoped customer ID. '

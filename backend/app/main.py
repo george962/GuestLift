@@ -21,12 +21,15 @@ from .decisions import router as decisions_router
 from .intelligence import router as intelligence_router
 from .launch import router as launch_router
 from .membership import router as team_router
+from . import square_sync  # noqa: F401  (registers the sync tables)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     setup_logging()
     config.validate_auth_config()
     config.validate_production_config()
+    from .connections import validate_square_config
+    validate_square_config()
     init_db()
     yield
 

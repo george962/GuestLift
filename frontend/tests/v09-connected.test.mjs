@@ -25,5 +25,5 @@ test('v0.9 connection page uses server-side authenticated API and no browser tok
   const connect=read('app/connections/page.tsx');
   for(const x of ['/api/integrations/square/','connect-developer-sandbox','oauth/start','assisted-setup','disconnect','sync'])assert.ok(connect.includes(x),x);
   assert.doesNotMatch(connect,/type="password"|SQUARE_SANDBOX_ACCESS_TOKEN.*value=/);
-  assert.match(connect,/Sync last 180 days/);
+  assert.match(connect,/Sync now/);
 });

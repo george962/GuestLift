@@ -4,8 +4,12 @@ from collections import Counter, defaultdict
 from datetime import datetime
 
 
-def analyze_orders(orders: list[dict]) -> dict:
-    """Summarize already tenant-scoped orders. All financial amounts are integer cents."""
+def analyze_orders(orders: list[dict], refunds: list[dict] | None = None) -> dict:
+    """Summarize already tenant-scoped orders. All financial amounts are integer cents.
+
+    `refunds` (location_id, local_date, amount_minor) are subtracted from net sales on the day they
+    happened, as Square's reports do. Days use each order's `local_date` when present.
+    """
     clean = [o for o in orders if o.get('status') not in ('VOIDED', 'CANCELED')]
     locations = defaultdict(lambda: {'orders': 0, 'net_sales_minor': 0, 'discount_minor': 0})
     customers = defaultdict(int)
@@ -18,7 +22,7 @@ def analyze_orders(orders: list[dict]) -> dict:
         row['orders'] += 1
         row['net_sales_minor'] += int(o['net_sales_minor'])
         row['discount_minor'] += int(o.get('discount_minor', 0))
-        date = str(o.get('created_at', ''))[:10]
+        date = str(o.get('local_date') or o.get('created_at', ''))[:10]
         if date:
             daily[date]['orders'] += 1
             daily[date]['net_sales_minor'] += int(o['net_sales_minor'])
@@ -30,7 +34,15 @@ def analyze_orders(orders: list[dict]) -> dict:
             campaigns[campaign]['redemptions'] += 1
             campaigns[campaign]['net_sales_minor'] += int(o['net_sales_minor'])
             campaigns[campaign]['recorded_discount_minor'] += int(o.get('campaign_discount_minor', 0))
-    total = sum(int(o['net_sales_minor']) for o in clean)
+    refunded = 0
+    for f in refunds or []:
+        amount = int(f['amount_minor'])
+        refunded += amount
+        loc = f"{f.get('provider', 'square')}:{f['location_id']}"
+        locations[loc]['net_sales_minor'] -= amount
+        if f.get('local_date'):
+            daily[f['local_date']]['net_sales_minor'] -= amount
+    total = sum(int(o['net_sales_minor']) for o in clean) - refunded
     discounts = sum(int(o.get('discount_minor',0)) for o in clean)
     repeats = sum(1 for visits in customers.values() if visits >= 2)
     result = {
@@ -38,6 +50,7 @@ def analyze_orders(orders: list[dict]) -> dict:
         'orders': len(clean),
         'net_sales_minor': total,
         'discount_minor': discounts,
+        'refunds_minor': refunded,
         'average_order_minor': round(total/len(clean)) if clean else 0,
         'identified_orders': known_orders,
         'anonymous_orders':len(clean)-known_orders,
