@@ -146,3 +146,23 @@ def test_trial_ending_reminders_go_out_once_at_3_days_and_1_day(harness):
     with Session(saas.engine) as db:
         mails = db.scalars(select(emailer.EmailOutbox).where(emailer.EmailOutbox.kind == 'trial_ending')).all()
     assert sorted(m.subject.split('ends ')[1] for m in mails) == ['in 3 days', 'tomorrow']
+
+
+def test_workspace_week_has_ended_at_every_location():
+    """CI caught this on Monday 05:00 UTC: midnight in New York, still Sunday in Los Angeles. The
+    brief used whichever location it read first; the mock planted the dip in New York's week."""
+    from itertools import permutations
+
+    from mock_square import app as mock
+    zones = ['America/New_York', 'America/Los_Angeles']
+    boundary = datetime(2026, 11, 23, 5, 0, tzinfo=timezone.utc)
+    for order in permutations(zones):
+        assert insight_loop.workspace_timezone(order, boundary) == 'America/Los_Angeles'
+    today = insight_loop.local_today(insight_loop.workspace_timezone(zones, boundary), boundary)
+    assert today == date(2026, 11, 22)
+    assert weekly.last_complete_week(today) == mock._complete_week(boundary) == date(2026, 11, 9)
+    later = datetime(2026, 11, 23, 9, 0, tzinfo=timezone.utc)  # Monday everywhere
+    assert weekly.last_complete_week(insight_loop.local_today(insight_loop.workspace_timezone(zones, later), later)) \
+        == mock._complete_week(later) == date(2026, 11, 16)
+    assert insight_loop.workspace_timezone([]) == 'UTC'
+    assert insight_loop.workspace_timezone(['Not/AZone', 'America/Los_Angeles'], boundary) == 'America/Los_Angeles'

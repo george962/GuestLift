@@ -45,7 +45,7 @@ def _workspace_data(db: Session, wid: str):
                for f in db.scalars(select(SquareRefund).where(SquareRefund.workspace_id == wid))
                if allowed is None or f.location_id in allowed]
     names = {loc: s.name for loc, s in states.items() if allowed is None or loc in allowed}
-    tz = next((s.timezone for s in states.values()), 'UTC')
+    tz = workspace_timezone(s.timezone for loc, s in states.items() if allowed is None or loc in allowed)
     earliest = min((date.fromisoformat(o['local_date']) for o in orders), default=None)
     return orders, refunds, names, tz, earliest
 
@@ -56,6 +56,20 @@ def local_today(tz: str, now: datetime | None = None) -> date:
     except Exception:
         zone = ZoneInfo('UTC')
     return (now or datetime.now(timezone.utc)).astimezone(zone).date()
+
+
+def workspace_timezone(zones, now: datetime | None = None) -> str:
+    """The workspace's clock: the zone where it is earliest (westernmost), so "last complete week",
+    today's date and the Monday digest all wait until the week has ended at every location.
+    Deterministic whatever order the locations come back in."""
+    now = now or datetime.now(timezone.utc)
+
+    def offset(tz: str):
+        try:
+            return now.astimezone(ZoneInfo(tz)).utcoffset()
+        except Exception:
+            return timedelta(0)
+    return min(sorted(set(z for z in zones if z)), key=offset, default='UTC')
 
 
 def brief_for(db: Session, wid: str, today: date | None = None) -> dict:
