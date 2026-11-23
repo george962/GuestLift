@@ -107,6 +107,10 @@ def _beat() -> None:
 
 
 def main() -> int:
+    try:  # a restarted container keeps /tmp: don't look alive until the loop runs again
+        HEARTBEAT.unlink(missing_ok=True)
+    except OSError:
+        pass
     setup_logging()
     config.validate_auth_config()
     config.validate_production_config()
