@@ -2,7 +2,7 @@
 
 **This is the working plan for the customer-facing product. Every change PR cites the milestone it advances and updates the status table below in the same PR.**
 
-Owner: product owner (repo admin). Last updated: 2026-11-22 (M4).
+Owner: product owner (repo admin). Last updated: 2026-11-22 (M6 step 1).
 
 ## The promise we are building toward
 
@@ -78,7 +78,7 @@ Ordered by dependency. Each milestone is one or more PRs; it's "done" only when 
 - **Verify:** Stripe test clocks drive trial-end, renewal, failed payment and cancellation in CI; journey steps 8 and 10 pass; an entitlement matrix test covers every state × paid endpoint.
 
 ### M6 — UI/UX quality and customer readiness
-- First-run checklist (connect → select locations → first sync → first insight → first decision) that is always visible until it's done.
+- First-run checklist (connect → select locations → first sync → first insight → first decision) that is always visible until it's done. Step 1 implementation derives progress from existing workspace-scoped APIs; "brief ready" means a verified weekly brief exists, not that the user has opened it. Signup/profile setup precedes the checklist.
 - Every page has designed loading, empty, error and stale-data states; no dead ends.
 - One coherent app shell for signed-in users (nav, workspace switcher, data-health indicator) that is clearly separate from the public demo.
 - Mobile (owners check on phones), keyboard navigation and screen readers: axe checks in Playwright on every journey page.
@@ -102,9 +102,9 @@ Ordered by dependency. Each milestone is one or more PRs; it's "done" only when 
 | M1 Journey harness | Done | #23 | Mock Square, pipeline + contract tests, browser journey steps 2–7 in CI. Steps 8–10 arrive with M4/M5 |
 | M2 Identity | Done | #26 | Clerk mode, owner/manager roles, invites, workspace deletion, route-inventory isolation test; journey passes against the real Clerk dev instance. CI needs the Clerk test secrets added |
 | M3 Pipeline | Done | #27 | Checkpointed worker, no order cap, refunds, local days, reconnect/revocation, data health, Check against Square. Remaining: verify with a real Square Sandbox seller on staging (needs hosting) |
-| M4 Insight loop | Done (pending merge) | M4 PR | Weekly brief with confidence + evidence, decisions with metric/location/follow-up, seasonal-aware outcome readouts, digest/outcome/trial emails with unsubscribe, 168-check analyst eval. P2: email outbox retries pending mail once Resend is configured (idempotency keys, no duplicates), preferences re-checked at send time, accurate counts, 422 for bad dates; schema follow-up proposed in `docs/EMAIL_OUTBOX_MIGRATION.md`. Remaining: Resend account to deliver email; owner interviews to tune what the brief prioritizes |
+| M4 Insight loop | Implemented (merged and hardened; hosting verification outstanding) | #29, #30, #31, #32 | Weekly brief with confidence + evidence, decisions with metric/location/follow-up, seasonal-aware outcome readouts, digest/outcome/trial emails with unsubscribe, 168-check analyst eval. P2: email outbox retries pending mail once Resend is configured (idempotency keys, no duplicates), preferences re-checked at send time, accurate counts, 422 for bad dates; schema follow-up proposed in `docs/EMAIL_OUTBOX_MIGRATION.md`. Remaining: Resend account to deliver email; owner interviews to tune what the brief prioritizes |
 | M5 Billing | Done | #28 | One entitlement service; no-card trial after first sync; grace + read-only; proration preview/confirm; verified on Stripe test clocks. Trial-ending emails added in M4. Remaining: Stripe keys in CI secrets, a manual hosted-Checkout check |
-| M6 UI/UX and readiness | Not started | | Needs legal review of drafts |
+| M6 UI/UX and readiness | In progress (step 1: first-run checklist) | M6 checklist PR | Server-derived Connect → Locations → Sync → Brief ready → Decision checklist; remaining: comprehensive states, mobile/a11y, help/support, export/deletion, consent/legal, analytics and usability checks |
 | M7 Pilot | Not started | | Needs pilot merchant, hosting, LIVE accounts |
 
 ## Decisions log

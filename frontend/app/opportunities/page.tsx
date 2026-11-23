@@ -5,6 +5,7 @@ import {ArrowRight,AlertCircle,CheckCircle2,Lightbulb,RefreshCcw,ShieldCheck,Tic
 import {accountApi,localAuthClient} from '@/lib/local-auth';
 import {DataHealthBanner,useDataHealth} from '@/components/data-health';
 import {PlanBanner,usePlan} from '@/components/plan-status';
+import {notifyFirstRunProgressChanged} from '@/components/first-run-checklist';
 
 type Opportunity={id:string;title:string;status:string;value:number|null;description:string;evidence:string;action:string};
 type Data={workspace:string;has_connected_source:boolean;observed_orders:number;identified_customers:number;reference_basket_minor:number;opportunities:Opportunity[];limitations:string[]};
@@ -52,7 +53,7 @@ export default function Opportunities(){
  async function save(){if(!token)return;setSaving(true);setError('');
   try{await accountApi('/api/decisions/plans',token,'POST',{
    title,objective,offer_type:type,offer_value:type==='no_offer'?0:value,target_redemptions:redemptions,
-   reference_basket_minor:basket,assumed_margin_percent:margin,notes,metric,location_id:where||null,start_date:startDate,follow_up_weeks:followWeeks});setSaved(true);
+   reference_basket_minor:basket,assumed_margin_percent:margin,notes,metric,location_id:where||null,start_date:startDate,follow_up_weeks:followWeeks});setSaved(true);notifyFirstRunProgressChanged();
   }catch(e){setError(e instanceof Error?e.message:'Unable to save decision.');}
   finally{setSaving(false)}
  }
