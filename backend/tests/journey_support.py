@@ -8,7 +8,7 @@ from cryptography.fernet import Fernet
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 
-from app import connections, decisions, intelligence, local_auth, saas
+from app import connections, decisions, insight_loop, intelligence, local_auth, saas
 from app.database import Base
 from app.main import app
 from mock_square import app as mock
@@ -21,7 +21,7 @@ MOCK = 'http://mock-square.test'
 @pytest.fixture
 def harness(tmp_path, monkeypatch):
     engine = create_engine('sqlite:///' + str(tmp_path / 'journey.sqlite'), connect_args={'check_same_thread': False})
-    for module in (saas, local_auth, connections, decisions, intelligence, membership):
+    for module in (saas, local_auth, connections, decisions, intelligence, membership, insight_loop):
         monkeypatch.setattr(module, 'engine', engine)
     Base.metadata.create_all(engine)
     env = {'SQUARE_API_BASE_URL': MOCK, 'TABLESIGNAL_CREDENTIAL_KEY': Fernet.generate_key().decode(),

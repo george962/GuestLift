@@ -5,7 +5,9 @@ import {ArrowRight,CheckCircle2,ClipboardList,RefreshCcw,ShieldCheck} from 'luci
 import {accountApi,localAuthClient} from '@/lib/local-auth';
 type Plan={id:string;title:string;objective:string;offer_type:string;offer_value:number;target_redemptions:number;
  reference_basket_minor:number;assumed_margin_percent:number;discount_budget_minor:number;modeled_contribution_minor:number;
- status:string;notes:string;created_at:string;updated_at:string};
+ status:string;notes:string;created_at:string;updated_at:string;
+ metric:string;location_id:string|null;start_date:string|null;follow_up_date:string|null;outcome:Outcome|null};
+type Outcome={available:boolean;headline?:string;explanation?:string;verdict?:string;change_percent?:number;due?:string;message?:string};
 const money=(n:number)=>new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'}).format(n/100);
 export default function Experiments(){
  const [token,setToken]=useState('');const [plans,setPlans]=useState<Plan[]>([]);
@@ -33,6 +35,10 @@ export default function Experiments(){
   {notice&&<div className="ts10-notice ts10-success" role="status"><CheckCircle2 size={18}/>{notice}</div>}
   <div className="ts10-plan-list">{plans.map(p=><article key={p.id} className="ts10-card"><div className="ts10-plan-header"><div><span className="ts10-eyebrow">{p.objective.replaceAll('_',' ')} · {new Date(p.created_at).toLocaleDateString()}</span><h2>{p.title}</h2></div><span className="ts10-status">{p.status}</span></div>
    <div className="ts10-plan-facts"><span><small>Offer</small><strong>{p.offer_type==='percent'?`${p.offer_value}% off`:p.offer_type==='fixed'?`${money(p.offer_value)} off`:'No incentive'}</strong></span><span><small>Hypothetical orders</small><strong>{p.target_redemptions}</strong></span><span><small>Modeled discount budget</small><strong>{money(p.discount_budget_minor)}</strong></span><span><small>Modeled contribution*</small><strong>{money(p.modeled_contribution_minor)}</strong></span></div>
+   {p.start_date&&<p className="ts10-small">Measuring {p.metric.replaceAll('_',' ')} {p.location_id?'at one location':'across locations'} from {p.start_date}; result on {p.follow_up_date}.</p>}
+   {p.outcome&&(p.outcome.available
+     ?<div className="ts10-notice ts10-success" role="status" data-outcome={p.outcome.verdict}><div><strong>{p.outcome.headline}</strong><p style={{margin:'4px 0 0'}}>{p.outcome.explanation}</p></div></div>
+     :<div className="ts10-notice" data-outcome="pending">{p.outcome.message}</div>)}
    {p.notes&&<p>{p.notes}</p>}<p className="ts10-small">*Scenario only. Assumed {p.assumed_margin_percent}% pre-discount contribution margin. This is neither incremental profit nor evidence of marketing effectiveness.</p>
    <div className="ts10-actions"><label>Tracking status <select aria-label={`Status for ${p.title}`} disabled={working===p.id} value={p.status} onChange={e=>void update(p.id,e.target.value)}><option value="draft">Draft</option><option value="planned">Planned (not sent)</option><option value="reviewed">Reviewed</option></select></label></div>
   </article>)}</div>

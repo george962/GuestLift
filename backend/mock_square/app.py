@@ -28,6 +28,13 @@ LOCATIONS = [
     {'id': 'LOC_CLOSED', 'name': 'Old Pier (closed)', 'status': 'INACTIVE', 'type': 'PHYSICAL', 'timezone': 'America/New_York'},
 ]
 DAYS = 120  # ~1,400 orders: well past the old 800-order sync cap
+BOOST_DAYS = 35
+
+
+def _last_week(now, loc):
+    from zoneinfo import ZoneInfo
+    today = now.astimezone(ZoneInfo(loc['timezone'])).date()
+    return today - timedelta(days=today.weekday() + 7)  # Monday of the last complete week
 
 app = FastAPI(title='Mock Square API', docs_url=None, redoc_url=None)
 _state: dict = {'tokens': {DEV_TOKEN}, 'codes': {}, 'refresh': {}, 'faults': []}
@@ -52,9 +59,17 @@ def build_dataset(now: datetime | None = None, seed: int = 7) -> tuple[list[dict
     customers = [f'CUST_{i:03d}' for i in range(30)]
     orders, payments, refunds = [], [], []
     n = 0
+    from zoneinfo import ZoneInfo as _Z
     for day in range(DAYS):
         for loc in LOCATIONS[:2]:
-            for _ in range(rng.randint(4, 8)):
+            when = (now.astimezone(_Z(loc['timezone'])) - timedelta(days=day)).date()
+            count = rng.randint(4, 8)
+            # Planted effects the weekly brief and outcome readouts must find (see truth()['planted']):
+            if loc['id'] == 'LOC_HARBOR' and when.weekday() >= 5 and day < BOOST_DAYS:
+                count += 6  # weekend lift at Harbor Street since the "earlier brunch" change
+            if loc['id'] == 'LOC_MARKET' and when.weekday() < 5 and _last_week(now, loc) <= when < _last_week(now, loc) + timedelta(days=7):
+                count = max(1, count - 4)  # weekday dip at Market Square last week
+            for _ in range(count):
                 n += 1
                 # Opening hours in the store's own time zone (7am-10pm), so evening orders fall on the
                 # next UTC day: a sync that ignores time zones gets the daily totals wrong.
@@ -120,6 +135,8 @@ def truth(orders: list[dict], payments: list[dict], refunds: list[dict] | None =
     refunded = sum(r['amount_money']['amount'] for r in done_refunds)
     return {
         'refunds_minor': refunded, 'completed_refunds': len(done_refunds),
+        'planted': {'market_weekday_dip_week': _last_week(datetime.now(timezone.utc), LOCATIONS[1]).isoformat(),
+                    'harbor_weekend_lift_since_days': BOOST_DAYS},
         'net_sales_after_refunds_minor': sum(net(o) for o in completed) - refunded,
         'daily': daily,
         'merchant_id': MERCHANT_ID,

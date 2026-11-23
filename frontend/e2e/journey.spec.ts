@@ -115,18 +115,32 @@ test('owner signs up, connects Square, syncs, reads the brief and saves a decisi
     await expect(page.locator('.ts9-metric', {hasText: 'Completed orders'})).toContainText(orders);
   });
 
-  await test.step('6 · the brief renders evidence and findings', async () => {
+  await test.step('6 · the weekly brief shows the planted Market Square dip, with evidence', async () => {
     await page.goto('/analyst');
+    const brief = page.locator('[data-weekly-brief]');
+    await expect(brief).toContainText(truth.planted.market_weekday_dip_week);
+    await expect(brief.locator('[data-finding^="LOC_MARKET:"]').first()).toContainText(/Market Square: .* down \d+%/);
     await expect(page.locator('.ts11-findings article').first()).toBeVisible();
   });
 
   await test.step('7 · save a decision and find it in saved decisions', async () => {
     await page.goto('/opportunities');
     await page.getByLabel('Decision title').fill('Win back lapsed regulars');
+    await page.getByLabel('What to measure').selectOption('orders');
+    await page.getByLabel('Where').selectOption('LOC_HARBOR');
+    // Logged after the fact: the change started 5 weeks ago, so its 4-week readout is already due.
+    const started = new Date(Date.now() - 35 * 864e5).toISOString().slice(0, 10);
+    await page.getByLabel('The change starts (or started) on').fill(started);
     await page.getByRole('button', {name: /^Save/}).click();
     await expect(page.getByText('Draft saved.')).toBeVisible();
     await page.getByRole('link', {name: /Review your saved decisions/}).click();
     await expect(page.getByText('Win back lapsed regulars')).toBeVisible();
+  });
+
+  await test.step('9 · the outcome readout finds the planted weekend lift, without claiming a cause', async () => {
+    const readout = page.locator('[data-outcome="clear"], [data-outcome="possible"]').first();
+    await expect(readout).toContainText('after the change');
+    await expect(readout).toContainText('not proof that it caused');
   });
 
   await test.step('M2 · the owner deletes the workspace and the account', async () => {

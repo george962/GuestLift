@@ -1,0 +1,226 @@
+"""Insight -> Decision -> Track, wired to data, email and the worker (docs/PRODUCT_PLAN.md M4)."""
+from __future__ import annotations
+
+import json
+import os
+import uuid
+from datetime import date, datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
+
+import httpx
+from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import HTMLResponse
+from pydantic import BaseModel
+from sqlalchemy import ForeignKey, String, Text, UniqueConstraint, select
+from sqlalchemy.orm import Mapped, Session, mapped_column
+
+from . import config, emailer, weekly
+from .database import Base, engine
+from .local_auth import authenticated_subject
+
+
+class WeeklyBrief(Base):
+    __tablename__ = 'weekly_briefs'
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    workspace_id: Mapped[str] = mapped_column(ForeignKey('saas_workspaces.id'), index=True)
+    week_start: Mapped[str] = mapped_column(String(10))
+    generated_at: Mapped[str] = mapped_column(String(48))
+    payload: Mapped[str] = mapped_column(Text)
+    __table_args__ = (UniqueConstraint('workspace_id', 'week_start', name='uq_weekly_brief_week'),)
+
+
+def _workspace_data(db: Session, wid: str):
+    """Completed orders and refunds for the monitored locations, plus location names and time zone."""
+    from .connections import SquareConnection, SquareOrder
+    from .location_entitlements import selected_rows, selection_enabled
+    from .square_sync import SquareLocationState, SquareRefund
+    conn = db.scalar(select(SquareConnection).where(SquareConnection.workspace_id == wid))
+    states = {s.location_id: s for s in db.scalars(select(SquareLocationState).where(SquareLocationState.workspace_id == wid))}
+    allowed = ({r.location_id for r in selected_rows(db, wid, conn.merchant_id)} if conn and selection_enabled() else None)
+    orders = [{'location_id': o.location_id, 'local_date': o.local_date or o.created_at[:10], 'net_sales_minor': o.net_sales_minor,
+               'discount_minor': o.discount_minor, 'customer_id': o.customer_id}
+              for o in db.scalars(select(SquareOrder).where(SquareOrder.workspace_id == wid, SquareOrder.status == 'COMPLETED'))
+              if allowed is None or o.location_id in allowed]
+    refunds = [{'location_id': f.location_id, 'local_date': f.local_date, 'amount_minor': f.amount_minor}
+               for f in db.scalars(select(SquareRefund).where(SquareRefund.workspace_id == wid))
+               if allowed is None or f.location_id in allowed]
+    names = {loc: s.name for loc, s in states.items() if allowed is None or loc in allowed}
+    tz = next((s.timezone for s in states.values()), 'UTC')
+    earliest = min((date.fromisoformat(o['local_date']) for o in orders), default=None)
+    return orders, refunds, names, tz, earliest
+
+
+def local_today(tz: str, now: datetime | None = None) -> date:
+    try:
+        zone = ZoneInfo(tz)
+    except Exception:
+        zone = ZoneInfo('UTC')
+    return (now or datetime.now(timezone.utc)).astimezone(zone).date()
+
+
+def brief_for(db: Session, wid: str, today: date | None = None) -> dict:
+    orders, refunds, names, tz, _ = _workspace_data(db, wid)
+    today = today or local_today(tz)
+    result = weekly.build_brief(orders, refunds, names, today)
+    result['has_data'] = bool(orders)
+    return result
+
+
+def store_brief(db: Session, wid: str, brief: dict) -> None:
+    row = db.scalar(select(WeeklyBrief).where(WeeklyBrief.workspace_id == wid, WeeklyBrief.week_start == brief['week_start']))
+    if row is None:
+        row = WeeklyBrief(id=str(uuid.uuid4()), workspace_id=wid, week_start=brief['week_start'], payload='{}', generated_at='')
+        db.add(row)
+    row.payload, row.generated_at = json.dumps(brief), datetime.now(timezone.utc).isoformat()
+    db.commit()
+
+
+def plan_outcome(db: Session, plan, today: date | None = None) -> dict | None:
+    """Readout for a decision whose follow-up date has passed (stored once computed)."""
+    if not plan.start_date or not plan.follow_up_date:
+        return None
+    orders, refunds, _, tz, earliest = _workspace_data(db, plan.workspace_id)
+    today = today or local_today(tz)
+    follow = date.fromisoformat(plan.follow_up_date)
+    if today < follow:
+        return {'available': False, 'due': plan.follow_up_date,
+                'message': f'Readout on {follow:%b %d}, when there is enough data after the change.'}
+    if plan.outcome:
+        return json.loads(plan.outcome)
+    result = weekly.outcome(orders, refunds, plan.metric or 'net_sales', plan.location_id, date.fromisoformat(plan.start_date),
+                            follow, earliest)
+    if result.get('available'):
+        plan.outcome, plan.outcome_at = json.dumps(result), datetime.now(timezone.utc).isoformat()
+        db.commit()
+    return result
+
+
+def member_email(db: Session, member) -> str:
+    """Verified address for a member: cached, local account, or the Clerk user record."""
+    if member.email:
+        return member.email
+    address = ''
+    if config.auth_mode() == 'local':
+        from .local_auth import LocalUser
+        user = db.get(LocalUser, member.subject)
+        address = user.email if user else ''
+    elif os.getenv('CLERK_SECRET_KEY') and member.subject.startswith('oidc:'):
+        try:
+            r = httpx.get(f"https://api.clerk.com/v1/users/{member.subject[5:]}", timeout=10,
+                          headers={'Authorization': f"Bearer {os.environ['CLERK_SECRET_KEY']}"})
+            if r.status_code == 200:
+                data = r.json()
+                primary = data.get('primary_email_address_id')
+                for e in data.get('email_addresses') or []:
+                    if e.get('id') == primary and (e.get('verification') or {}).get('status') == 'verified':
+                        address = e.get('email_address', '')
+        except httpx.HTTPError:
+            address = ''
+    if address:
+        member.email = address[:254]
+        db.commit()
+    return address
+
+
+def run_due(db: Session, now: datetime | None = None) -> dict:
+    """Worker hook: Monday digests (7am local) and outcome emails on follow-up dates."""
+    from .billing import entitlement
+    from .connections import SquareConnection
+    from .decisions import DecisionPlan
+    from .membership import WorkspaceMember
+    from .saas import Workspace
+    now = now or datetime.now(timezone.utc)
+    sent = {'digests': 0, 'outcomes': 0, 'trial_reminders': 0}
+    for conn in db.scalars(select(SquareConnection).where(SquareConnection.status == 'active')).all():
+        w = db.get(Workspace, conn.workspace_id)
+        if w is None or entitlement(w, now)['access'] != 'full' or not conn.last_sync_at:
+            continue
+        e = entitlement(w, now)
+        if e['state'] == 'trial' and e['days_left'] in (1, 3):  # M5 trial-ending reminders, to owners, once each
+            for m in db.scalars(select(WorkspaceMember).where(WorkspaceMember.workspace_id == w.id,
+                                                              WorkspaceMember.role == 'owner')).all():
+                if to := member_email(db, m):
+                    subject, html_body, text = emailer.render_trial_ending(e['days_left'], w.name,
+                                                                           emailer.unsubscribe_url(m.id, 'outcome'))
+                    emailer.send(db, w.id, 'trial_ending', f"trial:{w.id}:{e['days_left']}", to, subject, html_body, text)
+                    sent['trial_reminders'] = sent.get('trial_reminders', 0) + 1
+        orders, _, _, tz, _ = _workspace_data(db, w.id)
+        local = now.astimezone(ZoneInfo(tz) if tz else ZoneInfo('UTC'))
+        members = db.scalars(select(WorkspaceMember).where(WorkspaceMember.workspace_id == w.id)).all()
+        if orders and local.weekday() == 0 and local.hour >= 7:
+            brief = brief_for(db, w.id, local.date())
+            store_brief(db, w.id, brief)
+            for m in members:
+                if not m.weekly_digest or not (to := member_email(db, m)):
+                    continue
+                subject, html_body, text = emailer.render_weekly(brief, w.name, emailer.unsubscribe_url(m.id, 'weekly_digest'))
+                if emailer.send(db, w.id, 'weekly_digest', f"digest:{m.id}:{brief['week_start']}", to, subject, html_body, text) != 'failed':
+                    sent['digests'] += 1
+        for plan in db.scalars(select(DecisionPlan).where(DecisionPlan.workspace_id == w.id,
+                                                          DecisionPlan.follow_up_date <= local.date().isoformat())).all():
+            result = plan_outcome(db, plan, local.date())
+            if not result or not result.get('available'):
+                continue
+            for m in members:
+                if m.role != 'owner' or not m.outcome_emails or not (to := member_email(db, m)):
+                    continue
+                subject, html_body, text = emailer.render_outcome({'title': plan.title}, result, w.name,
+                                                                   emailer.unsubscribe_url(m.id, 'outcome'))
+                if emailer.send(db, w.id, 'outcome', f'outcome:{plan.id}:{m.id}', to, subject, html_body, text) != 'failed':
+                    sent['outcomes'] += 1
+    return sent
+
+
+router = APIRouter(tags=['Weekly brief and email'])
+
+
+@router.get('/api/briefs/latest')
+def latest_brief(sub: str = Depends(authenticated_subject)):
+    from .saas import _get_workspace
+    with Session(engine) as db:
+        w = _get_workspace(db, sub)
+        return brief_for(db, w.id)
+
+
+class EmailPreferences(BaseModel):
+    weekly_digest: bool
+    outcome_emails: bool
+
+
+@router.get('/api/team/me/email')
+def my_email_preferences(sub: str = Depends(authenticated_subject)):
+    from .membership import WorkspaceMember, resolve
+    with Session(engine) as db:
+        resolve(db, sub)
+        m = db.scalar(select(WorkspaceMember).where(WorkspaceMember.subject == sub))
+        return {'email': member_email(db, m) or None, 'weekly_digest': m.weekly_digest, 'outcome_emails': m.outcome_emails,
+                'provider_configured': bool(os.getenv('RESEND_API_KEY') and os.getenv('EMAIL_FROM'))}
+
+
+@router.post('/api/team/me/email')
+def update_email_preferences(prefs: EmailPreferences, sub: str = Depends(authenticated_subject)):
+    from .membership import WorkspaceMember, resolve
+    with Session(engine) as db:
+        resolve(db, sub)
+        m = db.scalar(select(WorkspaceMember).where(WorkspaceMember.subject == sub))
+        m.weekly_digest, m.outcome_emails = prefs.weekly_digest, prefs.outcome_emails
+        db.commit()
+        return {'weekly_digest': m.weekly_digest, 'outcome_emails': m.outcome_emails}
+
+
+@router.get('/api/email/unsubscribe', response_class=HTMLResponse)
+def unsubscribe(token: str = ''):
+    """One-click unsubscribe from an email link; no sign-in needed."""
+    from .membership import WorkspaceMember
+    found = emailer.verify_unsubscribe(token)
+    if not found:
+        raise HTTPException(404, 'This unsubscribe link is not valid.')
+    member_id, kind = found
+    with Session(engine) as db:
+        m = db.get(WorkspaceMember, member_id)
+        if m:
+            setattr(m, 'weekly_digest' if kind == 'weekly_digest' else 'outcome_emails', False)
+            db.commit()
+    what = 'the weekly brief' if kind == 'weekly_digest' else 'decision outcome emails'
+    return f"<!doctype html><title>Unsubscribed</title><p style='font-family:sans-serif'>You won't get {what} any more. " \
+           f"You can turn it back on in <a href='{config.app_url()}/settings'>Settings</a>.</p>"

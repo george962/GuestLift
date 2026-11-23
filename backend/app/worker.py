@@ -49,9 +49,28 @@ def schedule(db: Session, now: int | None = None) -> int:
     return queued
 
 
+_last_insights = 0.0
+
+
+def run_insights(force: bool = False) -> dict | None:
+    """Weekly digests and outcome emails, at most every 10 minutes."""
+    global _last_insights
+    if not force and time.time() - _last_insights < 600:
+        return None
+    _last_insights = time.time()
+    from .insight_loop import run_due
+    with Session(engine) as db:
+        try:
+            return run_due(db)
+        except Exception:  # never let email stop syncing
+            logger.exception('weekly brief / outcome run failed')
+            return None
+
+
 def run_once(slice_seconds: float | None = None) -> bool:
     """Schedule, then run at most one due job slice. Returns True if a job ran."""
     slice_seconds = slice_seconds or float(os.getenv('GUESTLIFT_WORKER_SLICE_SECONDS', '60'))
+    run_insights()
     with Session(engine) as db:
         schedule(db)
         now = int(time.time())

@@ -242,6 +242,13 @@ def analyst(data:AnalystRequest,_paid:str=Depends(paid_subject),sub:str=Depends(
         if not summary['has_connected_source']:
             raise HTTPException(status_code=409, detail='Connect and sync Square Sandbox before using the account analyst.')
     result=answer_question(data.question,summary)
+    with Session(engine) as db:
+        from .square_sync import health
+        state=health(db,w.id)
+    if state['status']!='healthy':
+        # Partial or stale data: say so before any numbers (docs/PRODUCT_PLAN.md M4 eval: partial sync).
+        result['answer']=f"Note: {state['message']} These figures cover the data imported so far. "+result['answer']
+        result['data_status']=state['status']
     # Optional actual language model uses aggregates only; never raw customer/order IDs.
     if os.getenv('GUESTLIFT_ENABLE_LLM')=='1' and os.getenv('OPENAI_API_KEY') and os.getenv('OPENAI_MODEL'):
         try:
