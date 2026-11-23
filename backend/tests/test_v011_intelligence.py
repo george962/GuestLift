@@ -1,5 +1,5 @@
 """Evidence graph and optional model: business isolation, safe prompts and access gates."""
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 import sys
 import uuid
 from types import SimpleNamespace
@@ -10,6 +10,7 @@ from app.database import Base
 from app.main import app
 from app import saas, decisions, intelligence
 from app.connections import SquareConnection, SquareOrder
+from app.square_sync import SquareLocationState
 from app import membership
 
 
@@ -27,9 +28,15 @@ def fixture(tmp_path, monkeypatch, *, growth=False):
             w.subscription_plan = 'growth'
             w.stripe_subscription_id = 'sub_test_fixture'
             w.subscription_status = 'active'
+        now = datetime.now(timezone.utc)
         db.add(SquareConnection(id=str(uuid.uuid4()), workspace_id=w.id,
                 merchant_id='fake-merchant-a', credential_mode='developer_env',
-                connected_at=datetime.now(timezone.utc).isoformat()))
+                connected_at=now.isoformat(), last_sync_at=now.isoformat()))
+        db.add(SquareLocationState(workspace_id=w.id, location_id='loc-a',
+                name='Test Location', timezone='UTC',
+                backfill_start=(now - timedelta(days=400)).isoformat(),
+                synced_through=now.isoformat(), backfill_complete=True,
+                updated_at=now.isoformat()))
         for i in range(12):
             db.add(SquareOrder(id=str(uuid.uuid4()),workspace_id=w.id,
                 source_order_id=f'order-{i}', location_id='loc-a',
@@ -103,3 +110,22 @@ def test_model_receives_only_aggregates_and_store_false(tmp_path,monkeypatch):
             assert c.post('/api/intelligence/ask',json={'question':'a'}).status_code==422
     finally:
         app.dependency_overrides.clear();engine.dispose()
+
+
+def test_model_refuses_stale_sync_even_when_paid_and_configured(tmp_path, monkeypatch):
+    engine = fixture(tmp_path, monkeypatch, growth=True)
+    monkeypatch.setenv('GUESTLIFT_ENABLE_LLM', '1')
+    monkeypatch.setenv('OPENAI_API_KEY', 'sk-test-not-a-real-secret')
+    monkeypatch.setenv('OPENAI_MODEL', 'test-model')
+    try:
+        with Session(engine) as db:
+            conn = db.query(SquareConnection).one()
+            conn.last_sync_at = (datetime.now(timezone.utc) - timedelta(days=2)).isoformat()
+            db.commit()
+        with TestClient(app) as client:
+            response = client.post('/api/intelligence/ask', json={'question': 'What changed in guest behavior?'})
+            assert response.status_code == 409, response.text
+            assert 'verified' in response.json()['detail'].lower()
+    finally:
+        app.dependency_overrides.clear()
+        engine.dispose()

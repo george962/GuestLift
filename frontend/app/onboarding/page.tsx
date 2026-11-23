@@ -51,7 +51,7 @@ export default function Onboarding(){
   }catch(e){setNotice(e instanceof Error?e.message:'Could not save your plan choice.');}
   finally{setBusy(false)}
  }
- return <main className="ts10-app">
+ return <main id="main-content" className="ts10-app">
   <div className="ts10-heading"><span className="ts9-kicker">YOUR RESTAURANT · GET STARTED</span><h1>Let's make TableSignal yours.</h1><p>Three steps to your private workspace. You can leave and come back—we save your setup progress in the database.</p></div>
   <div className="ts9-onboarding-steps" style={{marginBottom:25}}><div className={step===1?'current':'done'}><Store size={17}/> 1 · Restaurant</div><div className={step===2?'current':step>2?'done':''}><CreditCard size={17}/> 2 · Plan</div><div className={step===3?'current':''}><Database size={17}/> 3 · Connect data</div></div>
   {!checked&&<div className="ts10-notice">Loading your saved setup…</div>}

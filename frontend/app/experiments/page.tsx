@@ -3,6 +3,7 @@ import {useCallback,useEffect,useState} from 'react';
 import Link from 'next/link';
 import {ArrowRight,CheckCircle2,ClipboardList,RefreshCcw,ShieldCheck} from 'lucide-react';
 import {accountApi,localAuthClient} from '@/lib/local-auth';
+import {DataHealthBanner,useDataHealth} from '@/components/data-health';
 type Plan={id:string;title:string;objective:string;offer_type:string;offer_value:number;target_redemptions:number;
  reference_basket_minor:number;assumed_margin_percent:number;discount_budget_minor:number;modeled_contribution_minor:number;
  status:string;notes:string;created_at:string;updated_at:string;
@@ -10,6 +11,7 @@ type Plan={id:string;title:string;objective:string;offer_type:string;offer_value
 type Outcome={available:boolean;headline?:string;explanation?:string;verdict?:string;change_percent?:number;due?:string;message?:string};
 const money=(n:number)=>new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'}).format(n/100);
 export default function Experiments(){
+ const {health:dataHealth}=useDataHealth();
  const [token,setToken]=useState('');const [plans,setPlans]=useState<Plan[]>([]);
  const [loading,setLoading]=useState(true);const [error,setError]=useState('');
  const [working,setWorking]=useState('');const [notice,setNotice]=useState('');
@@ -22,12 +24,15 @@ export default function Experiments(){
   finally{setLoading(false)}
  },[]);
  useEffect(()=>{void load()},[load]);
+ useEffect(()=>{if(token&&plans.some(p=>p.outcome?.available))
+   void accountApi('/api/readiness/event',token,'POST',{event:'outcome_view'}).catch(()=>{});
+ },[token,plans]);
  async function update(id:string,status:string){if(!token)return;setWorking(id);setNotice('');
   try{await accountApi('/api/decisions/plans/'+id+'/status',token,'POST',{status});
       setNotice('Tracking status saved. No customer messages or campaigns were sent.');await load();}
   catch(e){setError(e instanceof Error?e.message:'Could not update status')}finally{setWorking('')}
  }
- return <main className="ts10-app"><div className="ts10-heading"><span className="ts9-kicker">RESTAURANT INTELLIGENCE · FOLLOW THROUGH</span><h1>Your saved experiments.</h1><p>Keep assumptions and decisions in one place. Change tracking status as you review them; TableSignal does not launch campaigns automatically.</p></div>
+ return <main id="main-content" className="ts10-app"><DataHealthBanner health={dataHealth}/><div className="ts10-heading"><span className="ts9-kicker">RESTAURANT INTELLIGENCE · FOLLOW THROUGH</span><h1>Your saved experiments.</h1><p>Keep assumptions and decisions in one place. Change tracking status as you review them; TableSignal does not launch campaigns automatically.</p></div>
   {loading&&<div className="ts10-notice">Loading saved decisions…</div>}
   {error&&<div className="ts10-notice ts10-danger" role="alert">{error}<button onClick={()=>void load()}>Retry</button></div>}
   {!loading&&!token&&<div className="ts10-card"><h2>Sign in to your restaurant</h2><Link className="ts10-primary" href="/sign-in?next=%2Fexperiments">Sign in <ArrowRight size={16}/></Link></div>}

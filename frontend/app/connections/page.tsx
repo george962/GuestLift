@@ -88,7 +88,7 @@ export default function Connections(){
     }
   }
   const connected=Boolean(status?.connected);
-  return <main className="ts9-app">
+  return <main id="main-content" className="ts9-app">
     <header className="ts9-app-top"><div><span className="ts9-kicker">YOUR RESTAURANT · CONNECTIONS</span><h1>Keep your restaurant data connected.</h1><p>Eventually you should be able to sign in at your POS provider and authorize read-only access. For now, only Square Sandbox developer testing is available; real restaurant connections are not enabled.</p></div>
       <Link href="/dashboard" className="ts9-button secondary">My dashboard <ArrowRight size={16}/></Link>
     </header>

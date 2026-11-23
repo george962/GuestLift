@@ -32,7 +32,7 @@ export function DataHealthBanner({health}:{health:Health|null}){
  const importing=health.status==='importing';
  return <div className={'ts9-notice '+(reconnect||health.status==='error'?'danger':'')} role="status" data-health={health.status}>
   {importing?<Loader2 size={17}/>:reconnect?<PlugZap size={17}/>:<AlertTriangle size={17}/>}
-  <span>{health.message}</span>
+  <span>{health.message} {health.status==='stale'||health.status==='error'||health.status==='importing'?'Trend conclusions are paused until Square data is complete and current.':''}</span>
   {importing&&health.backfill&&<progress max={100} value={health.backfill.percent} aria-label="History import progress" style={{marginLeft:8}}/>}
   {reconnect&&<Link href="/connections" style={{fontWeight:700,marginLeft:8}}>Reconnect Square</Link>}
   {(health.status==='stale'||health.status==='error')&&<Link href="/connections" style={{fontWeight:700,marginLeft:8}}>Sync now</Link>}

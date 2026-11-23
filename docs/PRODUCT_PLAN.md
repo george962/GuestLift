@@ -2,7 +2,7 @@
 
 **This is the working plan for the customer-facing product. Every change PR cites the milestone it advances and updates the status table below in the same PR.**
 
-Owner: product owner (repo admin). Last updated: 2026-11-22 (M6 step 1).
+Owner: product owner (repo admin). Last updated: 2026-11-23 (M6 engineering readiness implementation).
 
 ## The promise we are building toward
 
@@ -104,7 +104,7 @@ Ordered by dependency. Each milestone is one or more PRs; it's "done" only when 
 | M3 Pipeline | Done | #27 | Checkpointed worker, no order cap, refunds, local days, reconnect/revocation, data health, Check against Square. Remaining: verify with a real Square Sandbox seller on staging (needs hosting) |
 | M4 Insight loop | Implemented (merged and hardened; hosting verification outstanding) | #29, #30, #31, #32 | Weekly brief with confidence + evidence, decisions with metric/location/follow-up, seasonal-aware outcome readouts, digest/outcome/trial emails with unsubscribe, 168-check analyst eval. P2: email outbox retries pending mail once Resend is configured (idempotency keys, no duplicates), preferences re-checked at send time, accurate counts, 422 for bad dates; schema follow-up proposed in `docs/EMAIL_OUTBOX_MIGRATION.md`. Remaining: Resend account to deliver email; owner interviews to tune what the brief prioritizes |
 | M5 Billing | Done | #28 | One entitlement service; no-card trial after first sync; grace + read-only; proration preview/confirm; verified on Stripe test clocks. Trial-ending emails added in M4. Remaining: Stripe keys in CI secrets, a manual hosted-Checkout check |
-| M6 UI/UX and readiness | In progress (step 1: first-run checklist) | M6 checklist PR | Server-derived Connect → Locations → Sync → Brief ready → Decision checklist; remaining: comprehensive states, mobile/a11y, help/support, export/deletion, consent/legal, analytics and usability checks |
+| M6 UI/UX and readiness | Engineering implementation in review; external gates open | #33 + M6 readiness PR | First-run checklist, evidence/error states, mobile/keyboard/axe checks, support/help, owner CSV ZIP export, account deletion, preview acknowledgement and privacy-minimal telemetry. Outstanding: actual Lighthouse score on staging, counsel approval of final legal terms, 3 uncoached owner tests, hosted Square/Stripe/Resend checks and production monitoring |
 | M7 Pilot | Not started | | Needs pilot merchant, hosting, LIVE accounts |
 
 ## Decisions log
