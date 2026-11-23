@@ -29,3 +29,6 @@ test-results/
 coverage/
 .pytest_cache/
 *.tsbuildinfo
+
+# Personal Claude Code settings
+.claude/settings.local.json
